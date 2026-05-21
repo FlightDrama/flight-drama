@@ -1,5 +1,5 @@
-import { Link } from "wouter";
-import { Eye, Clock, Play, Zap } from "lucide-react";
+import { useLocation } from "wouter";
+import { Eye, Clock, Play } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 type ArticleCardProps = {
@@ -22,6 +22,29 @@ type ArticleCardProps = {
   size?: "small" | "medium" | "large" | "hero";
 };
 
+// Category badge rendered as a plain span — never nested inside an <a>
+function CategoryBadge({
+  name,
+  slug,
+  onNavigate,
+}: {
+  name: string;
+  slug?: string | null;
+  onNavigate: (e: React.MouseEvent, path: string) => void;
+}) {
+  return (
+    <span
+      role="link"
+      tabIndex={0}
+      onClick={(e) => slug && onNavigate(e, `/category/${slug}`)}
+      onKeyDown={(e) => e.key === "Enter" && slug && onNavigate(e as any, `/category/${slug}`)}
+      className="category-badge cursor-pointer"
+    >
+      {name}
+    </span>
+  );
+}
+
 export default function ArticleCard({
   title,
   slug,
@@ -30,25 +53,40 @@ export default function ArticleCard({
   videoUrl,
   postType,
   views,
-  isFeatured,
   isBreaking,
   publishedAt,
   authorName,
-  authorAvatar,
   categoryName,
   categorySlug,
-  categoryColour,
   size = "medium",
 }: ArticleCardProps) {
+  const [, navigate] = useLocation();
   const timeAgo = formatDistanceToNow(new Date(publishedAt), { addSuffix: true });
   const isVideo = postType === "video" || !!videoUrl;
 
+  // Navigate to category without bubbling to the outer article link
+  const goToCategory = (e: React.MouseEvent, path: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(path);
+  };
+
+  const goToArticle = () => navigate(`/article/${slug}`);
+
   if (size === "hero") {
     return (
-      <Link href={`/article/${slug}`} className="block group relative overflow-hidden rounded-lg card-hover">
+      <div
+        onClick={goToArticle}
+        className="block group relative overflow-hidden rounded-lg card-hover cursor-pointer"
+      >
         <div className="relative aspect-[16/9] overflow-hidden">
           {featuredImage ? (
-            <img src={featuredImage} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+            <img
+              src={featuredImage}
+              alt={title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              loading="lazy"
+            />
           ) : (
             <div className="w-full h-full bg-[oklch(0.18_0_0)] flex items-center justify-center">
               <span className="text-6xl">✈</span>
@@ -66,34 +104,52 @@ export default function ArticleCard({
             <div className="flex items-center gap-2 mb-3">
               {isBreaking && <span className="breaking-badge">Breaking</span>}
               {categoryName && (
-                <Link href={`/category/${categorySlug}`} onClick={(e) => e.stopPropagation()} className="category-badge">
-                  {categoryName}
-                </Link>
+                <CategoryBadge name={categoryName} slug={categorySlug} onNavigate={goToCategory} />
               )}
             </div>
             <h2 className="text-2xl md:text-3xl font-black text-white leading-tight mb-2 group-hover:text-[oklch(0.85_0.18_95)] transition-colors">
               {title}
             </h2>
-            {excerpt && <p className="text-sm text-[oklch(0.75_0_0)] line-clamp-2 mb-3">{excerpt}</p>}
+            {excerpt && (
+              <p className="text-sm text-[oklch(0.75_0_0)] line-clamp-2 mb-3">{excerpt}</p>
+            )}
             <div className="flex items-center gap-3 text-xs text-[oklch(0.55_0_0)]">
-              {authorName && <span className="font-semibold text-[oklch(0.70_0_0)]">By {authorName}</span>}
-              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{timeAgo}</span>
-              <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{views.toLocaleString()}</span>
+              {authorName && (
+                <span className="font-semibold text-[oklch(0.70_0_0)]">By {authorName}</span>
+              )}
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {timeAgo}
+              </span>
+              <span className="flex items-center gap-1">
+                <Eye className="w-3 h-3" />
+                {views.toLocaleString()}
+              </span>
             </div>
           </div>
         </div>
-      </Link>
+      </div>
     );
   }
 
   if (size === "large") {
     return (
-      <Link href={`/article/${slug}`} className="block group bg-[oklch(0.15_0_0)] rounded-lg overflow-hidden card-hover border border-[oklch(0.22_0_0)] hover:border-[oklch(0.85_0.18_95)]/30">
+      <div
+        onClick={goToArticle}
+        className="block group bg-[oklch(0.15_0_0)] rounded-lg overflow-hidden card-hover border border-[oklch(0.22_0_0)] hover:border-[oklch(0.85_0.18_95)]/30 cursor-pointer"
+      >
         <div className="relative aspect-[16/9] overflow-hidden">
           {featuredImage ? (
-            <img src={featuredImage} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+            <img
+              src={featuredImage}
+              alt={title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              loading="lazy"
+            />
           ) : (
-            <div className="w-full h-full bg-[oklch(0.18_0_0)] flex items-center justify-center text-4xl">✈</div>
+            <div className="w-full h-full bg-[oklch(0.18_0_0)] flex items-center justify-center text-4xl">
+              ✈
+            </div>
           )}
           <div className="absolute inset-0 img-overlay" />
           {isVideo && (
@@ -105,9 +161,7 @@ export default function ArticleCard({
           <div className="absolute bottom-3 left-3 flex gap-2">
             {isBreaking && <span className="breaking-badge">Breaking</span>}
             {categoryName && (
-              <Link href={`/category/${categorySlug}`} onClick={(e) => e.stopPropagation()} className="category-badge">
-                {categoryName}
-              </Link>
+              <CategoryBadge name={categoryName} slug={categorySlug} onNavigate={goToCategory} />
             )}
           </div>
         </div>
@@ -115,44 +169,76 @@ export default function ArticleCard({
           <h3 className="font-black text-white text-lg leading-snug mb-2 group-hover:text-[oklch(0.85_0.18_95)] transition-colors line-clamp-2">
             {title}
           </h3>
-          {excerpt && <p className="text-sm text-[oklch(0.55_0_0)] line-clamp-2 mb-3">{excerpt}</p>}
+          {excerpt && (
+            <p className="text-sm text-[oklch(0.55_0_0)] line-clamp-2 mb-3">{excerpt}</p>
+          )}
           <div className="flex items-center justify-between text-xs text-[oklch(0.45_0_0)]">
             <span>{authorName && `By ${authorName}`}</span>
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{timeAgo}</span>
-              <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{views.toLocaleString()}</span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {timeAgo}
+              </span>
+              <span className="flex items-center gap-1">
+                <Eye className="w-3 h-3" />
+                {views.toLocaleString()}
+              </span>
             </div>
           </div>
         </div>
-      </Link>
+      </div>
     );
   }
 
   if (size === "small") {
     return (
-      <Link href={`/article/${slug}`} className="flex gap-3 group items-start py-3 border-b border-[oklch(0.18_0_0)] last:border-0 hover:bg-[oklch(0.13_0_0)] px-2 rounded transition-colors">
+      <div
+        onClick={goToArticle}
+        className="flex gap-3 group items-start py-3 border-b border-[oklch(0.18_0_0)] last:border-0 hover:bg-[oklch(0.13_0_0)] px-2 rounded transition-colors cursor-pointer"
+      >
         {featuredImage && (
           <div className="shrink-0 w-16 h-16 rounded overflow-hidden">
-            <img src={featuredImage} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+            <img
+              src={featuredImage}
+              alt={title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
+            />
           </div>
         )}
         <div className="flex-1 min-w-0">
-          {categoryName && <span className="text-[oklch(0.85_0.18_95)] text-[10px] font-bold uppercase tracking-wider">{categoryName}</span>}
-          <h4 className="text-sm font-bold text-white leading-snug line-clamp-2 group-hover:text-[oklch(0.85_0.18_95)] transition-colors">{title}</h4>
+          {categoryName && (
+            <span className="text-[oklch(0.85_0.18_95)] text-[10px] font-bold uppercase tracking-wider">
+              {categoryName}
+            </span>
+          )}
+          <h4 className="text-sm font-bold text-white leading-snug line-clamp-2 group-hover:text-[oklch(0.85_0.18_95)] transition-colors">
+            {title}
+          </h4>
           <span className="text-[10px] text-[oklch(0.45_0_0)]">{timeAgo}</span>
         </div>
-      </Link>
+      </div>
     );
   }
 
   // Default: medium card
   return (
-    <Link href={`/article/${slug}`} className="block group bg-[oklch(0.15_0_0)] rounded-lg overflow-hidden card-hover border border-[oklch(0.22_0_0)] hover:border-[oklch(0.85_0.18_95)]/30">
+    <div
+      onClick={goToArticle}
+      className="block group bg-[oklch(0.15_0_0)] rounded-lg overflow-hidden card-hover border border-[oklch(0.22_0_0)] hover:border-[oklch(0.85_0.18_95)]/30 cursor-pointer"
+    >
       <div className="relative aspect-[16/9] overflow-hidden">
         {featuredImage ? (
-          <img src={featuredImage} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+          <img
+            src={featuredImage}
+            alt={title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+          />
         ) : (
-          <div className="w-full h-full bg-[oklch(0.18_0_0)] flex items-center justify-center text-3xl">✈</div>
+          <div className="w-full h-full bg-[oklch(0.18_0_0)] flex items-center justify-center text-3xl">
+            ✈
+          </div>
         )}
         <div className="absolute inset-0 img-overlay" />
         {isVideo && (
@@ -169,9 +255,7 @@ export default function ArticleCard({
       </div>
       <div className="p-3">
         {categoryName && (
-          <Link href={`/category/${categorySlug}`} onClick={(e) => e.stopPropagation()} className="text-[oklch(0.85_0.18_95)] text-[10px] font-bold uppercase tracking-wider hover:underline">
-            {categoryName}
-          </Link>
+          <CategoryBadge name={categoryName} slug={categorySlug} onNavigate={goToCategory} />
         )}
         <h3 className="font-black text-white text-sm leading-snug mt-1 mb-2 group-hover:text-[oklch(0.85_0.18_95)] transition-colors line-clamp-3">
           {title}
@@ -179,11 +263,14 @@ export default function ArticleCard({
         <div className="flex items-center justify-between text-[10px] text-[oklch(0.45_0_0)]">
           <span>{authorName && `By ${authorName}`}</span>
           <div className="flex items-center gap-2">
-            <span className="flex items-center gap-0.5"><Eye className="w-2.5 h-2.5" />{views.toLocaleString()}</span>
+            <span className="flex items-center gap-0.5">
+              <Eye className="w-2.5 h-2.5" />
+              {views.toLocaleString()}
+            </span>
             <span>{timeAgo}</span>
           </div>
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
