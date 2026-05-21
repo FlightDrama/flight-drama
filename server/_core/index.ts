@@ -34,7 +34,7 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
   // Stripe webhook — MUST be before json() middleware
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", { apiVersion: "2025-04-30.basil" });
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", { apiVersion: "2026-04-22.dahlia" as any });
   app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) => {
     const sig = req.headers["stripe-signature"] as string;
     let event: Stripe.Event;

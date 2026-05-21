@@ -14,7 +14,7 @@ import {
   updateAdSlot, updateArticle, deleteArticle as _del,
 } from "./db";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", { apiVersion: "2025-04-30.basil" });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", { apiVersion: "2026-04-22.dahlia" as any });
 
 const adminGuard = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") throw new Error("FORBIDDEN");
