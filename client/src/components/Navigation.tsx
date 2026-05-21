@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
-import { trpc } from "@/lib/trpc";
+import BreakingTicker from "@/components/BreakingTicker";
 import { Menu, X, Search, Plane, ChevronDown, User, LogOut, Settings, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,19 +41,8 @@ export default function Navigation() {
 
   return (
     <>
-      {/* Breaking news ticker */}
-      <div className="bg-[oklch(0.85_0.18_95)] text-black py-1.5 overflow-hidden">
-        <div className="flex items-center gap-4">
-          <span className="shrink-0 bg-black text-[oklch(0.85_0.18_95)] text-xs font-black uppercase px-3 py-0.5 ml-4">
-            BREAKING
-          </span>
-          <div className="overflow-hidden flex-1">
-            <p className="animate-ticker whitespace-nowrap text-xs font-bold">
-              ✈ Delta emergency landing in Dublin — Full story inside &nbsp;|&nbsp; Boeing 737 MAX cleared for return to service &nbsp;|&nbsp; Ryanair orders 300 more 737s &nbsp;|&nbsp; MH370 search resumes with new sonar technology &nbsp;|&nbsp; Joby Aviation completes first passenger eVTOL flight
-            </p>
-          </div>
-        </div>
-      </div>
+      {/* Breaking news ticker — dynamic, left-to-right */}
+      <BreakingTicker />
 
       {/* Main navbar */}
       <nav className="sticky top-0 z-50 bg-[oklch(0.10_0_0)] border-b border-[oklch(0.22_0_0)]">
