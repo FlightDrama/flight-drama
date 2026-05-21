@@ -2,12 +2,14 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import Stripe from "stripe";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { getRedirect, upsertProMembership, getUserByOpenId } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -31,6 +33,39 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  // Stripe webhook — MUST be before json() middleware
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", { apiVersion: "2025-04-30.basil" });
+  app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+    const sig = req.headers["stripe-signature"] as string;
+    let event: Stripe.Event;
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET ?? "");
+    } catch (err) {
+      console.error("[Stripe] Webhook signature verification failed", err);
+      return res.status(400).send("Webhook Error");
+    }
+    if (event.id.startsWith("evt_test_")) {
+      console.log("[Stripe] Test event detected");
+      return res.json({ verified: true });
+    }
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const userId = parseInt(session.metadata?.user_id ?? "0");
+      const plan = (session.metadata?.plan as "monthly" | "annual") ?? "monthly";
+      if (userId) {
+        await upsertProMembership({
+          userId,
+          stripeCustomerId: session.customer as string,
+          stripeSubscriptionId: session.subscription as string,
+          status: "active",
+          plan,
+        });
+        console.log(`[Stripe] Pro membership activated for user ${userId}`);
+      }
+    }
+    res.json({ received: true });
+  });
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -44,6 +79,19 @@ async function startServer() {
       createContext,
     })
   );
+  // SEO 301 redirect handler — resolves old WordPress URLs
+  app.use(async (req, res, next) => {
+    const path = req.path;
+    if (path.startsWith("/api") || path.startsWith("/manus-storage") || path.includes(".")) return next();
+    try {
+      const redirect = await getRedirect(path);
+      if (redirect) {
+        return res.redirect(redirect.statusCode, redirect.newPath);
+      }
+    } catch {}
+    next();
+  });
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
