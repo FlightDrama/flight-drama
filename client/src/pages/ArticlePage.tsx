@@ -4,7 +4,8 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ArticleCard from "@/components/ArticleCard";
 import NewsletterSignup from "@/components/NewsletterSignup";
-import { Eye, Clock, Share2, Twitter, Facebook, ArrowLeft, Crown } from "lucide-react";
+import { Eye, Clock, ArrowLeft, Crown } from "lucide-react";
+import ShareButtons from "@/components/ShareButtons";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
@@ -70,12 +71,7 @@ export default function ArticlePage() {
               <div className="flex items-center gap-1 text-xs text-[oklch(0.45_0_0)]"><Clock className="w-3 h-3" />{formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true })}</div>
               <div className="flex items-center gap-1 text-xs text-[oklch(0.45_0_0)]"><Eye className="w-3 h-3" />{article.views.toLocaleString()} views</div>
               {/* Share */}
-              <div className="flex items-center gap-2 ml-auto">
-                <span className="text-xs text-[oklch(0.45_0_0)]">Share:</span>
-                <button onClick={() => handleShare("twitter")} className="p-1.5 rounded bg-[oklch(0.18_0_0)] hover:bg-sky-500/20 text-sky-400 transition-colors"><Twitter className="w-3.5 h-3.5" /></button>
-                <button onClick={() => handleShare("facebook")} className="p-1.5 rounded bg-[oklch(0.18_0_0)] hover:bg-blue-500/20 text-blue-400 transition-colors"><Facebook className="w-3.5 h-3.5" /></button>
-                <button onClick={() => handleShare("copy")} className="p-1.5 rounded bg-[oklch(0.18_0_0)] hover:bg-[oklch(0.25_0_0)] text-[oklch(0.55_0_0)] transition-colors"><Share2 className="w-3.5 h-3.5" /></button>
-              </div>
+              <div className="ml-auto"><ShareButtons title={article.title} compact /></div>
             </div>
             {/* Featured image */}
             {article.featuredImage && (
@@ -103,6 +99,11 @@ export default function ArticlePage() {
                 </div>
               </div>
             )}
+            {/* Bottom share section */}
+            <div className="mt-8 pt-6 border-t border-[oklch(0.22_0_0)]">
+              <p className="text-xs font-bold uppercase tracking-widest text-[oklch(0.45_0_0)] mb-3">Enjoyed this story? Share it</p>
+              <ShareButtons title={article.title} />
+            </div>
           </article>
           <aside className="space-y-6">
             <NewsletterSignup source="article-sidebar" />

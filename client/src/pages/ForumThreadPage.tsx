@@ -6,6 +6,7 @@ import { getLoginUrl } from "@/const";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { ArrowLeft, MessageSquare, Eye } from "lucide-react";
+import ShareButtons from "@/components/ShareButtons";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
@@ -35,6 +36,9 @@ export default function ForumThreadPage() {
               <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{thread.replyCount} replies</span>
             </div>
             <p className="text-[oklch(0.75_0_0)] leading-relaxed">{thread.content}</p>
+            <div className="mt-4 pt-4 border-t border-[oklch(0.22_0_0)]">
+              <ShareButtons title={thread.title} compact />
+            </div>
           </div>
         )}
         {/* Replies */}
