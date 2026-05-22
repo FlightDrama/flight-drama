@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import ArticleCard from "@/components/ArticleCard";
 import NewsletterSignup from "@/components/NewsletterSignup";
 import { TrendingUp, Flame, Users, Crown, ExternalLink } from "lucide-react";
+import FlightStats from "@/components/FlightStats";
 
 const CATEGORY_FILTERS = [
   { label: "All", value: undefined },
@@ -115,6 +116,7 @@ export default function Home() {
           </div>
           <aside className="space-y-6">
             <NewsletterSignup source="homepage-sidebar" />
+            <FlightStats />
             <div className="bg-[oklch(0.15_0_0)] border border-[oklch(0.22_0_0)] rounded-lg p-4">
               <h3 className="text-xs font-black uppercase tracking-widest text-[oklch(0.85_0.18_95)] mb-3">Community</h3>
               <div className="space-y-3">

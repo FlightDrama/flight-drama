@@ -6,6 +6,7 @@ import ArticleCard from "@/components/ArticleCard";
 import NewsletterSignup from "@/components/NewsletterSignup";
 import { Eye, Clock, ArrowLeft, Crown } from "lucide-react";
 import ShareButtons from "@/components/ShareButtons";
+import RunwayDivider from "@/components/RunwayDivider";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
@@ -117,8 +118,8 @@ export default function ArticlePage() {
         </div>
         {/* Related articles */}
         {related && related.length > 0 && (
-          <section className="mt-12 pt-8 border-t border-[oklch(0.22_0_0)]">
-            <h2 className="font-display text-2xl text-white mb-5 tracking-wider">Related Stories</h2>
+          <section className="mt-8">
+            <RunwayDivider label="Related Stories" />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {related.filter(r => r.slug !== slug).slice(0, 4).map(a => <ArticleCard key={a.id} {...a} publishedAt={a.publishedAt} size="medium" />)}
             </div>

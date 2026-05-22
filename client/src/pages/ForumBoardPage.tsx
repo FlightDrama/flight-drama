@@ -5,7 +5,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
-import { MessageSquare, Eye, ArrowLeft, Pin, Lock, Plus } from "lucide-react";
+import { MessageSquare, Eye, ArrowLeft, Pin, Lock, Plus, Radio } from "lucide-react";
+import PilotBadge from "@/components/PilotBadge";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
@@ -62,7 +63,11 @@ export default function ForumBoardPage() {
                     {thread.isLocked && <Lock className="w-3 h-3 text-[oklch(0.55_0_0)]" />}
                     <h3 className="font-bold text-white group-hover:text-[oklch(0.85_0.18_95)] transition-colors line-clamp-1">{thread.title}</h3>
                   </div>
-                  <p className="text-xs text-[oklch(0.50_0_0)]">By {thread.userName ?? "Anonymous"} · {formatDistanceToNow(new Date(thread.createdAt), { addSuffix: true })}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-[oklch(0.50_0_0)]">{thread.userName ?? "Anonymous"}</span>
+                    <PilotBadge postCount={thread.replyCount * 3 + 2} />
+                    <span className="text-xs text-[oklch(0.35_0_0)]">· {formatDistanceToNow(new Date(thread.createdAt), { addSuffix: true })}</span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-4 shrink-0 text-xs text-[oklch(0.45_0_0)]">
                   <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{thread.replyCount}</span>
@@ -71,7 +76,12 @@ export default function ForumBoardPage() {
               </div>
             </Link>
           ))}
-          {!threads?.length && <div className="text-center py-12 text-[oklch(0.45_0_0)]"><MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" /><p className="font-bold">No threads yet — be the first to post!</p></div>}
+          {!threads?.length && (
+            <div className="text-center py-12 text-[oklch(0.45_0_0)]">
+              <Radio className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p className="font-bold">No transmissions yet — request clearance to post!</p>
+            </div>
+          )}
         </div>
       </main>
       <Footer />

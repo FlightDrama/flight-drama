@@ -97,10 +97,20 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-[oklch(0.18_0_0)] mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-[oklch(0.40_0_0)]">
-            © {new Date().getFullYear()} Flight Drama. All rights reserved.
-          </p>
+        {/* Runway-style divider */}
+        <div className="mt-10 mb-4 flex items-center gap-2">
+          <div className="h-px flex-1 bg-[oklch(0.18_0_0)]" />
+          <span className="text-[oklch(0.25_0_0)] text-xs font-mono tracking-widest">— — ✈ — —</span>
+          <div className="h-px flex-1 bg-[oklch(0.18_0_0)]" />
+        </div>
+        <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-[oklch(0.40_0_0)]">
+              © {new Date().getFullYear()} Flight Drama. All rights reserved.
+            </p>
+            <span className="hidden sm:inline text-[oklch(0.25_0_0)] text-xs font-mono">|</span>
+            <span className="hidden sm:inline text-[10px] font-mono text-[oklch(0.30_0_0)]">FL350 · M0.85 · EGLL–KLAX</span>
+          </div>
           <div className="flex gap-4 text-xs text-[oklch(0.40_0_0)]">
             <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
             <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
