@@ -69,12 +69,12 @@ export default function BreakingTicker() {
           BREAKING
         </span>
 
-        {/* Scrolling ticker — left to right (items enter from right, exit to left) */}
+        {/* Scrolling ticker — right to left (standard news ticker direction) */}
         <div className="overflow-hidden flex-1 relative">
           <div
             className="flex whitespace-nowrap"
             style={{
-              animation: "ticker-ltr 60s linear infinite",
+              animation: "ticker-rtl 60s linear infinite",
               willChange: "transform",
             }}
           >
@@ -85,10 +85,10 @@ export default function BreakingTicker() {
         </div>
       </div>
 
-      {/* Ticker animation — left-to-right: starts off-screen right, moves to left */}
+      {/* Ticker animation — starts at 0 (visible), scrolls left until fully off-screen */}
       <style>{`
-        @keyframes ticker-ltr {
-          0%   { transform: translateX(100%); }
+        @keyframes ticker-rtl {
+          0%   { transform: translateX(0%); }
           100% { transform: translateX(-50%); }
         }
       `}</style>
