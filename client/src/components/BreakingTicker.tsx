@@ -46,7 +46,6 @@ export default function BreakingTicker() {
   // Build the ticker string — duplicated so the scroll is seamless
   const tickerContent = tickerItems.map((item, i) => (
     <span key={i} className="inline-flex items-center gap-2 mx-6">
-      <span className="text-black font-black text-base leading-none">✈</span>
       {item.slug ? (
         <Link
           href={`/article/${item.slug}`}
@@ -58,6 +57,7 @@ export default function BreakingTicker() {
       ) : (
         <span className="font-bold text-xs">{item.text}</span>
       )}
+      <span className="text-black font-black text-base leading-none">✈</span>
     </span>
   ));
 
@@ -85,11 +85,11 @@ export default function BreakingTicker() {
         </div>
       </div>
 
-      {/* Ticker animation — starts at 0 (visible), scrolls left until fully off-screen */}
+      {/* Ticker animation — enters from left, exits to right */}
       <style>{`
         @keyframes ticker-rtl {
-          0%   { transform: translateX(0%); }
-          100% { transform: translateX(-50%); }
+          0%   { transform: translateX(-50%); }
+          100% { transform: translateX(0%); }
         }
       `}</style>
     </div>
