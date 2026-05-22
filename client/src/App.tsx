@@ -20,6 +20,7 @@ import AdminSubscribers from "./pages/AdminSubscribers";
 import AdminUsers from "./pages/AdminUsers";
 import AdminAdSlots from "./pages/AdminAdSlots";
 import ScrollToTop from "./components/ScrollToTop";
+import FloatingNewsletter from "./components/FloatingNewsletter";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 
@@ -64,6 +65,7 @@ export default function App() {
           <Toaster />
           <Router />
           <ScrollToTop />
+          <FloatingNewsletter />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
