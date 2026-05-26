@@ -106,18 +106,45 @@ export const appRouter = router({
       }),
   }),
   flightLookup: router({
-    search: protectedProcedure
+    // FREE tier — uses ADSB.lol (no API key, no cost)
+    // Searches live airspace by callsign, returns position/altitude/speed
+    searchFree: publicProcedure
+      .input(z.object({ callsign: z.string().min(2).max(10) }))
+      .query(async ({ input }) => {
+        const clean = input.callsign.trim().toUpperCase().replace(/\s/g, '');
+        // ADSB.lol callsign search — query a large bounding box covering the world
+        const url = `https://api.adsb.lol/v2/callsign/${encodeURIComponent(clean)}`;
+        try {
+          const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+          if (!res.ok) throw new Error('ADSB API error');
+          const data = await res.json() as any;
+          const aircraft = (data.ac ?? []).filter((a: any) => a.flight?.trim());
+          return { aircraft, found: aircraft.length > 0 };
+        } catch (e: any) {
+          // Fallback: return empty rather than crashing
+          return { aircraft: [], found: false, error: e.message };
+        }
+      }),
+
+    // PRO tier — uses AviationStack (costs API credits)
+    // DISABLED until Pro members exist — returns PRO_COMING_SOON until enabled
+    searchPro: protectedProcedure
       .input(z.object({ flightIata: z.string().min(2).max(10).toUpperCase() }))
       .query(async ({ input, ctx }) => {
-        // Gate behind Pro membership
+        // Check Pro membership
         const membership = await getProMembership(ctx.user.id);
         if (!membership || membership.status !== 'active') {
           throw new Error('PRO_REQUIRED');
         }
+        // Feature flag — set PRO_FLIGHT_LOOKUP_ENABLED=true in secrets to activate
+        // This prevents burning AviationStack credits before there are paying members
+        if (process.env.PRO_FLIGHT_LOOKUP_ENABLED !== 'true') {
+          throw new Error('PRO_COMING_SOON');
+        }
         const apiKey = process.env.AVIATIONSTACK_API_KEY;
         if (!apiKey) throw new Error('AviationStack API key not configured');
         const url = `http://api.aviationstack.com/v1/flights?access_key=${apiKey}&flight_iata=${encodeURIComponent(input.flightIata)}&limit=5`;
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
         if (!res.ok) throw new Error('AviationStack API error');
         const data = await res.json() as any;
         if (data.error) throw new Error(data.error.info ?? 'API error');
