@@ -178,6 +178,19 @@ export async function updateAdSlot(id: number, data: Partial<{ position: string;
   await db.update(adSlots).set(data).where(eq(adSlots.id, id));
 }
 
+export async function getMostReadArticles(limit = 5) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({
+    id: articles.id, title: articles.title, slug: articles.slug,
+    featuredImage: articles.featuredImage, views: articles.views,
+    publishedAt: articles.publishedAt, categoryName: categories.name,
+    categorySlug: categories.slug,
+  }).from(articles)
+    .leftJoin(categories, eq(articles.categoryId, categories.id))
+    .orderBy(desc(articles.views))
+    .limit(limit);
+}
+
 export async function getUserProfile(userId: number) {
   const db = await getDb(); if (!db) return undefined;
   const r = await db.select().from(users).where(eq(users.id, userId)).limit(1);

@@ -9,6 +9,7 @@ import { TrendingUp, Flame, Users, Crown, ExternalLink } from "lucide-react";
 import FlightStats from "@/components/FlightStats";
 import LiveFlightsWidget from "@/components/LiveFlightsWidget";
 import AdSlot from "@/components/AdSlot";
+import MostReadWidget from "@/components/MostReadWidget";
 
 const CATEGORY_FILTERS = [
   { label: "All", value: undefined },
@@ -118,6 +119,7 @@ export default function Home() {
           </div>
           <aside className="space-y-6">
             <NewsletterSignup source="homepage-sidebar" />
+            <MostReadWidget />
             <LiveFlightsWidget />
             <AdSlot slot="sidebar" />
             <FlightStats />
