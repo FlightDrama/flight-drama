@@ -352,41 +352,76 @@ export default function FlightLookupPage() {
           </p>
         </div>
 
-        {/* Free vs Pro comparison */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <div className="bg-[oklch(0.15_0_0)] border border-[oklch(0.22_0_0)] rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Zap className="w-4 h-4 text-[oklch(0.85_0.18_95)]" />
-              <span className="text-sm font-black text-white">Free</span>
-              <span className="text-[10px] bg-[oklch(0.22_0_0)] text-[oklch(0.65_0_0)] px-2 py-0.5 font-bold">EVERYONE</span>
+        {/* Free vs Pro comparison table */}
+        <div className="mb-6 bg-[oklch(0.13_0_0)] border border-[oklch(0.22_0_0)] rounded-xl overflow-hidden">
+          {/* Table header */}
+          <div className="grid grid-cols-3 border-b border-[oklch(0.22_0_0)]">
+            <div className="bg-[oklch(0.18_0_0)] px-4 py-3">
+              <p className="text-xs font-black uppercase tracking-widest text-[oklch(0.50_0_0)]">Feature</p>
             </div>
-            <ul className="space-y-1">
-              {["Live position (ADS-B)", "Altitude & speed", "Heading & squawk", "Aircraft type & reg"].map(f => (
-                <li key={f} className="text-xs text-[oklch(0.60_0_0)] flex items-center gap-2">
-                  <span className="text-green-400">✓</span> {f}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="bg-[oklch(0.15_0_0)] border border-[oklch(0.85_0.18_95)]/30 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Crown className="w-4 h-4 text-[oklch(0.85_0.18_95)]" />
-              <span className="text-sm font-black text-[oklch(0.85_0.18_95)]">Pro</span>
-              <span className="text-[10px] bg-[oklch(0.85_0.18_95)] text-black px-2 py-0.5 font-black">£4.99/mo</span>
+            <div className="bg-[oklch(0.18_0_0)] px-4 py-3 border-l border-[oklch(0.22_0_0)] flex items-center gap-2">
+              <Zap className="w-3.5 h-3.5 text-[oklch(0.65_0_0)]" />
+              <p className="text-xs font-black text-white">Free</p>
+              <span className="text-[9px] bg-[oklch(0.28_0_0)] text-[oklch(0.60_0_0)] px-1.5 py-0.5 font-bold">EVERYONE</span>
             </div>
-            <ul className="space-y-1">
-              {["Everything in Free", "Departure & arrival times", "Gate & terminal info", "Delay status & airline data"].map(f => (
-                <li key={f} className="text-xs text-[oklch(0.60_0_0)] flex items-center gap-2">
-                  <span className="text-[oklch(0.85_0.18_95)]">✓</span> {f}
-                </li>
-              ))}
-            </ul>
-            {!isPro && (
-              <Link href="/pro" className="mt-3 block text-center text-xs bg-[oklch(0.85_0.18_95)] text-black font-black py-1.5 hover:bg-[oklch(0.78_0.18_95)] transition-colors">
-                Upgrade to Pro →
-              </Link>
-            )}
+            <div className="bg-[oklch(0.85_0.18_95)] px-4 py-3 border-l border-[oklch(0.22_0_0)] flex items-center gap-2">
+              <Crown className="w-3.5 h-3.5 text-black" />
+              <p className="text-xs font-black text-black">Pro</p>
+              <span className="text-[9px] bg-black text-[oklch(0.85_0.18_95)] px-1.5 py-0.5 font-black">£4.99/mo</span>
+            </div>
           </div>
+          {/* Comparison rows */}
+          {[
+            { feature: "Live ADS-B position",       free: true,  pro: true },
+            { feature: "Altitude (FL notation)",    free: true,  pro: true },
+            { feature: "Ground speed (knots)",      free: true,  pro: true },
+            { feature: "Heading & direction",       free: true,  pro: true },
+            { feature: "Squawk code",               free: true,  pro: true },
+            { feature: "Aircraft type & reg",       free: true,  pro: true },
+            { feature: "Saved favourites",          free: true,  pro: true },
+            { feature: "Search history",            free: true,  pro: true },
+            { feature: "Departure airport & time",  free: false, pro: true },
+            { feature: "Arrival airport & time",    free: false, pro: true },
+            { feature: "Gate & terminal info",      free: false, pro: true },
+            { feature: "Delay status",              free: false, pro: true },
+            { feature: "Airline name & IATA code",  free: false, pro: true },
+            { feature: "Historical flight data",    free: false, pro: true },
+          ].map((row, i) => (
+            <div key={row.feature} className={`grid grid-cols-3 border-b border-[oklch(0.18_0_0)] last:border-b-0 ${i % 2 === 0 ? "" : "bg-[oklch(0.11_0_0)]"}`}>
+              <div className="px-4 py-2.5">
+                <span className="text-xs text-[oklch(0.65_0_0)] font-medium">{row.feature}</span>
+              </div>
+              <div className="px-4 py-2.5 border-l border-[oklch(0.18_0_0)] flex items-center">
+                {row.free
+                  ? <span className="text-green-400 text-sm font-black">✓</span>
+                  : <span className="text-[oklch(0.30_0_0)] text-sm">—</span>}
+              </div>
+              <div className="px-4 py-2.5 border-l border-[oklch(0.18_0_0)] flex items-center bg-[oklch(0.85_0.18_95)]/5">
+                {row.pro
+                  ? <span className="text-[oklch(0.85_0.18_95)] text-sm font-black">✓</span>
+                  : <span className="text-[oklch(0.30_0_0)] text-sm">—</span>}
+              </div>
+            </div>
+          ))}
+          {/* CTA row */}
+          {!isPro && (
+            <div className="grid grid-cols-3 bg-[oklch(0.15_0_0)] border-t border-[oklch(0.22_0_0)]">
+              <div className="px-4 py-3">
+                <p className="text-xs text-[oklch(0.45_0_0)]">Cancel anytime</p>
+              </div>
+              <div className="px-4 py-3 border-l border-[oklch(0.22_0_0)] flex items-center">
+                <span className="text-xs text-[oklch(0.45_0_0)]">Always free</span>
+              </div>
+              <div className="px-3 py-2.5 border-l border-[oklch(0.22_0_0)]">
+                <Link
+                  href="/pro"
+                  className="block text-center text-xs bg-[oklch(0.85_0.18_95)] text-black font-black py-2 hover:bg-[oklch(0.78_0.18_95)] transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Crown className="w-3 h-3" /> Upgrade to Pro →
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Search form */}
@@ -416,42 +451,72 @@ export default function FlightLookupPage() {
           </div>
         </form>
 
-        {/* Favourites */}
+        {/* Saved Favourites — with individual delete */}
         {favourites.length > 0 && (
-          <div className="mb-3 flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 text-[10px] text-[oklch(0.85_0.18_95)] font-bold uppercase tracking-widest shrink-0">
-              <Star className="w-3 h-3 fill-[oklch(0.85_0.18_95)]" /> Saved:
-            </div>
-            {favourites.map((f) => (
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 text-[10px] text-[oklch(0.85_0.18_95)] font-bold uppercase tracking-widest">
+                <Star className="w-3 h-3 fill-[oklch(0.85_0.18_95)]" /> Saved Flights ({favourites.length})
+              </div>
               <button
-                key={f}
-                onClick={() => handleQuickSearch(f)}
-                className="text-xs font-mono font-bold bg-[oklch(0.18_0_0)] border border-[oklch(0.85_0.18_95)]/30 text-[oklch(0.85_0.18_95)] hover:border-[oklch(0.85_0.18_95)]/60 hover:text-white px-2.5 py-1 transition-colors flex items-center gap-1"
+                onClick={() => { setFavourites([]); try { localStorage.removeItem(FAVOURITES_KEY); } catch {} }}
+                className="text-[10px] text-[oklch(0.35_0_0)] hover:text-red-400 transition-colors flex items-center gap-0.5"
               >
-                <Star className="w-2.5 h-2.5 fill-[oklch(0.85_0.18_95)]" />{f}
+                <X className="w-3 h-3" /> Clear all
               </button>
-            ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {favourites.map((f) => (
+                <div key={f} className="flex items-center bg-[oklch(0.18_0_0)] border border-[oklch(0.85_0.18_95)]/30 overflow-hidden">
+                  <button
+                    onClick={() => handleQuickSearch(f)}
+                    className="text-xs font-mono font-bold text-[oklch(0.85_0.18_95)] hover:text-white px-2.5 py-1.5 transition-colors flex items-center gap-1"
+                  >
+                    <Star className="w-2.5 h-2.5 fill-[oklch(0.85_0.18_95)]" />{f}
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleFavourite(f); }}
+                    className="px-1.5 py-1.5 text-[oklch(0.40_0_0)] hover:text-red-400 hover:bg-red-900/20 transition-colors border-l border-[oklch(0.85_0.18_95)]/20"
+                    title={`Remove ${f} from saved`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Recent search history */}
+        {/* Recent search history — with individual delete */}
         {history.length > 0 && (
-          <div className="mb-6 flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 text-[10px] text-[oklch(0.45_0_0)] font-bold uppercase tracking-widest shrink-0">
-              <History className="w-3 h-3" /> Recent:
-            </div>
-            {history.map((h) => (
-              <button
-                key={h}
-                onClick={() => handleQuickSearch(h)}
-                className="text-xs font-mono font-bold bg-[oklch(0.18_0_0)] border border-[oklch(0.25_0_0)] text-[oklch(0.70_0_0)] hover:border-[oklch(0.85_0.18_95)]/40 hover:text-white px-2.5 py-1 transition-colors"
-              >
-                {h}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 text-[10px] text-[oklch(0.45_0_0)] font-bold uppercase tracking-widest">
+                <History className="w-3 h-3" /> Recent Searches
+              </div>
+              <button onClick={clearHistory} className="text-[10px] text-[oklch(0.35_0_0)] hover:text-[oklch(0.55_0_0)] transition-colors flex items-center gap-0.5">
+                <X className="w-3 h-3" /> Clear all
               </button>
-            ))}
-            <button onClick={clearHistory} className="text-[10px] text-[oklch(0.35_0_0)] hover:text-[oklch(0.55_0_0)] transition-colors flex items-center gap-0.5 ml-1">
-              <X className="w-3 h-3" /> Clear
-            </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {history.map((h) => (
+                <div key={h} className="flex items-center bg-[oklch(0.18_0_0)] border border-[oklch(0.25_0_0)] overflow-hidden">
+                  <button
+                    onClick={() => handleQuickSearch(h)}
+                    className="text-xs font-mono font-bold text-[oklch(0.70_0_0)] hover:text-white px-2.5 py-1.5 transition-colors"
+                  >
+                    {h}
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setHistory(prev => { const u = prev.filter(x => x !== h); try { localStorage.setItem(HISTORY_KEY, JSON.stringify(u)); } catch {} return u; }); }}
+                    className="px-1.5 py-1.5 text-[oklch(0.35_0_0)] hover:text-red-400 hover:bg-red-900/20 transition-colors border-l border-[oklch(0.28_0_0)]"
+                    title={`Remove ${h} from history`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
