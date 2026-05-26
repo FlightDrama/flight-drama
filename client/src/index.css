@@ -109,6 +109,178 @@
   .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
   .img-overlay { background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.4) 50%, transparent 100%); }
   .accent-bar { border-left: 4px solid oklch(0.85 0.18 95); padding-left: 0.75rem; }
+
+  /* ── Rich Article Typography ────────────────────────────────────────────── */
+  /* Applied to the prose container wrapping article HTML content */
+  .article-prose h1, .article-prose h2, .article-prose h3,
+  .article-prose h4, .article-prose h5, .article-prose h6 {
+    font-family: var(--font-sans);
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.2;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+  }
+  .article-prose h2 {
+    font-size: 1.5rem;
+    border-left: 4px solid oklch(0.85 0.18 95);
+    padding-left: 0.875rem;
+    margin-left: 0;
+  }
+  .article-prose h3 {
+    font-size: 1.2rem;
+    color: oklch(0.85 0.18 95);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.85rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid oklch(0.22 0 0);
+  }
+  .article-prose h4 { font-size: 1.05rem; color: oklch(0.85 0 0); }
+  /* WordPress block classes */
+  .article-prose .wp-block-heading { /* inherits h2/h3 styles above */ }
+  .article-prose .wp-block-paragraph { /* inherits p styles above */ }
+  .article-prose .wp-block-quote {
+    margin: 2rem 0;
+    padding: 1.25rem 1.5rem 1.25rem 2.5rem;
+    background: oklch(0.15 0 0);
+    border-left: 4px solid oklch(0.85 0.18 95);
+    position: relative;
+  }
+  .article-prose .wp-block-quote p {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: oklch(0.85 0 0);
+    font-style: italic;
+    margin-bottom: 0;
+  }
+  .article-prose .wp-block-quote::before {
+    content: '\201C';
+    font-size: 3.5rem;
+    color: oklch(0.85 0.18 95);
+    line-height: 0;
+    position: absolute;
+    top: 1.5rem;
+    left: 0.75rem;
+    opacity: 0.35;
+    font-family: Georgia, serif;
+  }
+  /* Gutenberg separator */
+  .article-prose .wp-block-separator {
+    border: none;
+    border-top: 1px solid oklch(0.22 0 0);
+    margin: 2rem 0;
+  }
+  .article-prose p {
+    color: oklch(0.75 0 0);
+    font-size: 1rem;
+    line-height: 1.8;
+    margin-bottom: 1.25rem;
+  }
+  .article-prose p:first-child {
+    font-size: 1.1rem;
+    color: oklch(0.80 0 0);
+    font-weight: 500;
+  }
+  .article-prose strong { color: #ffffff; font-weight: 700; }
+  .article-prose em { color: oklch(0.80 0 0); font-style: italic; }
+  .article-prose a {
+    color: oklch(0.85 0.18 95);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .article-prose a:hover { color: #ffffff; }
+  /* Blockquotes — styled as pull quotes */
+  .article-prose blockquote {
+    margin: 2rem 0;
+    padding: 1.25rem 1.5rem;
+    background: oklch(0.15 0 0);
+    border-left: 4px solid oklch(0.85 0.18 95);
+    position: relative;
+  }
+  .article-prose blockquote p {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: oklch(0.85 0 0);
+    font-style: italic;
+    margin-bottom: 0;
+    line-height: 1.6;
+  }
+  .article-prose blockquote::before {
+    content: '\201C';
+    font-size: 4rem;
+    color: oklch(0.85 0.18 95);
+    line-height: 0;
+    position: absolute;
+    top: 1.5rem;
+    left: 1rem;
+    opacity: 0.4;
+    font-family: Georgia, serif;
+  }
+  /* Lists */
+  .article-prose ul, .article-prose ol {
+    margin: 1rem 0 1.25rem 1.5rem;
+    color: oklch(0.75 0 0);
+    line-height: 1.8;
+  }
+  .article-prose ul { list-style: none; margin-left: 0; }
+  .article-prose ul li {
+    padding-left: 1.5rem;
+    position: relative;
+    margin-bottom: 0.4rem;
+  }
+  .article-prose ul li::before {
+    content: '✈';
+    position: absolute;
+    left: 0;
+    color: oklch(0.85 0.18 95);
+    font-size: 0.75rem;
+    top: 0.25rem;
+  }
+  .article-prose ol { list-style: decimal; }
+  .article-prose ol li { margin-bottom: 0.4rem; }
+  /* Horizontal rules — styled as runway dividers */
+  .article-prose hr {
+    border: none;
+    border-top: 1px solid oklch(0.22 0 0);
+    margin: 2rem 0;
+    position: relative;
+  }
+  .article-prose hr::after {
+    content: '— ✈ —';
+    position: absolute;
+    top: -0.65rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: oklch(0.10 0 0);
+    padding: 0 0.75rem;
+    color: oklch(0.35 0 0);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+  }
+  /* Images inside articles */
+  .article-prose img {
+    width: 100%;
+    height: auto;
+    margin: 1.5rem 0;
+    border: 1px solid oklch(0.22 0 0);
+  }
+  /* Code / pre */
+  .article-prose code {
+    background: oklch(0.18 0 0);
+    color: oklch(0.85 0.18 95);
+    padding: 0.1rem 0.35rem;
+    font-size: 0.875rem;
+    font-family: 'Courier New', monospace;
+  }
+  /* Key fact boxes — any div with class 'key-fact' in article HTML */
+  .article-prose .key-fact {
+    background: oklch(0.15 0 0);
+    border: 1px solid oklch(0.85 0.18 95);
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+  }
+  .article-prose .key-fact p { color: oklch(0.85 0 0); margin-bottom: 0; font-weight: 600; }
   @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
   .animate-ticker { animation: ticker 35s linear infinite; }
   ::-webkit-scrollbar { width: 6px; }

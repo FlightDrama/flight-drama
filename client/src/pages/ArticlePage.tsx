@@ -88,7 +88,7 @@ export default function ArticlePage() {
               </div>
             )}
             {/* Content */}
-            <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-headings:font-black prose-p:text-[oklch(0.75_0_0)] prose-p:leading-relaxed prose-a:text-[oklch(0.85_0.18_95)] prose-blockquote:border-[oklch(0.85_0.18_95)] prose-blockquote:text-[oklch(0.65_0_0)] prose-strong:text-white"
+            <div className="article-prose max-w-none"
               dangerouslySetInnerHTML={{ __html: article.content }} />
             {/* Tags */}
             {article.tags && (
