@@ -9,13 +9,15 @@ import RunwayDivider from "@/components/RunwayDivider";
 import {
   Search, Plane, Crown, Clock, MapPin, AlertCircle,
   ArrowRight, Radio, TrendingUp, TrendingDown, Minus,
-  History, X, Lock, Zap
+  History, X, Lock, Zap, Star
 } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const HISTORY_KEY = "fd-flight-lookup-history";
+const FAVOURITES_KEY = "fd-flight-lookup-favourites";
 const MAX_HISTORY = 8;
+const MAX_FAVOURITES = 12;
 
 function getHeadingLabel(track: number): string {
   const dirs = ["N","NE","E","SE","S","SW","W","NW"];
@@ -261,11 +263,26 @@ export default function FlightLookupPage() {
   const [submitted, setSubmitted] = useState("");
   const [history, setHistory] = useState<string[]>([]);
 
+  const [favourites, setFavourites] = useState<string[]>([]);
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem(HISTORY_KEY);
       if (stored) setHistory(JSON.parse(stored));
+      const storedFavs = localStorage.getItem(FAVOURITES_KEY);
+      if (storedFavs) setFavourites(JSON.parse(storedFavs));
     } catch {}
+  }, []);
+
+  const toggleFavourite = useCallback((code: string) => {
+    setFavourites((prev) => {
+      const isFav = prev.includes(code);
+      const updated = isFav
+        ? prev.filter((f) => f !== code)
+        : [code, ...prev].slice(0, MAX_FAVOURITES);
+      try { localStorage.setItem(FAVOURITES_KEY, JSON.stringify(updated)); } catch {}
+      return updated;
+    });
   }, []);
 
   const addToHistory = useCallback((code: string) => {
@@ -399,6 +416,24 @@ export default function FlightLookupPage() {
           </div>
         </form>
 
+        {/* Favourites */}
+        {favourites.length > 0 && (
+          <div className="mb-3 flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 text-[10px] text-[oklch(0.85_0.18_95)] font-bold uppercase tracking-widest shrink-0">
+              <Star className="w-3 h-3 fill-[oklch(0.85_0.18_95)]" /> Saved:
+            </div>
+            {favourites.map((f) => (
+              <button
+                key={f}
+                onClick={() => handleQuickSearch(f)}
+                className="text-xs font-mono font-bold bg-[oklch(0.18_0_0)] border border-[oklch(0.85_0.18_95)]/30 text-[oklch(0.85_0.18_95)] hover:border-[oklch(0.85_0.18_95)]/60 hover:text-white px-2.5 py-1 transition-colors flex items-center gap-1"
+              >
+                <Star className="w-2.5 h-2.5 fill-[oklch(0.85_0.18_95)]" />{f}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Recent search history */}
         {history.length > 0 && (
           <div className="mb-6 flex items-center gap-2 flex-wrap">
@@ -427,17 +462,30 @@ export default function FlightLookupPage() {
 
             {isLoading && <RadarLoader flightCode={submitted} />}
 
-            {/* Free results */}
-            {!freeLoading && freeData && (
-              <>
-                {freeData.found && freeData.aircraft.length > 0 ? (
-                  <div className="space-y-4 mb-6">
-                    <p className="text-xs text-[oklch(0.45_0_0)]">
-                      {freeData.aircraft.length} aircraft found · Live ADS-B data
-                    </p>
-                    {freeData.aircraft.map((ac: any, i: number) => (
-                      <FreeResultCard key={i} ac={ac} />
-                    ))}
+        {/* Free results */}
+        {!freeLoading && freeData && (
+          <>
+            {freeData.found && freeData.aircraft.length > 0 ? (
+              <div className="space-y-4 mb-6">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-[oklch(0.45_0_0)]">
+                    {freeData.aircraft.length} aircraft found · Live ADS-B data
+                  </p>
+                  <button
+                    onClick={() => toggleFavourite(submitted)}
+                    className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 border transition-colors ${
+                      favourites.includes(submitted)
+                        ? "border-[oklch(0.85_0.18_95)] bg-[oklch(0.85_0.18_95)]/10 text-[oklch(0.85_0.18_95)]"
+                        : "border-[oklch(0.28_0_0)] text-[oklch(0.50_0_0)] hover:border-[oklch(0.85_0.18_95)]/40 hover:text-[oklch(0.85_0.18_95)]"
+                    }`}
+                  >
+                    <Star className={`w-3.5 h-3.5 ${favourites.includes(submitted) ? "fill-[oklch(0.85_0.18_95)]" : ""}`} />
+                    {favourites.includes(submitted) ? "Saved" : "Save Flight"}
+                  </button>
+                </div>
+                {freeData.aircraft.map((ac: any, i: number) => (
+                  <FreeResultCard key={i} ac={ac} />
+                ))}
                   </div>
                 ) : !freeLoading && (
                   <div className="text-center py-10 text-[oklch(0.45_0_0)] mb-4">

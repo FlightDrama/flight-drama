@@ -7,6 +7,7 @@ import NewsletterSignup from "@/components/NewsletterSignup";
 import { Eye, Clock, ArrowLeft, Crown } from "lucide-react";
 import ShareButtons from "@/components/ShareButtons";
 import RunwayDivider from "@/components/RunwayDivider";
+import AdSlot from "@/components/AdSlot";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
@@ -107,6 +108,7 @@ export default function ArticlePage() {
             </div>
           </article>
           <aside className="space-y-6">
+            <AdSlot slot="sidebar" />
             <NewsletterSignup source="article-sidebar" />
             <div className="bg-gradient-to-br from-[oklch(0.85_0.18_95)] to-[oklch(0.75_0.18_95)] rounded-lg p-4 text-black">
               <Crown className="w-5 h-5 mb-2" />

@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 const navLinks = [
   { label: "News", href: "/" },
   { label: "Shorts", href: "/videos" },
+  { label: "Flight Lookup", href: "/flight-lookup", isNew: true },
   { label: "Forum", href: "/forum" },
   { label: "Newsletter", href: "/newsletter" },
   { label: "Pro", href: "/pro", isPro: true },
@@ -71,7 +72,7 @@ export default function Navigation() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`px-4 py-2 text-sm font-semibold uppercase tracking-wide rounded transition-colors ${
+                  className={`px-3 py-2 text-sm font-semibold uppercase tracking-wide rounded transition-colors flex items-center gap-1 ${
                     link.isPro
                       ? "bg-[oklch(0.85_0.18_95)] text-black hover:bg-[oklch(0.78_0.18_95)]"
                       : location === link.href
@@ -79,8 +80,12 @@ export default function Navigation() {
                       : "text-[oklch(0.75_0_0)] hover:text-white"
                   }`}
                 >
-                  {link.isPro && <Crown className="inline w-3 h-3 mr-1" />}
+                  {link.isPro && <Crown className="w-3 h-3" />}
+                  {(link as any).isNew && <Plane className="w-3 h-3" />}
                   {link.label}
+                  {(link as any).isNew && (
+                    <span className="text-[8px] bg-[oklch(0.85_0.18_95)] text-black font-black px-1 py-0.5 leading-none ml-0.5">FREE</span>
+                  )}
                 </Link>
               ))}
             </div>
