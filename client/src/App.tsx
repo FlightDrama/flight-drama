@@ -19,6 +19,7 @@ import AdminArticles from "./pages/AdminArticles";
 import AdminSubscribers from "./pages/AdminSubscribers";
 import AdminUsers from "./pages/AdminUsers";
 import AdminAdSlots from "./pages/AdminAdSlots";
+import ProfilePage from "./pages/ProfilePage";
 import ScrollToTop from "./components/ScrollToTop";
 import FloatingNewsletter from "./components/FloatingNewsletter";
 import { useEffect } from "react";
@@ -50,6 +51,7 @@ function Router() {
         <Route path="/admin/subscribers" component={AdminSubscribers} />
         <Route path="/admin/users" component={AdminUsers} />
         <Route path="/admin/ads" component={AdminAdSlots} />
+        <Route path="/profile" component={ProfilePage} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

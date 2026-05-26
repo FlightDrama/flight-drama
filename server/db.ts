@@ -178,6 +178,28 @@ export async function updateAdSlot(id: number, data: Partial<{ position: string;
   await db.update(adSlots).set(data).where(eq(adSlots.id, id));
 }
 
+export async function getUserProfile(userId: number) {
+  const db = await getDb(); if (!db) return undefined;
+  const r = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  return r[0];
+}
+export async function getUserForumThreads(userId: number, limit = 10) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: forumThreads.id, title: forumThreads.title, replyCount: forumThreads.replyCount, views: forumThreads.views, createdAt: forumThreads.createdAt, boardId: forumThreads.boardId }).from(forumThreads).where(eq(forumThreads.userId, userId)).orderBy(desc(forumThreads.createdAt)).limit(limit);
+}
+export async function getUserForumReplies(userId: number, limit = 10) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: forumReplies.id, content: forumReplies.content, createdAt: forumReplies.createdAt, threadId: forumReplies.threadId, threadTitle: forumThreads.title }).from(forumReplies).leftJoin(forumThreads, eq(forumReplies.threadId, forumThreads.id)).where(and(eq(forumReplies.userId, userId), eq(forumReplies.isDeleted, false))).orderBy(desc(forumReplies.createdAt)).limit(limit);
+}
+export async function getUserPostCount(userId: number): Promise<number> {
+  const db = await getDb(); if (!db) return 0;
+  const [threads, replies] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(forumThreads).where(eq(forumThreads.userId, userId)),
+    db.select({ count: sql<number>`count(*)` }).from(forumReplies).where(and(eq(forumReplies.userId, userId), eq(forumReplies.isDeleted, false))),
+  ]);
+  return Number(threads[0]?.count ?? 0) + Number(replies[0]?.count ?? 0);
+}
+
 export async function getRedirect(oldPath: string) {
   const db = await getDb(); if (!db) return undefined;
   const r = await db.select().from(redirects).where(eq(redirects.oldPath, oldPath)).limit(1);

@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 
 const navLinks = [
   { label: "News", href: "/" },
-  { label: "Videos", href: "/videos" },
+  { label: "Shorts", href: "/videos" },
   { label: "Forum", href: "/forum" },
   { label: "Newsletter", href: "/newsletter" },
   { label: "Pro", href: "/pro", isPro: true },
@@ -128,6 +128,11 @@ export default function Navigation() {
                     <DropdownMenuItem asChild>
                       <Link href="/pro" className="flex items-center gap-2 text-[oklch(0.85_0.18_95)]">
                         <Crown className="w-4 h-4" /> Flight Drama Pro
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile" className="flex items-center gap-2">
+                        <User className="w-4 h-4" /> My Pilot Profile
                       </Link>
                     </DropdownMenuItem>
                     {user?.role === "admin" && (

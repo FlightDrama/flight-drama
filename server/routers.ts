@@ -10,6 +10,7 @@ import {
   getAuthors, getCategories, getForumBoards, getForumReplies, getForumThread,
   getForumThreadsByBoard, getNewsletterSubscribers, getProMemberCount,
   getProMembership, getSubscriberCount, getUserCount,
+  getUserProfile, getUserForumThreads, getUserForumReplies, getUserPostCount,
   incrementArticleViews, incrementThreadViews, subscribeToNewsletter,
   updateAdSlot, updateArticle, deleteArticle as _del,
 } from "./db";
@@ -103,6 +104,18 @@ export const appRouter = router({
         });
         return { url: session.url };
       }),
+  }),
+  profile: router({
+    me: protectedProcedure.query(async ({ ctx }) => {
+      const [profile, postCount, threads, replies, membership] = await Promise.all([
+        getUserProfile(ctx.user.id),
+        getUserPostCount(ctx.user.id),
+        getUserForumThreads(ctx.user.id, 5),
+        getUserForumReplies(ctx.user.id, 5),
+        getProMembership(ctx.user.id),
+      ]);
+      return { profile, postCount, threads, replies, membership };
+    }),
   }),
   crm: router({
     stats: adminGuard.query(async () => {
