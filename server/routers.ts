@@ -105,6 +105,25 @@ export const appRouter = router({
         return { url: session.url };
       }),
   }),
+  flightLookup: router({
+    search: protectedProcedure
+      .input(z.object({ flightIata: z.string().min(2).max(10).toUpperCase() }))
+      .query(async ({ input, ctx }) => {
+        // Gate behind Pro membership
+        const membership = await getProMembership(ctx.user.id);
+        if (!membership || membership.status !== 'active') {
+          throw new Error('PRO_REQUIRED');
+        }
+        const apiKey = process.env.AVIATIONSTACK_API_KEY;
+        if (!apiKey) throw new Error('AviationStack API key not configured');
+        const url = `http://api.aviationstack.com/v1/flights?access_key=${apiKey}&flight_iata=${encodeURIComponent(input.flightIata)}&limit=5`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('AviationStack API error');
+        const data = await res.json() as any;
+        if (data.error) throw new Error(data.error.info ?? 'API error');
+        return { flights: data.data ?? [], total: data.pagination?.total ?? 0 };
+      }),
+  }),
   profile: router({
     me: protectedProcedure.query(async ({ ctx }) => {
       const [profile, postCount, threads, replies, membership] = await Promise.all([

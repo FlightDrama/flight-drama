@@ -131,6 +131,11 @@ export default function Navigation() {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
+                      <Link href="/flight-lookup" className="flex items-center gap-2 text-[oklch(0.85_0.18_95)]">
+                        <Plane className="w-4 h-4" /> Flight Lookup
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
                       <Link href="/profile" className="flex items-center gap-2">
                         <User className="w-4 h-4" /> My Pilot Profile
                       </Link>
