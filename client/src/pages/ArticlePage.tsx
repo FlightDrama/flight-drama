@@ -12,6 +12,14 @@ import ReadingProgressBar from "@/components/ReadingProgressBar";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
+// Calculate estimated reading time from HTML content
+function getReadingTime(html: string): string {
+  const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const words = text.split(" ").filter(Boolean).length;
+  const minutes = Math.max(1, Math.round(words / 200)); // 200 wpm average
+  return `${minutes} min read`;
+}
+
 export default function ArticlePage() {
   const { slug } = useParams<{ slug: string }>();
   const { data, isLoading } = trpc.articles.bySlug.useQuery({ slug: slug! }, { enabled: !!slug });
@@ -73,6 +81,10 @@ export default function ArticlePage() {
                 </div>
               )}
               <div className="flex items-center gap-1 text-xs text-[oklch(0.45_0_0)]"><Clock className="w-3 h-3" />{formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true })}</div>
+              <div className="flex items-center gap-1 text-xs text-[oklch(0.85_0.18_95)] font-bold bg-[oklch(0.85_0.18_95)]/10 px-2 py-0.5">
+                <Clock className="w-3 h-3" />
+                {getReadingTime(article.content)}
+              </div>
               <div className="flex items-center gap-1 text-xs text-[oklch(0.45_0_0)]"><Eye className="w-3 h-3" />{article.views.toLocaleString()} views</div>
               {/* Share */}
               <div className="ml-auto"><ShareButtons title={article.title} compact /></div>
