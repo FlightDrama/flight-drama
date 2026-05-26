@@ -161,6 +161,31 @@ export default function CategoryPage() {
           </div>
         </div>
 
+        {/* Tag cloud — popular aviation topics */}
+        <div className="mb-5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[oklch(0.40_0_0)] mb-2">Popular Topics</p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              "Emergency Landing", "Boeing 737 MAX", "Airbus A350", "British Airways",
+              "Ryanair", "easyJet", "Cockpit Audio", "Near Miss", "Runway Incident",
+              "Flight Diversion", "Cargo Jet", "Military Intercept", "Pilot Training",
+              "First Class", "Airport Lounge", "New Routes", "Airline Strike",
+            ].map((tag) => (
+              <button
+                key={tag}
+                onClick={() => setSearchQuery(tag)}
+                className={`text-[11px] font-bold px-2.5 py-1 transition-colors ${
+                  searchQuery === tag
+                    ? "bg-[oklch(0.85_0.18_95)] text-black"
+                    : "bg-[oklch(0.15_0_0)] border border-[oklch(0.22_0_0)] text-[oklch(0.55_0_0)] hover:border-[oklch(0.85_0.18_95)]/30 hover:text-[oklch(0.85_0.18_95)]"
+                }`}
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <RunwayDivider label={
           searchQuery
             ? `${displayArticles.length} result${displayArticles.length !== 1 ? "s" : ""} for "${searchQuery}"`

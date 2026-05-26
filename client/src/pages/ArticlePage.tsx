@@ -8,6 +8,7 @@ import { Eye, Clock, ArrowLeft, Crown } from "lucide-react";
 import ShareButtons from "@/components/ShareButtons";
 import RunwayDivider from "@/components/RunwayDivider";
 import AdSlot from "@/components/AdSlot";
+import ReadingProgressBar from "@/components/ReadingProgressBar";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
@@ -48,6 +49,7 @@ export default function ArticlePage() {
 
   return (
     <div className="min-h-screen bg-[oklch(0.10_0_0)]">
+      <ReadingProgressBar />
       <Navigation />
       <main className="container py-6">
         <Link href="/" className="inline-flex items-center gap-2 text-sm text-[oklch(0.55_0_0)] hover:text-white mb-6 transition-colors">
