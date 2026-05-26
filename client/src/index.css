@@ -116,4 +116,65 @@
   ::-webkit-scrollbar-thumb { background: oklch(0.25 0 0); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: oklch(0.85 0.18 95); }
   button:active { transform: scale(0.97); }
+
+  /* Affiliate card hover animations */
+  .affiliate-card {
+    transition: transform 0.2s cubic-bezier(0.23,1,0.32,1), border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .affiliate-card:hover {
+    transform: translateY(-2px);
+    border-color: #F5C518 !important;
+    box-shadow: 0 8px 32px rgba(245,197,24,0.15);
+  }
+  .affiliate-card:hover a[href] {
+    background: #e6b800 !important;
+  }
+  .affiliate-card a[href] {
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+  .affiliate-card a[href]:hover {
+    transform: scale(1.03);
+  }
+
+  /* Pro tooltip styles */
+  .pro-tooltip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: help;
+  }
+  .pro-tooltip .tooltip-content {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: oklch(0.20 0 0);
+    border: 1px solid oklch(0.30 0 0);
+    color: oklch(0.80 0 0);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 6px 10px;
+    white-space: nowrap;
+    z-index: 50;
+    pointer-events: none;
+    border-radius: 4px;
+    max-width: 220px;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.4;
+  }
+  .pro-tooltip .tooltip-content::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: oklch(0.30 0 0);
+  }
+  .pro-tooltip:hover .tooltip-content {
+    display: block;
+  }
 }

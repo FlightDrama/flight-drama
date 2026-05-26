@@ -372,24 +372,28 @@ export default function FlightLookupPage() {
           </div>
           {/* Comparison rows */}
           {[
-            { feature: "Live ADS-B position",       free: true,  pro: true },
-            { feature: "Altitude (FL notation)",    free: true,  pro: true },
-            { feature: "Ground speed (knots)",      free: true,  pro: true },
-            { feature: "Heading & direction",       free: true,  pro: true },
-            { feature: "Squawk code",               free: true,  pro: true },
-            { feature: "Aircraft type & reg",       free: true,  pro: true },
-            { feature: "Saved favourites",          free: true,  pro: true },
-            { feature: "Search history",            free: true,  pro: true },
-            { feature: "Departure airport & time",  free: false, pro: true },
-            { feature: "Arrival airport & time",    free: false, pro: true },
-            { feature: "Gate & terminal info",      free: false, pro: true },
-            { feature: "Delay status",              free: false, pro: true },
-            { feature: "Airline name & IATA code",  free: false, pro: true },
-            { feature: "Historical flight data",    free: false, pro: true },
+            { feature: "Live ADS-B position",       free: true,  pro: true,  tip: "Real-time aircraft position from ADS-B transponders worldwide via ADSB.lol" },
+            { feature: "Altitude (FL notation)",    free: true,  pro: true,  tip: "Barometric altitude shown as Flight Level (FL350 = 35,000ft)" },
+            { feature: "Ground speed (knots)",      free: true,  pro: true,  tip: "Speed over ground in knots and km/h" },
+            { feature: "Heading & direction",       free: true,  pro: true,  tip: "True track in degrees with compass direction (N, NE, E...)" },
+            { feature: "Squawk code",               free: true,  pro: true,  tip: "4-digit transponder code assigned by ATC. 7700=emergency, 7600=comms failure" },
+            { feature: "Aircraft type & reg",       free: true,  pro: true,  tip: "ICAO aircraft type code (B738, A320) and tail registration number" },
+            { feature: "Saved favourites",          free: true,  pro: true,  tip: "Save up to 12 callsigns for instant one-click access" },
+            { feature: "Search history",            free: true,  pro: true,  tip: "Last 8 searches saved in your browser for quick re-access" },
+            { feature: "Departure airport & time",  free: false, pro: true,  tip: "Pro: Scheduled and actual departure time with IATA airport code" },
+            { feature: "Arrival airport & time",    free: false, pro: true,  tip: "Pro: Scheduled and actual arrival time with IATA airport code" },
+            { feature: "Gate & terminal info",      free: false, pro: true,  tip: "Pro: Departure and arrival gate and terminal numbers" },
+            { feature: "Delay status",              free: false, pro: true,  tip: "Pro: Minutes early or late vs scheduled time, colour-coded" },
+            { feature: "Airline name & IATA code",  free: false, pro: true,  tip: "Pro: Full airline name and 2-letter IATA code (e.g. BA = British Airways)" },
+            { feature: "Historical flight data",    free: false, pro: true,  tip: "Pro: Access past flights and route history for any callsign" },
           ].map((row, i) => (
             <div key={row.feature} className={`grid grid-cols-3 border-b border-[oklch(0.18_0_0)] last:border-b-0 ${i % 2 === 0 ? "" : "bg-[oklch(0.11_0_0)]"}`}>
               <div className="px-4 py-2.5">
-                <span className="text-xs text-[oklch(0.65_0_0)] font-medium">{row.feature}</span>
+                <span className="pro-tooltip text-xs text-[oklch(0.65_0_0)] font-medium">
+                  {row.feature}
+                  <span className="text-[oklch(0.35_0_0)] text-[10px] ml-1">ⓘ</span>
+                  <span className="tooltip-content">{row.tip}</span>
+                </span>
               </div>
               <div className="px-4 py-2.5 border-l border-[oklch(0.18_0_0)] flex items-center">
                 {row.free
