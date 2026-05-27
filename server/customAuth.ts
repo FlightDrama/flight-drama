@@ -244,4 +244,28 @@ export const customAuthRouter = router({
       await rawQuery("UPDATE users SET avatar = ? WHERE id = ?", [input.avatarUrl, ctx.user.id]);
       return { success: true, avatarUrl: input.avatarUrl };
     }),
+
+  // Update display name and bio
+  updateProfile: protectedProcedure
+    .input(z.object({
+      name: z.string().min(1).max(100).trim(),
+      bio: z.string().max(500).trim().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      await rawQuery(
+        "UPDATE users SET name = ?, bio = ?, updatedAt = NOW() WHERE id = ?",
+        [input.name, input.bio ?? null, ctx.user.id]
+      );
+      return { success: true };
+    }),
+
+  // Get current user's profile data including bio
+  myProfile: protectedProcedure
+    .query(async ({ ctx }) => {
+      const rows = await rawQuery<any>(
+        "SELECT id, name, email, avatar, bio, loginMethod, role, createdAt FROM users WHERE id = ? LIMIT 1",
+        [ctx.user.id]
+      );
+      return rows[0] ?? null;
+    }),
 });

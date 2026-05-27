@@ -115,6 +115,28 @@ export default function ProfilePage() {
 
   const currentAvatar = avatarUrl || (user as any)?.avatar || null;
 
+  // Profile edit state
+  const { data: myProfile, refetch: refetchProfile } = trpc.customAuth.myProfile.useQuery(undefined, { enabled: isAuthenticated });
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editBio, setEditBio] = useState('');
+
+  const updateProfile = trpc.customAuth.updateProfile.useMutation({
+    onSuccess: () => {
+      toast.success('Profile updated! ✈');
+      setEditingProfile(false);
+      refetchProfile();
+      setTimeout(() => window.location.reload(), 800);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleEditProfile = () => {
+    setEditName(myProfile?.name || user?.name || '');
+    setEditBio(myProfile?.bio || '');
+    setEditingProfile(true);
+  };
+
   return (
     <div className="min-h-screen bg-[oklch(0.10_0_0)]">
       <Navigation />
@@ -142,12 +164,35 @@ export default function ProfilePage() {
                   ) : (
                     user?.name?.charAt(0)?.toUpperCase() ?? "?"
                   )}
-                  {/* Hover overlay */}
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    {uploadingAvatar ? <Loader2 className="w-6 h-6 text-white animate-spin" /> : <Camera className="w-6 h-6 text-white" />}
+                  {/* Hover/upload overlay */}
+                  <div className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity ${
+                    uploadingAvatar ? 'bg-black/70 opacity-100' : 'bg-black/50 opacity-0 group-hover:opacity-100'
+                  }`}>
+                    {uploadingAvatar ? (
+                      <>
+                        <Loader2 className="w-6 h-6 text-[oklch(0.85_0.18_95)] animate-spin mb-1" />
+                        <span className="text-[8px] text-white font-bold">Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="w-5 h-5 text-white mb-0.5" />
+                        <span className="text-[8px] text-white font-bold">Change</span>
+                      </>
+                    )}
                   </div>
                 </div>
                 <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarUpload} className="hidden" />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                  className="mt-1.5 text-[10px] text-[oklch(0.45_0_0)] hover:text-[oklch(0.85_0.18_95)] transition-colors font-bold flex items-center gap-1 disabled:opacity-50"
+                >
+                  {uploadingAvatar ? (
+                    <><Loader2 className="w-3 h-3 animate-spin" /> Uploading...</>
+                  ) : (
+                    <><Camera className="w-3 h-3" /> Change photo</>
+                  )}
+                </button>
                 {isPro && (
                   <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[oklch(0.85_0.18_95)] border-2 border-[oklch(0.15_0_0)] flex items-center justify-center">
                     <Crown className="w-3.5 h-3.5 text-black" />
@@ -157,15 +202,63 @@ export default function ProfilePage() {
 
               {/* Name + rank */}
               <div className="flex-1">
-                <div className="flex items-center gap-3 flex-wrap mb-1">
-                  <h1 className="text-2xl font-black text-white">{user?.name ?? "Pilot"}</h1>
-                  {isPro && (
-                    <span className="flex items-center gap-1 bg-[oklch(0.85_0.18_95)] text-black text-[10px] font-black px-2 py-0.5 rounded">
-                      <Crown className="w-2.5 h-2.5" /> PRO
-                    </span>
-                  )}
-                </div>
-                {/* Rank badge */}
+                {editingProfile ? (
+                  <div className="space-y-3 mb-3">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-[oklch(0.50_0_0)] mb-1">Display Name</label>
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        maxLength={100}
+                        className="w-full bg-[oklch(0.18_0_0)] border border-[oklch(0.28_0_0)] rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-[oklch(0.85_0.18_95)] transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-[oklch(0.50_0_0)] mb-1">Short Bio <span className="normal-case text-[oklch(0.40_0_0)] font-normal">({editBio.length}/500)</span></label>
+                      <textarea
+                        value={editBio}
+                        onChange={(e) => setEditBio(e.target.value)}
+                        maxLength={500}
+                        rows={2}
+                        placeholder="Tell the community about yourself..."
+                        className="w-full bg-[oklch(0.18_0_0)] border border-[oklch(0.28_0_0)] rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-[oklch(0.85_0.18_95)] transition-colors resize-none placeholder-[oklch(0.40_0_0)]"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => updateProfile.mutate({ name: editName, bio: editBio })}
+                        disabled={!editName.trim() || updateProfile.isPending}
+                        className="flex items-center gap-1.5 bg-[oklch(0.85_0.18_95)] text-black font-black text-xs px-4 py-2 hover:bg-[oklch(0.78_0.18_95)] transition-colors disabled:opacity-50"
+                      >
+                        {updateProfile.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                        Save Changes
+                      </button>
+                      <button onClick={() => setEditingProfile(false)} className="text-xs text-[oklch(0.50_0_0)] hover:text-white px-3 py-2 transition-colors">Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3 flex-wrap mb-1">
+                      <h1 className="text-2xl font-black text-white">{myProfile?.name || user?.name || 'Pilot'}</h1>
+                      {isPro && (
+                        <span className="flex items-center gap-1 bg-[oklch(0.85_0.18_95)] text-black text-[10px] font-black px-2 py-0.5 rounded">
+                          <Crown className="w-2.5 h-2.5" /> PRO
+                        </span>
+                      )}
+                      <button
+                        onClick={handleEditProfile}
+                        className="text-[10px] text-[oklch(0.45_0_0)] hover:text-[oklch(0.85_0.18_95)] transition-colors border border-[oklch(0.28_0_0)] hover:border-[oklch(0.85_0.18_95)]/40 px-2 py-0.5 font-bold"
+                      >
+                        ✏ Edit Profile
+                      </button>
+                    </div>
+                    {myProfile?.bio && (
+                      <p className="text-sm text-[oklch(0.60_0_0)] mb-2 leading-relaxed italic">"{myProfile.bio}"</p>
+                    )}
+                  </>
+                )}
+                {!editingProfile && (<>{/* Rank badge */}
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-2xl">{rank.icon}</span>
                   <div>
@@ -193,6 +286,8 @@ export default function ProfilePage() {
                     </div>
                   )}
                 </div>
+                </>
+                )}
               </div>
             </div>
 
