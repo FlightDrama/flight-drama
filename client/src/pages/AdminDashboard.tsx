@@ -35,6 +35,7 @@ export default function AdminDashboard() {
     { icon: Megaphone, label: "Ad Slots", desc: "Manage advertising placements", href: "/admin/ads" },
     { icon: MessageSquare, label: "Comments & Commenters", desc: "Moderate comments · News Commenters CRM", href: "/admin/comments" },
     { icon: Megaphone, label: "Media Kit & Sponsors", desc: "Advertising enquiries · Newsletter sponsors", href: "/admin/media-kit" },
+    { icon: Mail, label: "Newsletter Composer", desc: "Write, preview, and send newsletter editions", href: "/admin/newsletter" },
   ];
 
   return (

@@ -235,11 +235,115 @@ export const appRouter = router({
   newsletter: router({
     subscribe: publicProcedure
       .input(z.object({ email: z.string().email(), name: z.string().optional(), source: z.string().optional() }))
-      .mutation(async ({ input }) => { await subscribeToNewsletter(input.email, input.name, input.source); return { success: true }; }),
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        // Check if already subscribed
+        const existing = await rawQuery<any>('SELECT id, status, unsubscribeToken FROM newsletter_subscribers WHERE email = ? LIMIT 1', [input.email]);
+        if (existing.length > 0 && existing[0].status === 'active') return { success: true, alreadySubscribed: true };
+        // Generate unsubscribe token
+        const crypto = await import('crypto');
+        const token = crypto.randomBytes(32).toString('hex');
+        if (existing.length > 0) {
+          // Reactivate
+          await rawQuery('UPDATE newsletter_subscribers SET status = \'active\', unsubscribeToken = ?, unsubscribedAt = NULL WHERE email = ?', [token, input.email]);
+        } else {
+          await subscribeToNewsletter(input.email, input.name, input.source);
+          await rawQuery('UPDATE newsletter_subscribers SET unsubscribeToken = ? WHERE email = ?', [token, input.email]);
+        }
+        // Send welcome email (best-effort)
+        try {
+          const { sendWelcomeEmail } = await import('./emailService');
+          await sendWelcomeEmail(input.email, input.name ?? null, token);
+          await rawQuery('UPDATE newsletter_subscribers SET welcomeEmailSent = 1 WHERE email = ?', [input.email]);
+        } catch (e) { console.error('[Newsletter] Welcome email failed:', e); }
+        return { success: true };
+      }),
+    unsubscribe: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const rows = await rawQuery<any>('SELECT id FROM newsletter_subscribers WHERE unsubscribeToken = ? LIMIT 1', [input.token]);
+        if (!rows.length) throw new Error('INVALID_TOKEN');
+        await rawQuery('UPDATE newsletter_subscribers SET status = \'unsubscribed\', unsubscribedAt = NOW() WHERE unsubscribeToken = ?', [input.token]);
+        return { success: true };
+      }),
     list: adminGuard
       .input(z.object({ limit: z.number().default(100), offset: z.number().default(0), status: z.string().optional() }))
       .query(({ input }) => getNewsletterSubscribers(input.limit, input.offset, input.status)),
     count: publicProcedure.query(() => getSubscriberCount()),
+    // Newsletter editions
+    editions: adminGuard.query(async () => {
+      const { rawQuery } = await import('./db');
+      return rawQuery<any>('SELECT id, subject, previewText, status, sentAt, recipientCount, createdAt FROM newsletter_editions ORDER BY createdAt DESC LIMIT 50');
+    }),
+    saveDraft: adminGuard
+      .input(z.object({ id: z.number().optional(), subject: z.string().min(1), previewText: z.string().optional(), sponsorId: z.number().optional(), articleIds: z.array(z.number()), htmlContent: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const { generateNewsletterPreviewHtml } = await import('./emailService');
+        // Fetch article data
+        const placeholders = input.articleIds.map(() => '?').join(',');
+        const articles = input.articleIds.length > 0
+          ? await rawQuery<any>(`SELECT a.id, a.title, a.slug, a.excerpt, a.featuredImage, c.name as categoryName FROM articles a LEFT JOIN categories c ON a.categoryId = c.id WHERE a.id IN (${placeholders})`, input.articleIds)
+          : [];
+        // Fetch sponsor
+        let sponsor = null;
+        if (input.sponsorId) {
+          const sponsors = await rawQuery<any>('SELECT * FROM newsletter_sponsors WHERE id = ? LIMIT 1', [input.sponsorId]);
+          sponsor = sponsors[0] ?? null;
+        }
+        const html = generateNewsletterPreviewHtml(input.subject, articles, sponsor);
+        if (input.id) {
+          await rawQuery('UPDATE newsletter_editions SET subject=?, previewText=?, sponsorId=?, articleIds=?, htmlContent=?, updatedAt=NOW() WHERE id=?',
+            [input.subject, input.previewText??null, input.sponsorId??null, JSON.stringify(input.articleIds), html, input.id]);
+          return { success: true, id: input.id, previewHtml: html };
+        } else {
+          const result = await rawQuery<any>('INSERT INTO newsletter_editions (subject, previewText, sponsorId, articleIds, htmlContent) VALUES (?,?,?,?,?)',
+            [input.subject, input.previewText??null, input.sponsorId??null, JSON.stringify(input.articleIds), html]);
+          return { success: true, id: (result as any).insertId, previewHtml: html };
+        }
+      }),
+    sendEdition: adminGuard
+      .input(z.object({ id: z.number(), testEmail: z.string().email().optional() }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const { sendNewsletterEdition } = await import('./emailService');
+        // Get edition
+        const editions = await rawQuery<any>('SELECT * FROM newsletter_editions WHERE id = ? LIMIT 1', [input.id]);
+        if (!editions.length) throw new Error('Edition not found');
+        const edition = editions[0];
+        if (edition.status === 'sent' && !input.testEmail) throw new Error('Already sent');
+        // Fetch articles
+        const articleIds = JSON.parse(edition.articleIds || '[]') as number[];
+        const placeholders = articleIds.length > 0 ? articleIds.map(() => '?').join(',') : '0';
+        const articles = articleIds.length > 0
+          ? await rawQuery<any>(`SELECT a.id, a.title, a.slug, a.excerpt, a.featuredImage, c.name as categoryName FROM articles a LEFT JOIN categories c ON a.categoryId = c.id WHERE a.id IN (${placeholders})`, articleIds)
+          : [];
+        // Fetch sponsor
+        let sponsor = null;
+        if (edition.sponsorId) {
+          const sponsors = await rawQuery<any>('SELECT * FROM newsletter_sponsors WHERE id = ? LIMIT 1', [edition.sponsorId]);
+          sponsor = sponsors[0] ?? null;
+        }
+        // Test send
+        if (input.testEmail) {
+          await sendNewsletterEdition(input.testEmail, 'Test Subscriber', 'test-token', edition.subject, edition.previewText ?? '', articles, sponsor);
+          return { success: true, sent: 1, test: true };
+        }
+        // Get active subscribers
+        const subscribers = await rawQuery<any>('SELECT email, name, unsubscribeToken FROM newsletter_subscribers WHERE status = \'active\' AND unsubscribeToken IS NOT NULL');
+        let sent = 0;
+        for (const sub of subscribers) {
+          try {
+            await sendNewsletterEdition(sub.email, sub.name, sub.unsubscribeToken, edition.subject, edition.previewText ?? '', articles, sponsor);
+            sent++;
+            // Small delay to avoid rate limits
+            if (sent % 10 === 0) await new Promise(r => setTimeout(r, 500));
+          } catch (e) { console.error(`[Newsletter] Failed to send to ${sub.email}:`, e); }
+        }
+        await rawQuery('UPDATE newsletter_editions SET status = \'sent\', sentAt = NOW(), recipientCount = ? WHERE id = ?', [sent, input.id]);
+        return { success: true, sent };
+      }),
   }),
   membership: router({
     getMyMembership: protectedProcedure.query(({ ctx }) => getProMembership(ctx.user.id)),

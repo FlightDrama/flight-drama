@@ -21,6 +21,8 @@ import AdminUsers from "./pages/AdminUsers";
 import AdminAdSlots from "./pages/AdminAdSlots";
 import AdminComments from "./pages/AdminComments";
 import AdminMediaKit from "./pages/AdminMediaKit";
+import AdminNewsletter from "./pages/AdminNewsletter";
+import UnsubscribePage from "./pages/UnsubscribePage";
 import ProfilePage from "./pages/ProfilePage";
 import FlightLookupPage from "./pages/FlightLookupPage";
 import LoginPage from "./pages/LoginPage";
@@ -65,6 +67,8 @@ function Router() {
         <Route path="/admin/ads" component={AdminAdSlots} />
         <Route path="/admin/comments" component={AdminComments} />
         <Route path="/admin/media-kit" component={AdminMediaKit} />
+        <Route path="/admin/newsletter" component={AdminNewsletter} />
+        <Route path="/unsubscribe" component={UnsubscribePage} />
         <Route path="/profile" component={ProfilePage} />
         <Route path="/flight-lookup" component={FlightLookupPage} />
         <Route path="/login" component={LoginPage} />
