@@ -10,12 +10,15 @@ import RunwayDivider from "@/components/RunwayDivider";
 import AdSlot from "@/components/AdSlot";
 import ReadingProgressBar from "@/components/ReadingProgressBar";
 import MostReadWidget from "@/components/MostReadWidget";
+import FlightDramaRecommends from "@/components/FlightDramaRecommends";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import ArticleReactions from "@/components/ArticleReactions";
 import ArticleComments from "@/components/ArticleComments";
 import TableOfContents from "@/components/TableOfContents";
 import AuthorBioCard from "@/components/AuthorBioCard";
+import ProContentGate from "@/components/ProContentGate";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 // Calculate estimated reading time from HTML content
 function getReadingTime(html: string): string {
@@ -27,12 +30,16 @@ function getReadingTime(html: string): string {
 
 export default function ArticlePage() {
   const { slug } = useParams<{ slug: string }>();
+  const { isAuthenticated } = useAuth();
   const { data, isLoading } = trpc.articles.bySlug.useQuery({ slug: slug! }, { enabled: !!slug });
   const { data: related } = trpc.articles.list.useQuery({ limit: 4, categoryId: data?.articles?.categoryId ?? undefined }, { enabled: !!data?.articles?.categoryId });
+  const { data: membership } = trpc.profile.me.useQuery(undefined, { enabled: isAuthenticated });
 
   const article = data?.articles;
   const author = data?.authors;
   const category = data?.categories;
+  const isPro = membership?.membership?.status === 'active';
+  const isProGated = article?.isPro && !isPro;
 
   const handleShare = (platform: string) => {
     const url = window.location.href;
@@ -106,11 +113,23 @@ export default function ArticlePage() {
                 <iframe src={article.videoUrl} className="w-full h-full" allowFullScreen title={article.title} />
               </div>
             )}
+            {/* Pro badge on article header */}
+            {article.isPro && (
+              <div className="flex items-center gap-2 mb-4 bg-[oklch(0.85_0.18_95)]/10 border border-[oklch(0.85_0.18_95)]/30 px-4 py-2.5 rounded-lg">
+                <Crown className="w-4 h-4 text-[oklch(0.85_0.18_95)]" />
+                <span className="text-sm font-black text-[oklch(0.85_0.18_95)]">Flight Drama Pro Exclusive</span>
+                {!isPro && <Link href="/pro" className="ml-auto text-xs text-black bg-[oklch(0.85_0.18_95)] px-3 py-1 font-black hover:bg-[oklch(0.78_0.18_95)] transition-colors">Upgrade to Read →</Link>}
+              </div>
+            )}
             {/* Table of Contents */}
-            <TableOfContents content={article.content} />
-            {/* Content */}
-            <div className="article-prose max-w-none"
-              dangerouslySetInnerHTML={{ __html: article.content }} />
+            {!isProGated && <TableOfContents content={article.content} />}
+            {/* Content — show gate for Pro articles */}
+            {isProGated ? (
+              <ProContentGate articleTitle={article.title} />
+            ) : (
+              <div className="article-prose max-w-none"
+                dangerouslySetInnerHTML={{ __html: article.content }} />
+            )}
             {/* Tags */}
             {article.tags && (
               <div className="mt-8 pt-6 border-t border-[oklch(0.22_0_0)]">
@@ -136,6 +155,7 @@ export default function ArticlePage() {
           </article>
           <aside className="space-y-6">
             <MostReadWidget />
+            <FlightDramaRecommends />
             <AdSlot slot="sidebar" />
             <NewsletterSignup source="article-sidebar" />
             <div className="bg-gradient-to-br from-[oklch(0.85_0.18_95)] to-[oklch(0.75_0.18_95)] rounded-lg p-4 text-black">

@@ -318,6 +318,74 @@ export const appRouter = router({
       return { profile, postCount, threads, replies, membership };
     }),
   }),
+  // ── Newsletter Sponsors ────────────────────────────────────────────────────
+  sponsors: router({
+    active: publicProcedure.query(async () => {
+      const { rawQuery } = await import('./db');
+      return rawQuery<any>('SELECT * FROM newsletter_sponsors WHERE isActive = 1 ORDER BY scheduledDate ASC LIMIT 10');
+    }),
+    list: adminGuard.query(async () => {
+      const { rawQuery } = await import('./db');
+      return rawQuery<any>('SELECT * FROM newsletter_sponsors ORDER BY createdAt DESC');
+    }),
+    create: adminGuard
+      .input(z.object({ brandName: z.string(), logoUrl: z.string().optional(), tagline: z.string().optional(), ctaText: z.string().default('Learn More'), ctaUrl: z.string().url(), slotType: z.enum(['top_banner','dedicated','classified']).default('top_banner'), rateGbp: z.number().optional(), scheduledDate: z.string().optional(), notes: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        await rawQuery('INSERT INTO newsletter_sponsors (brandName, logoUrl, tagline, ctaText, ctaUrl, slotType, rateGbp, scheduledDate, notes) VALUES (?,?,?,?,?,?,?,?,?)',
+          [input.brandName, input.logoUrl??null, input.tagline??null, input.ctaText, input.ctaUrl, input.slotType, input.rateGbp??null, input.scheduledDate??null, input.notes??null]);
+        return { success: true };
+      }),
+    delete: adminGuard
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        await rawQuery('DELETE FROM newsletter_sponsors WHERE id = ?', [input.id]);
+        return { success: true };
+      }),
+  }),
+
+  // ── Media Kit Enquiries ──────────────────────────────────────────────────────
+  mediaKit: router({
+    enquire: publicProcedure
+      .input(z.object({ name: z.string().min(1), email: z.string().email(), company: z.string().optional(), budget: z.string().optional(), message: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        await rawQuery('INSERT INTO media_kit_enquiries (name, email, company, budget, message) VALUES (?,?,?,?,?)',
+          [input.name, input.email, input.company??null, input.budget??null, input.message??null]);
+        return { success: true };
+      }),
+    list: adminGuard
+      .input(z.object({ limit: z.number().default(50), status: z.enum(['new','contacted','converted','closed','all']).default('all') }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const where = input.status === 'all' ? '' : `WHERE status = '${input.status}'`;
+        return rawQuery<any>(`SELECT * FROM media_kit_enquiries ${where} ORDER BY createdAt DESC LIMIT ?`, [input.limit]);
+      }),
+    updateStatus: adminGuard
+      .input(z.object({ id: z.number(), status: z.enum(['new','contacted','converted','closed']) }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        await rawQuery('UPDATE media_kit_enquiries SET status = ? WHERE id = ?', [input.status, input.id]);
+        return { success: true };
+      }),
+  }),
+
+  // ── Digital Products ─────────────────────────────────────────────────────────
+  products: router({
+    list: publicProcedure.query(async () => {
+      const { rawQuery } = await import('./db');
+      return rawQuery<any>('SELECT * FROM digital_products WHERE isActive = 1 ORDER BY priceGbp ASC');
+    }),
+    get: publicProcedure
+      .input(z.object({ slug: z.string() }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const rows = await rawQuery<any>('SELECT * FROM digital_products WHERE slug = ? AND isActive = 1 LIMIT 1', [input.slug]);
+        return rows[0] ?? null;
+      }),
+  }),
+
   crm: router({
     stats: adminGuard.query(async () => {
       const [articleCount, subscriberCount, memberCount, userCount] = await Promise.all([getArticleCount(), getSubscriberCount(), getProMemberCount(), getUserCount()]);

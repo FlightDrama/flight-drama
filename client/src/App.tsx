@@ -20,6 +20,7 @@ import AdminSubscribers from "./pages/AdminSubscribers";
 import AdminUsers from "./pages/AdminUsers";
 import AdminAdSlots from "./pages/AdminAdSlots";
 import AdminComments from "./pages/AdminComments";
+import AdminMediaKit from "./pages/AdminMediaKit";
 import ProfilePage from "./pages/ProfilePage";
 import FlightLookupPage from "./pages/FlightLookupPage";
 import LoginPage from "./pages/LoginPage";
@@ -27,6 +28,10 @@ import RegisterPage from "./pages/RegisterPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import AdvertisePage from "./pages/AdvertisePage";
+import ShopPage from "./pages/ShopPage";
+import AwardsPage from "./pages/AwardsPage";
+import PodcastPage from "./pages/PodcastPage";
 import ScrollToTop from "./components/ScrollToTop";
 import FloatingNewsletter from "./components/FloatingNewsletter";
 import { useEffect } from "react";
@@ -59,6 +64,7 @@ function Router() {
         <Route path="/admin/users" component={AdminUsers} />
         <Route path="/admin/ads" component={AdminAdSlots} />
         <Route path="/admin/comments" component={AdminComments} />
+        <Route path="/admin/media-kit" component={AdminMediaKit} />
         <Route path="/profile" component={ProfilePage} />
         <Route path="/flight-lookup" component={FlightLookupPage} />
         <Route path="/login" component={LoginPage} />
@@ -66,6 +72,10 @@ function Router() {
         <Route path="/verify-email" component={VerifyEmailPage} />
         <Route path="/forgot-password" component={ForgotPasswordPage} />
         <Route path="/reset-password" component={ResetPasswordPage} />
+        <Route path="/advertise" component={AdvertisePage} />
+        <Route path="/shop" component={ShopPage} />
+        <Route path="/awards" component={AwardsPage} />
+        <Route path="/podcast" component={PodcastPage} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

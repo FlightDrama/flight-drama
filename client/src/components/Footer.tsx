@@ -70,7 +70,11 @@ export default function Footer() {
                 { label: "Forum", href: "/forum" },
                 { label: "Newsletter", href: "/newsletter" },
                 { label: "Flight Drama Pro", href: "/pro" },
-                { label: "Videos", href: "/videos" },
+                { label: "Videos / Shorts", href: "/videos" },
+                { label: "Podcast", href: "/podcast" },
+                { label: "Awards 2026", href: "/awards" },
+                { label: "Shop", href: "/shop" },
+                { label: "Advertise", href: "/advertise" },
               ].map((item) => (
                 <li key={item.href}>
                   <Link href={item.href} className="text-sm text-[oklch(0.55_0_0)] hover:text-white transition-colors">
