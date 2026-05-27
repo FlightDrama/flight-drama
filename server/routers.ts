@@ -71,20 +71,39 @@ export const appRouter = router({
       .query(async ({ input }) => {
         const { rawQuery } = await import('./db');
         return rawQuery<any>(
-          `SELECT c.id, c.content, c.createdAt, c.marketingOptIn, u.name as userName, u.id as userId
+          `SELECT c.id, c.content, c.createdAt, c.marketingOptIn, c.parentId, c.upvotes,
+                  u.name as userName, u.id as userId
            FROM article_comments c JOIN users u ON c.userId = u.id
            WHERE c.articleId = ? AND c.status = 'approved'
-           ORDER BY c.createdAt DESC LIMIT ?`,
+           ORDER BY c.parentId ASC, c.createdAt ASC LIMIT ?`,
           [input.articleId, input.limit]
         );
       }),
+    upvote: publicProcedure
+      .input(z.object({ commentId: z.number(), sessionId: z.string().min(8).max(64) }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const existing = await rawQuery<{id:number}>(
+          'SELECT id FROM comment_upvotes WHERE commentId = ? AND sessionId = ?',
+          [input.commentId, input.sessionId]
+        );
+        if (existing.length > 0) {
+          await rawQuery('DELETE FROM comment_upvotes WHERE commentId = ? AND sessionId = ?', [input.commentId, input.sessionId]);
+          await rawQuery('UPDATE article_comments SET upvotes = GREATEST(0, upvotes - 1) WHERE id = ?', [input.commentId]);
+          return { added: false };
+        } else {
+          await rawQuery('INSERT IGNORE INTO comment_upvotes (commentId, sessionId) VALUES (?, ?)', [input.commentId, input.sessionId]);
+          await rawQuery('UPDATE article_comments SET upvotes = upvotes + 1 WHERE id = ?', [input.commentId]);
+          return { added: true };
+        }
+      }),
     create: protectedProcedure
-      .input(z.object({ articleId: z.number(), content: z.string().min(3).max(2000), marketingOptIn: z.boolean().default(false) }))
+      .input(z.object({ articleId: z.number(), content: z.string().min(3).max(2000), marketingOptIn: z.boolean().default(false), parentId: z.number().optional() }))
       .mutation(async ({ input, ctx }) => {
         const { rawQuery } = await import('./db');
         await rawQuery(
-          `INSERT INTO article_comments (articleId, userId, content, status, marketingOptIn) VALUES (?, ?, ?, 'pending', ?)`,
-          [input.articleId, ctx.user.id, input.content, input.marketingOptIn ? 1 : 0]
+          `INSERT INTO article_comments (articleId, userId, content, status, marketingOptIn, parentId) VALUES (?, ?, ?, 'pending', ?, ?)`,
+          [input.articleId, ctx.user.id, input.content, input.marketingOptIn ? 1 : 0, input.parentId ?? null]
         );
         await rawQuery(
           `INSERT INTO news_commenters (userId, email, name, marketingOptIn, firstCommentAt, commentCount, lastCommentAt)
@@ -115,6 +134,15 @@ export const appRouter = router({
         const status = input.action === 'approve' ? 'approved' : 'rejected';
         await rawQuery('UPDATE article_comments SET status = ? WHERE id = ?', [status, input.id]);
         return { success: true };
+      }),
+    bulkModerate: adminGuard
+      .input(z.object({ ids: z.array(z.number()).min(1).max(100), action: z.enum(['approve','reject']) }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const status = input.action === 'approve' ? 'approved' : 'rejected';
+        const placeholders = input.ids.map(() => '?').join(',');
+        await rawQuery(`UPDATE article_comments SET status = '${status}' WHERE id IN (${placeholders})`, input.ids);
+        return { success: true, count: input.ids.length };
       }),
     newsCommenters: adminGuard
       .input(z.object({ limit: z.number().default(50), offset: z.number().default(0), marketingOnly: z.boolean().default(false) }))

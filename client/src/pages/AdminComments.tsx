@@ -41,6 +41,7 @@ export default function AdminComments() {
   const [tab, setTab] = useState<Tab>("moderation");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
   const [marketingOnly, setMarketingOnly] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const { data: comments, isLoading: commentsLoading, refetch: refetchComments } =
     trpc.comments.adminList.useQuery(
@@ -53,6 +54,24 @@ export default function AdminComments() {
       { limit: 200, offset: 0, marketingOnly },
       { enabled: isAuthenticated && user?.role === "admin" }
     );
+
+  const bulkModerate = trpc.comments.bulkModerate.useMutation({
+    onSuccess: (data, vars) => {
+      toast.success(`${data.count} comment${data.count !== 1 ? 's' : ''} ${vars.action}d`);
+      setSelectedIds(new Set());
+      refetchComments();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => { const next = new Set(prev); prev.has(id) ? next.delete(id) : next.add(id); return next; });
+  };
+  const selectAll = () => {
+    const pendingIds = (comments ?? []).filter((c: any) => c.status === 'pending').map((c: any) => c.id);
+    setSelectedIds(new Set(pendingIds));
+  };
+  const clearSelection = () => setSelectedIds(new Set());
 
   const moderate = trpc.comments.moderate.useMutation({
     onSuccess: (_, vars) => {
@@ -162,6 +181,32 @@ export default function AdminComments() {
               >
                 <RefreshCw className="w-3.5 h-3.5" /> Refresh
               </button>
+              {/* Bulk actions */}
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-2 ml-2 bg-[oklch(0.18_0_0)] border border-[oklch(0.85_0.18_95)]/30 px-3 py-1.5">
+                  <span className="text-xs font-bold text-[oklch(0.85_0.18_95)]">{selectedIds.size} selected</span>
+                  <button
+                    onClick={() => bulkModerate.mutate({ ids: Array.from(selectedIds), action: 'approve' })}
+                    disabled={bulkModerate.isPending}
+                    className="flex items-center gap-1 bg-green-700 hover:bg-green-600 text-white text-xs font-bold px-2.5 py-1 transition-colors disabled:opacity-50"
+                  >
+                    <Check className="w-3 h-3" /> Approve All
+                  </button>
+                  <button
+                    onClick={() => bulkModerate.mutate({ ids: Array.from(selectedIds), action: 'reject' })}
+                    disabled={bulkModerate.isPending}
+                    className="flex items-center gap-1 bg-red-900/50 hover:bg-red-800/50 text-red-400 text-xs font-bold px-2.5 py-1 transition-colors disabled:opacity-50"
+                  >
+                    <X className="w-3 h-3" /> Reject All
+                  </button>
+                  <button onClick={clearSelection} className="text-[oklch(0.45_0_0)] hover:text-white text-xs ml-1">✕ Clear</button>
+                </div>
+              )}
+              {statusFilter === 'pending' && comments && comments.filter((c: any) => c.status === 'pending').length > 0 && selectedIds.size === 0 && (
+                <button onClick={selectAll} className="text-xs text-[oklch(0.85_0.18_95)] hover:underline font-bold">
+                  Select all pending
+                </button>
+              )}
               {comments && comments.length > 0 && (
                 <button
                   onClick={() => exportCSV(comments.map((c: any) => ({
@@ -184,7 +229,7 @@ export default function AdminComments() {
                 {comments.map((comment: any) => (
                   <div
                     key={comment.id}
-                    className={`bg-[oklch(0.13_0_0)] border rounded-xl overflow-hidden ${
+                    className={`bg-[oklch(0.13_0_0)] border rounded-xl overflow-hidden cursor-pointer ${selectedIds.has(comment.id) ? 'ring-1 ring-[oklch(0.85_0.18_95)]/50' : ''} ${
                       comment.status === "pending"
                         ? "border-yellow-700/40"
                         : comment.status === "approved"
@@ -194,6 +239,13 @@ export default function AdminComments() {
                   >
                     <div className="bg-[oklch(0.18_0_0)] px-4 py-2.5 flex items-center justify-between border-b border-[oklch(0.22_0_0)]">
                       <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(comment.id)}
+                          onChange={() => toggleSelect(comment.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-3.5 h-3.5 accent-[oklch(0.85_0.18_95)] shrink-0"
+                        />
                         <div className="w-7 h-7 rounded-full bg-[oklch(0.85_0.18_95)] flex items-center justify-center text-black font-black text-xs">
                           {(comment.userName ?? "U").charAt(0).toUpperCase()}
                         </div>
