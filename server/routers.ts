@@ -4,6 +4,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { customAuthRouter } from './customAuth';
 import {
   createArticle, createForumReply, createForumThread, deleteArticle,
   getAllAdSlots, getAllUsers, getArticleBySlug, getArticleCount, getArticles,
@@ -25,6 +26,7 @@ const adminGuard = protectedProcedure.use(({ ctx, next }) => {
 
 export const appRouter = router({
   system: systemRouter,
+  customAuth: customAuthRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

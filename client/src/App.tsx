@@ -22,6 +22,11 @@ import AdminAdSlots from "./pages/AdminAdSlots";
 import AdminComments from "./pages/AdminComments";
 import ProfilePage from "./pages/ProfilePage";
 import FlightLookupPage from "./pages/FlightLookupPage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ScrollToTop from "./components/ScrollToTop";
 import FloatingNewsletter from "./components/FloatingNewsletter";
 import { useEffect } from "react";
@@ -56,6 +61,11 @@ function Router() {
         <Route path="/admin/comments" component={AdminComments} />
         <Route path="/profile" component={ProfilePage} />
         <Route path="/flight-lookup" component={FlightLookupPage} />
+        <Route path="/login" component={LoginPage} />
+        <Route path="/register" component={RegisterPage} />
+        <Route path="/verify-email" component={VerifyEmailPage} />
+        <Route path="/forgot-password" component={ForgotPasswordPage} />
+        <Route path="/reset-password" component={ResetPasswordPage} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

@@ -7,7 +7,9 @@ import Footer from "@/components/Footer";
 import RunwayDivider from "@/components/RunwayDivider";
 import { getPilotRank, PILOT_RANKS, getStripeDisplay } from "@/lib/pilotRank";
 import { formatDistanceToNow, format } from "date-fns";
-import { Crown, MessageSquare, Eye, Calendar, ArrowRight, Shield } from "lucide-react";
+import { Crown, MessageSquare, Eye, Calendar, ArrowRight, Shield, Camera, Loader2 } from "lucide-react";
+import { useState, useRef } from "react";
+import { toast } from "sonner";
 
 function RankProgressBar({ postCount }: { postCount: number }) {
   const currentRank = getPilotRank(postCount);
@@ -82,6 +84,36 @@ export default function ProfilePage() {
   const postCount = data?.postCount ?? 0;
   const rank = getPilotRank(postCount);
   const isPro = data?.membership?.status === "active";
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB'); return; }
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      const res = await fetch('/api/avatar/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.success) {
+        setAvatarUrl(data.avatarUrl);
+        toast.success('Profile photo updated! ✈');
+        // Reload page to refresh auth state
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        toast.error(data.error || 'Upload failed');
+      }
+    } catch (err) {
+      toast.error('Upload failed');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const currentAvatar = avatarUrl || (user as any)?.avatar || null;
 
   return (
     <div className="min-h-screen bg-[oklch(0.10_0_0)]">
@@ -98,11 +130,24 @@ export default function ProfilePage() {
 
           <div className="p-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-              {/* Avatar */}
+              {/* Avatar with upload */}
               <div className="relative shrink-0">
-                <div className="w-20 h-20 rounded-full bg-[oklch(0.85_0.18_95)] flex items-center justify-center text-black font-black text-3xl shadow-lg">
-                  {user?.name?.charAt(0)?.toUpperCase() ?? "?"}
+                <div
+                  className="w-20 h-20 rounded-full overflow-hidden bg-[oklch(0.85_0.18_95)] flex items-center justify-center text-black font-black text-3xl shadow-lg cursor-pointer group relative"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Click to change profile photo"
+                >
+                  {currentAvatar ? (
+                    <img src={currentAvatar} alt={user?.name ?? 'Avatar'} className="w-full h-full object-cover" />
+                  ) : (
+                    user?.name?.charAt(0)?.toUpperCase() ?? "?"
+                  )}
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    {uploadingAvatar ? <Loader2 className="w-6 h-6 text-white animate-spin" /> : <Camera className="w-6 h-6 text-white" />}
+                  </div>
                 </div>
+                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarUpload} className="hidden" />
                 {isPro && (
                   <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[oklch(0.85_0.18_95)] border-2 border-[oklch(0.15_0_0)] flex items-center justify-center">
                     <Crown className="w-3.5 h-3.5 text-black" />

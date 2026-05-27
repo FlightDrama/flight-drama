@@ -120,10 +120,12 @@ export default function Navigation() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="flex items-center gap-2 px-3 py-1.5 rounded bg-[oklch(0.18_0_0)] hover:bg-[oklch(0.22_0_0)] transition-colors">
-                      <div className="w-6 h-6 rounded-full bg-[oklch(0.85_0.18_95)] flex items-center justify-center">
-                        <span className="text-black text-xs font-bold">
-                          {user?.name?.charAt(0)?.toUpperCase() ?? "U"}
-                        </span>
+                      <div className="w-6 h-6 rounded-full overflow-hidden bg-[oklch(0.85_0.18_95)] flex items-center justify-center">
+                        {(user as any)?.avatar ? (
+                          <img src={(user as any).avatar} alt={user?.name ?? 'User'} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-black text-xs font-bold">{user?.name?.charAt(0)?.toUpperCase() ?? "U"}</span>
+                        )}
                       </div>
                       <span className="hidden sm:block text-sm text-white max-w-24 truncate">{user?.name}</span>
                       <ChevronDown className="w-3 h-3 text-[oklch(0.55_0_0)]" />
@@ -162,14 +164,19 @@ export default function Navigation() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Button
-                  size="sm"
-                  className="bg-[oklch(0.85_0.18_95)] text-black hover:bg-[oklch(0.78_0.18_95)] font-bold text-xs uppercase tracking-wide"
-                  onClick={() => window.location.href = getLoginUrl()}
-                >
-                  <User className="w-3 h-3 mr-1" />
-                  Sign In
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Link href="/register">
+                    <Button size="sm" variant="outline" className="border-[oklch(0.30_0_0)] text-[oklch(0.70_0_0)] hover:text-white text-xs uppercase tracking-wide hidden sm:flex">
+                      Register
+                    </Button>
+                  </Link>
+                  <Link href="/login">
+                    <Button size="sm" className="bg-[oklch(0.85_0.18_95)] text-black hover:bg-[oklch(0.78_0.18_95)] font-bold text-xs uppercase tracking-wide">
+                      <User className="w-3 h-3 mr-1" />
+                      Sign In
+                    </Button>
+                  </Link>
+                </div>
               )}
 
               {/* Mobile menu toggle */}

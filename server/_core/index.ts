@@ -10,6 +10,8 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { getRedirect, upsertProMembership, getUserByOpenId } from "../db";
+import multer from "multer";
+import { handleAvatarUpload } from "../routers/avatarUpload";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -79,6 +81,19 @@ async function startServer() {
       createContext,
     })
   );
+  // Avatar upload route
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+  app.post("/api/avatar/upload", upload.single("avatar"), async (req, res) => {
+    // Inject user from session cookie
+    try {
+      const ctx = await createContext({ req, res } as any);
+      (req as any).user = ctx.user;
+      return handleAvatarUpload(req, res);
+    } catch (e) {
+      return res.status(500).json({ error: "Upload failed" });
+    }
+  });
+
   // SEO 301 redirect handler — resolves old WordPress URLs
   app.use(async (req, res, next) => {
     const path = req.path;
