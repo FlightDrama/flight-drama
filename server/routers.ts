@@ -110,9 +110,22 @@ export const appRouter = router({
         }
       }),
     create: protectedProcedure
-      .input(z.object({ articleId: z.number(), content: z.string().min(3).max(2000), marketingOptIn: z.boolean().default(false), parentId: z.number().optional() }))
+      .input(z.object({ articleId: z.number(), content: z.string().min(3).max(2000), marketingOptIn: z.boolean().default(false), parentId: z.number().optional(), turnstileToken: z.string().optional() }))
       .mutation(async ({ input, ctx }) => {
         const { rawQuery } = await import('./db');
+        // Verify Turnstile CAPTCHA if token provided and secret key is configured
+        const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+        if (turnstileSecret && input.turnstileToken) {
+          const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ secret: turnstileSecret, response: input.turnstileToken }),
+          });
+          const verifyData = await verifyRes.json() as any;
+          if (!verifyData.success) {
+            throw new Error('CAPTCHA_FAILED');
+          }
+        }
         await rawQuery(
           `INSERT INTO article_comments (articleId, userId, content, status, marketingOptIn, parentId) VALUES (?, ?, ?, 'pending', ?, ?)`,
           [input.articleId, ctx.user.id, input.content, input.marketingOptIn ? 1 : 0, input.parentId ?? null]
