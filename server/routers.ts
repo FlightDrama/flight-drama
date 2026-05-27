@@ -67,17 +67,29 @@ export const appRouter = router({
   // ── Article Comments ────────────────────────────────────────────────────────
   comments: router({
     list: publicProcedure
-      .input(z.object({ articleId: z.number(), limit: z.number().min(1).max(50).default(20) }))
+      .input(z.object({ articleId: z.number(), limit: z.number().min(1).max(50).default(20), sort: z.enum(['newest','top']).default('newest') }))
       .query(async ({ input }) => {
         const { rawQuery } = await import('./db');
+        const orderBy = input.sort === 'top'
+          ? 'c.isPinned DESC, c.upvotes DESC, c.createdAt DESC'
+          : 'c.isPinned DESC, c.parentId ASC, c.createdAt ASC';
         return rawQuery<any>(
-          `SELECT c.id, c.content, c.createdAt, c.marketingOptIn, c.parentId, c.upvotes,
+          `SELECT c.id, c.content, c.createdAt, c.marketingOptIn, c.parentId, c.upvotes, c.isPinned,
                   u.name as userName, u.id as userId
            FROM article_comments c JOIN users u ON c.userId = u.id
            WHERE c.articleId = ? AND c.status = 'approved'
-           ORDER BY c.parentId ASC, c.createdAt ASC LIMIT ?`,
+           ORDER BY ${orderBy} LIMIT ?`,
           [input.articleId, input.limit]
         );
+      }),
+    pin: adminGuard
+      .input(z.object({ id: z.number(), articleId: z.number(), pin: z.boolean() }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        // Unpin all others for this article first (only one pinned comment per article)
+        if (input.pin) await rawQuery('UPDATE article_comments SET isPinned = 0 WHERE articleId = ?', [input.articleId]);
+        await rawQuery('UPDATE article_comments SET isPinned = ? WHERE id = ?', [input.pin ? 1 : 0, input.id]);
+        return { success: true };
       }),
     upvote: publicProcedure
       .input(z.object({ commentId: z.number(), sessionId: z.string().min(8).max(64) }))

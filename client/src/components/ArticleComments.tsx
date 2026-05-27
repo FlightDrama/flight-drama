@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
-import { MessageSquare, Send, User, Lock, ThumbsUp, Reply, ChevronDown, ChevronUp } from "lucide-react";
+import { MessageSquare, Send, User, Lock, ThumbsUp, Reply, ChevronDown, ChevronUp, Pin, ArrowUpDown } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
@@ -21,22 +21,29 @@ interface CommentItemProps {
   replies: any[];
   sessionId: string;
   isAuthenticated: boolean;
+  isAdmin?: boolean;
   onReply: (parentId: number, parentName: string) => void;
   upvotedIds: Set<number>;
   onUpvote: (commentId: number) => void;
+  onPin?: (id: number, pin: boolean) => void;
 }
 
-function CommentItem({ comment, replies, sessionId, isAuthenticated, onReply, upvotedIds, onUpvote }: CommentItemProps) {
+function CommentItem({ comment, replies, sessionId, isAuthenticated, isAdmin, onReply, upvotedIds, onUpvote, onPin }: CommentItemProps) {
   const [showReplies, setShowReplies] = useState(true);
   const isUpvoted = upvotedIds.has(comment.id);
 
   return (
-    <div className="flex gap-3">
+    <div className={`flex gap-3 ${comment.isPinned ? 'bg-[oklch(0.85_0.18_95)]/5 border border-[oklch(0.85_0.18_95)]/20 rounded-lg p-3 -mx-3' : ''}`}>
       <div className="w-9 h-9 rounded-full bg-[oklch(0.22_0_0)] flex items-center justify-center text-[oklch(0.85_0.18_95)] font-black text-sm shrink-0">
         {(comment.userName ?? "U").charAt(0).toUpperCase()}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
+          {comment.isPinned && (
+            <span className="flex items-center gap-1 text-[10px] bg-[oklch(0.85_0.18_95)] text-black font-black px-1.5 py-0.5">
+              <Pin className="w-2.5 h-2.5" /> Comment of the Week
+            </span>
+          )}
           <span className="text-sm font-bold text-white">{comment.userName ?? "Anonymous"}</span>
           <span className="text-[10px] text-[oklch(0.40_0_0)]">
             {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
@@ -60,6 +67,17 @@ function CommentItem({ comment, replies, sessionId, isAuthenticated, onReply, up
               className="flex items-center gap-1 text-xs text-[oklch(0.45_0_0)] hover:text-[oklch(0.65_0_0)] transition-colors"
             >
               <Reply className="w-3.5 h-3.5" /> Reply
+            </button>
+          )}
+          {isAdmin && onPin && (
+            <button
+              onClick={() => onPin(comment.id, !comment.isPinned)}
+              className={`flex items-center gap-1 text-xs transition-colors ${
+                comment.isPinned ? 'text-[oklch(0.85_0.18_95)] font-bold' : 'text-[oklch(0.35_0_0)] hover:text-[oklch(0.85_0.18_95)]'
+              }`}
+              title={comment.isPinned ? 'Unpin comment' : 'Pin as Comment of the Week'}
+            >
+              <Pin className="w-3.5 h-3.5" /> {comment.isPinned ? 'Unpin' : 'Pin'}
             </button>
           )}
           {replies.length > 0 && (
@@ -115,8 +133,9 @@ export default function ArticleComments({ articleId }: { articleId: number }) {
   const [replyTo, setReplyTo] = useState<{ id: number; name: string } | null>(null);
   const [upvotedIds, setUpvotedIds] = useState<Set<number>>(new Set());
   const [sessionId] = useState(getSessionId);
+  const [sort, setSort] = useState<'newest'|'top'>('newest');
 
-  const { data: comments, isLoading, refetch } = trpc.comments.list.useQuery({ articleId, limit: 50 });
+  const { data: comments, isLoading, refetch } = trpc.comments.list.useQuery({ articleId, limit: 50, sort });
 
   const createComment = trpc.comments.create.useMutation({
     onSuccess: () => { setContent(""); setReplyTo(null); setSubmitted(true); toast.success("Comment submitted for review ✈"); },
@@ -137,6 +156,11 @@ export default function ArticleComments({ articleId }: { articleId: number }) {
   const handleUpvote = useCallback((commentId: number) => {
     upvoteMutation.mutate({ commentId, sessionId });
   }, [sessionId, upvoteMutation]);
+
+  const pinMutation = trpc.comments.pin.useMutation({
+    onSuccess: () => { toast.success('Comment pinned ✈'); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,11 +189,26 @@ export default function ArticleComments({ articleId }: { articleId: number }) {
   return (
     <section className="mt-10 pt-8 border-t border-[oklch(0.22_0_0)]">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <MessageSquare className="w-5 h-5 text-[oklch(0.85_0.18_95)]" />
-        <h2 className="text-lg font-black text-white">
-          Comments {totalCount > 0 && <span className="text-[oklch(0.50_0_0)] font-normal text-sm">({totalCount})</span>}
-        </h2>
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <div className="flex items-center gap-3">
+          <MessageSquare className="w-5 h-5 text-[oklch(0.85_0.18_95)]" />
+          <h2 className="text-lg font-black text-white">
+            Comments {totalCount > 0 && <span className="text-[oklch(0.50_0_0)] font-normal text-sm">({totalCount})</span>}
+          </h2>
+        </div>
+        {totalCount > 1 && (
+          <div className="flex items-center gap-1.5">
+            <ArrowUpDown className="w-3.5 h-3.5 text-[oklch(0.45_0_0)]" />
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as 'newest'|'top')}
+              className="text-xs bg-[oklch(0.15_0_0)] border border-[oklch(0.25_0_0)] text-[oklch(0.65_0_0)] px-2 py-1 focus:outline-none focus:border-[oklch(0.85_0.18_95)] transition-colors"
+            >
+              <option value="newest">Newest first</option>
+              <option value="top">Most upvoted</option>
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Comment form */}
@@ -266,9 +305,11 @@ export default function ArticleComments({ articleId }: { articleId: number }) {
               replies={repliesMap.get(comment.id) ?? []}
               sessionId={sessionId}
               isAuthenticated={isAuthenticated}
+              isAdmin={user?.role === 'admin'}
               onReply={(id, name) => { setReplyTo({ id, name }); setSubmitted(false); window.scrollTo({ top: document.querySelector("textarea")?.getBoundingClientRect().top! + window.scrollY - 100, behavior: "smooth" }); }}
               upvotedIds={upvotedIds}
               onUpvote={handleUpvote}
+              onPin={(id, pin) => pinMutation.mutate({ id, articleId, pin })}
             />
           ))}
         </div>
