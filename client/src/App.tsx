@@ -19,6 +19,7 @@ import AdminArticles from "./pages/AdminArticles";
 import AdminSubscribers from "./pages/AdminSubscribers";
 import AdminUsers from "./pages/AdminUsers";
 import AdminAdSlots from "./pages/AdminAdSlots";
+import AdminComments from "./pages/AdminComments";
 import ProfilePage from "./pages/ProfilePage";
 import FlightLookupPage from "./pages/FlightLookupPage";
 import ScrollToTop from "./components/ScrollToTop";
@@ -52,6 +53,7 @@ function Router() {
         <Route path="/admin/subscribers" component={AdminSubscribers} />
         <Route path="/admin/users" component={AdminUsers} />
         <Route path="/admin/ads" component={AdminAdSlots} />
+        <Route path="/admin/comments" component={AdminComments} />
         <Route path="/profile" component={ProfilePage} />
         <Route path="/flight-lookup" component={FlightLookupPage} />
         <Route path="/404" component={NotFound} />

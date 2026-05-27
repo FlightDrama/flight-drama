@@ -3,7 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import Navigation from "@/components/Navigation";
-import { BarChart2, FileText, Users, Mail, Crown, Megaphone, ArrowRight, Settings } from "lucide-react";
+import { BarChart2, FileText, Users, Mail, Crown, Megaphone, ArrowRight, Settings, MessageSquare } from "lucide-react";
 
 export default function AdminDashboard() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -33,6 +33,7 @@ export default function AdminDashboard() {
     { icon: Mail, label: "Subscribers", desc: "View and manage newsletter subscribers", href: "/admin/subscribers" },
     { icon: Users, label: "Users", desc: "Manage registered users and roles", href: "/admin/users" },
     { icon: Megaphone, label: "Ad Slots", desc: "Manage advertising placements", href: "/admin/ads" },
+    { icon: MessageSquare, label: "Comments & Commenters", desc: "Moderate comments · News Commenters CRM", href: "/admin/comments" },
   ];
 
   return (
