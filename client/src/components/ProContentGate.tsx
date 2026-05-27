@@ -9,11 +9,29 @@ const PRO_PERKS = [
   "Early access to Flight Drama features",
 ];
 
-export default function ProContentGate({ articleTitle }: { articleTitle?: string }) {
+export default function ProContentGate({ articleTitle, previewContent }: { articleTitle?: string; previewContent?: string }) {
+  // Extract first 2 paragraphs from HTML content for preview
+  const getPreviewParagraphs = (html?: string) => {
+    if (!html) return null;
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    const paras = Array.from(div.querySelectorAll('p')).slice(0, 2);
+    return paras.map(p => p.textContent).filter(Boolean).join(' ');
+  };
+
+  const previewText = previewContent ? getPreviewParagraphs(previewContent) : null;
+
   return (
     <div className="relative">
+      {/* First 2 paragraphs — shown clearly */}
+      {previewText && (
+        <div className="mb-0 text-[oklch(0.70_0_0)] leading-relaxed text-base">
+          <p>{previewText}</p>
+        </div>
+      )}
+
       {/* Blurred content preview */}
-      <div className="relative overflow-hidden rounded-xl border border-[oklch(0.85_0.18_95)]/30">
+      <div className="relative overflow-hidden rounded-xl border border-[oklch(0.85_0.18_95)]/30 mt-4">
         {/* Fake blurred content */}
         <div className="p-6 space-y-3 select-none pointer-events-none" style={{ filter: "blur(4px)" }}>
           {[...Array(6)].map((_, i) => (

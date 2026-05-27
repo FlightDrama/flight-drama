@@ -125,7 +125,7 @@ export default function ArticlePage() {
             {!isProGated && <TableOfContents content={article.content} />}
             {/* Content — show gate for Pro articles */}
             {isProGated ? (
-              <ProContentGate articleTitle={article.title} />
+              <ProContentGate articleTitle={article.title} previewContent={article.content} />
             ) : (
               <div className="article-prose max-w-none"
                 dangerouslySetInnerHTML={{ __html: article.content }} />
