@@ -10,6 +10,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import { Crown, MessageSquare, Eye, Calendar, ArrowRight, Shield, Camera, Loader2 } from "lucide-react";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
+import AvatarCropModal from "@/components/AvatarCropModal";
 
 function RankProgressBar({ postCount }: { postCount: number }) {
   const currentRank = getPilotRank(postCount);
@@ -86,22 +87,33 @@ export default function ProfilePage() {
   const isPro = data?.membership?.status === "active";
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Step 1: File selected → show crop modal
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB'); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error('Image must be under 10MB'); return; }
+    const reader = new FileReader();
+    reader.onload = () => setCropImageSrc(reader.result as string);
+    reader.readAsDataURL(file);
+    // Reset input so same file can be re-selected
+    e.target.value = '';
+  };
+
+  // Step 2: Crop confirmed → upload the cropped blob
+  const handleCropComplete = async (croppedBlob: Blob) => {
     setUploadingAvatar(true);
     try {
       const formData = new FormData();
-      formData.append('avatar', file);
+      formData.append('avatar', croppedBlob, 'avatar.jpg');
       const res = await fetch('/api/avatar/upload', { method: 'POST', body: formData });
       const data = await res.json();
       if (data.success) {
         setAvatarUrl(data.avatarUrl);
+        setCropImageSrc(null);
         toast.success('Profile photo updated! ✈');
-        // Reload page to refresh auth state
         setTimeout(() => window.location.reload(), 1000);
       } else {
         toast.error(data.error || 'Upload failed');
@@ -139,6 +151,15 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-[oklch(0.10_0_0)]">
+      {/* Crop modal */}
+      {cropImageSrc && (
+        <AvatarCropModal
+          imageSrc={cropImageSrc}
+          uploading={uploadingAvatar}
+          onCancel={() => { setCropImageSrc(null); }}
+          onCropComplete={handleCropComplete}
+        />
+      )}
       <Navigation />
       <main className="container py-6 max-w-4xl">
 
@@ -181,7 +202,7 @@ export default function ProfilePage() {
                     )}
                   </div>
                 </div>
-                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarUpload} className="hidden" />
+                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleFileSelected} className="hidden" />
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingAvatar}
