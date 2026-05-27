@@ -39,6 +39,16 @@ const ANNUAL_SAVING_PCT = Math.round(((MONTHLY_PRICE * 12 - ANNUAL_PRICE) / (MON
 export default function ProPage() {
   const { isAuthenticated } = useAuth();
   const [billing, setBilling] = useState<"monthly" | "annual">("annual");
+  const [animating, setAnimating] = useState(false);
+
+  const switchBilling = (plan: "monthly" | "annual") => {
+    if (plan === billing) return;
+    setAnimating(true);
+    setTimeout(() => {
+      setBilling(plan);
+      setAnimating(false);
+    }, 150);
+  };
   const { data: membership } = trpc.membership.getMyMembership.useQuery(undefined, { enabled: isAuthenticated });
   const createCheckout = trpc.membership.createCheckout.useMutation({
     onSuccess: (data) => { if (data.url) window.open(data.url, "_blank"); },
@@ -90,21 +100,19 @@ export default function ProPage() {
 
         {/* Billing toggle */}
         <div className="flex items-center justify-center gap-3 mb-8">
-          <span className={`text-sm font-bold transition-colors ${billing === "monthly" ? "text-white" : "text-[oklch(0.45_0_0)]"}`}>Monthly</span>
+          <button onClick={() => switchBilling("monthly")} className={`text-sm font-bold transition-colors ${billing === "monthly" ? "text-white" : "text-[oklch(0.45_0_0)] hover:text-[oklch(0.65_0_0)]"}`}>Monthly</button>
           <button
-            onClick={() => setBilling(billing === "monthly" ? "annual" : "monthly")}
-            className={`relative w-14 h-7 rounded-full transition-colors ${billing === "annual" ? "bg-[oklch(0.85_0.18_95)]" : "bg-[oklch(0.25_0_0)]"}`}
+            onClick={() => switchBilling(billing === "monthly" ? "annual" : "monthly")}
+            className={`relative w-14 h-7 rounded-full transition-colors duration-200 ${billing === "annual" ? "bg-[oklch(0.85_0.18_95)]" : "bg-[oklch(0.25_0_0)]"}`}
           >
-            <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${billing === "annual" ? "translate-x-8" : "translate-x-1"}`} />
+            <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${billing === "annual" ? "translate-x-8" : "translate-x-1"}`} />
           </button>
-          <span className={`text-sm font-bold transition-colors ${billing === "annual" ? "text-white" : "text-[oklch(0.45_0_0)]"}`}>
+          <button onClick={() => switchBilling("annual")} className={`text-sm font-bold transition-colors ${billing === "annual" ? "text-white" : "text-[oklch(0.45_0_0)] hover:text-[oklch(0.65_0_0)]"}`}>
             Annual
+          </button>
+          <span className={`bg-green-700 text-white text-[10px] font-black px-2 py-0.5 transition-opacity duration-200 ${billing === "annual" ? "opacity-100" : "opacity-0"}`}>
+            SAVE {ANNUAL_SAVING_PCT}%
           </span>
-          {billing === "annual" && (
-            <span className="bg-green-700 text-white text-[10px] font-black px-2 py-0.5 animate-pulse">
-              SAVE {ANNUAL_SAVING_PCT}%
-            </span>
-          )}
         </div>
 
         {/* Single dynamic pricing card */}
@@ -115,7 +123,7 @@ export default function ProPage() {
                 ⭐ Best Value — Save £{ANNUAL_SAVING} per year
               </div>
             )}
-            <div className={`p-8 ${billing === "annual" ? "bg-gradient-to-br from-[oklch(0.15_0_0)] to-[oklch(0.12_0_0)]" : "bg-[oklch(0.15_0_0)]"}`}>
+            <div className={`p-8 transition-opacity duration-150 ${animating ? "opacity-0" : "opacity-100"} ${billing === "annual" ? "bg-gradient-to-br from-[oklch(0.15_0_0)] to-[oklch(0.12_0_0)]" : "bg-[oklch(0.15_0_0)]"}`}>
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-10 h-10 bg-[oklch(0.85_0.18_95)] flex items-center justify-center">
                   <Crown className="w-5 h-5 text-black" />
@@ -193,11 +201,11 @@ export default function ProPage() {
           {/* Switch plan nudge */}
           <p className="text-center text-sm text-[oklch(0.50_0_0)] mt-3">
             {billing === "annual" ? (
-              <button onClick={() => setBilling("monthly")} className="hover:text-white transition-colors underline">
+              <button onClick={() => switchBilling("monthly")} className="hover:text-white transition-colors underline">
                 Switch to monthly (£{MONTHLY_PRICE}/mo)
               </button>
             ) : (
-              <button onClick={() => setBilling("annual")} className="hover:text-[oklch(0.85_0.18_95)] transition-colors text-[oklch(0.85_0.18_95)] font-bold">
+              <button onClick={() => switchBilling("annual")} className="hover:text-[oklch(0.85_0.18_95)] transition-colors text-[oklch(0.85_0.18_95)] font-bold">
                 ⭐ Save {ANNUAL_SAVING_PCT}% with annual billing →
               </button>
             )}

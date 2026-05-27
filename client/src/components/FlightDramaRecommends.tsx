@@ -43,9 +43,12 @@ export default function FlightDramaRecommends() {
   return (
     <div className="bg-[oklch(0.13_0_0)] border border-[oklch(0.22_0_0)] rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="bg-[oklch(0.18_0_0)] px-4 py-3 border-b border-[oklch(0.22_0_0)] flex items-center gap-2">
-        <Star className="w-4 h-4 text-[oklch(0.85_0.18_95)]" />
-        <h3 className="font-black text-white text-sm uppercase tracking-wide">✈ FD Recommends</h3>
+      <div className="bg-[oklch(0.18_0_0)] px-4 py-3 border-b border-[oklch(0.22_0_0)] flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Star className="w-4 h-4 text-[oklch(0.85_0.18_95)]" />
+          <h3 className="font-black text-white text-sm uppercase tracking-wide">✈ FD Recommends</h3>
+        </div>
+        <span className="text-[9px] bg-[oklch(0.25_0_0)] text-[oklch(0.45_0_0)] px-1.5 py-0.5 font-bold uppercase tracking-wide border border-[oklch(0.30_0_0)]">Sponsored</span>
       </div>
 
       <div className="divide-y divide-[oklch(0.18_0_0)]">
