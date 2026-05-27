@@ -33,6 +33,102 @@ export const appRouter = router({
       return { success: true } as const;
     }),
   }),
+  // ── Article Reactions (no auth required) ─────────────────────────────────
+  reactions: router({
+    get: publicProcedure
+      .input(z.object({ articleId: z.number() }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const rows = await rawQuery<{reaction:string;count:string}>(
+          'SELECT reaction, COUNT(*) as count FROM article_reactions WHERE articleId = ? GROUP BY reaction',
+          [input.articleId]
+        );
+        const counts: Record<string, number> = { love: 0, fire: 0, shocked: 0, interesting: 0 };
+        for (const row of rows) counts[row.reaction] = Number(row.count);
+        return counts;
+      }),
+    toggle: publicProcedure
+      .input(z.object({ articleId: z.number(), reaction: z.enum(['love','fire','shocked','interesting']), sessionId: z.string().min(8).max(64) }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const existing = await rawQuery<{id:number}>(
+          'SELECT id FROM article_reactions WHERE articleId = ? AND sessionId = ? AND reaction = ?',
+          [input.articleId, input.sessionId, input.reaction]
+        );
+        if (existing.length > 0) {
+          await rawQuery('DELETE FROM article_reactions WHERE articleId = ? AND sessionId = ? AND reaction = ?', [input.articleId, input.sessionId, input.reaction]);
+        } else {
+          await rawQuery('INSERT IGNORE INTO article_reactions (articleId, sessionId, reaction) VALUES (?, ?, ?)', [input.articleId, input.sessionId, input.reaction]);
+        }
+        return { success: true, added: existing.length === 0 };
+      }),
+  }),
+
+  // ── Article Comments ────────────────────────────────────────────────────────
+  comments: router({
+    list: publicProcedure
+      .input(z.object({ articleId: z.number(), limit: z.number().min(1).max(50).default(20) }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        return rawQuery<any>(
+          `SELECT c.id, c.content, c.createdAt, c.marketingOptIn, u.name as userName, u.id as userId
+           FROM article_comments c JOIN users u ON c.userId = u.id
+           WHERE c.articleId = ? AND c.status = 'approved'
+           ORDER BY c.createdAt DESC LIMIT ?`,
+          [input.articleId, input.limit]
+        );
+      }),
+    create: protectedProcedure
+      .input(z.object({ articleId: z.number(), content: z.string().min(3).max(2000), marketingOptIn: z.boolean().default(false) }))
+      .mutation(async ({ input, ctx }) => {
+        const { rawQuery } = await import('./db');
+        await rawQuery(
+          `INSERT INTO article_comments (articleId, userId, content, status, marketingOptIn) VALUES (?, ?, ?, 'pending', ?)`,
+          [input.articleId, ctx.user.id, input.content, input.marketingOptIn ? 1 : 0]
+        );
+        await rawQuery(
+          `INSERT INTO news_commenters (userId, email, name, marketingOptIn, firstCommentAt, commentCount, lastCommentAt)
+           VALUES (?, ?, ?, ?, NOW(), 1, NOW())
+           ON DUPLICATE KEY UPDATE commentCount = commentCount + 1, lastCommentAt = NOW(),
+             marketingOptIn = IF(? = 1, 1, marketingOptIn)`,
+          [ctx.user.id, ctx.user.email ?? '', ctx.user.name ?? '', input.marketingOptIn ? 1 : 0, input.marketingOptIn ? 1 : 0]
+        );
+        return { success: true, message: 'Comment submitted for review' };
+      }),
+    adminList: adminGuard
+      .input(z.object({ limit: z.number().default(50), offset: z.number().default(0), status: z.enum(['pending','approved','rejected','all']).default('pending') }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const where = input.status === 'all' ? '' : `WHERE c.status = '${input.status}'`;
+        return rawQuery<any>(
+          `SELECT c.id, c.content, c.status, c.createdAt, c.marketingOptIn,
+                  u.name as userName, u.email as userEmail, a.title as articleTitle, a.slug as articleSlug
+           FROM article_comments c JOIN users u ON c.userId = u.id JOIN articles a ON c.articleId = a.id
+           ${where} ORDER BY c.createdAt DESC LIMIT ? OFFSET ?`,
+          [input.limit, input.offset]
+        );
+      }),
+    moderate: adminGuard
+      .input(z.object({ id: z.number(), action: z.enum(['approve','reject']) }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const status = input.action === 'approve' ? 'approved' : 'rejected';
+        await rawQuery('UPDATE article_comments SET status = ? WHERE id = ?', [status, input.id]);
+        return { success: true };
+      }),
+    newsCommenters: adminGuard
+      .input(z.object({ limit: z.number().default(50), offset: z.number().default(0), marketingOnly: z.boolean().default(false) }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const where = input.marketingOnly ? 'WHERE nc.marketingOptIn = 1' : '';
+        return rawQuery<any>(
+          `SELECT nc.id, nc.email, nc.name, nc.marketingOptIn, nc.commentCount, nc.firstCommentAt, nc.lastCommentAt
+           FROM news_commenters nc ${where} ORDER BY nc.firstCommentAt DESC LIMIT ? OFFSET ?`,
+          [input.limit, input.offset]
+        );
+      }),
+  }),
+
   articles: router({
     list: publicProcedure
       .input(z.object({ limit: z.number().min(1).max(100).default(20), offset: z.number().min(0).default(0), categoryId: z.number().optional(), postType: z.string().optional(), featured: z.boolean().optional(), breaking: z.boolean().optional(), search: z.string().optional() }))

@@ -178,6 +178,17 @@ export async function updateAdSlot(id: number, data: Partial<{ position: string;
   await db.update(adSlots).set(data).where(eq(adSlots.id, id));
 }
 
+// Raw SQL query helper for tables not in Drizzle schema
+export async function rawQuery<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+  const db = await getDb();
+  if (!db) return [];
+  // Access the underlying mysql2 connection via Drizzle's internal client
+  const result = await (db as any).execute(sql, params);
+  // Drizzle wraps mysql2 results — first element is rows array
+  const rows = Array.isArray(result) ? result[0] : result;
+  return (Array.isArray(rows) ? rows : []) as T[];
+}
+
 export async function getMostReadArticles(limit = 5) {
   const db = await getDb(); if (!db) return [];
   return db.select({

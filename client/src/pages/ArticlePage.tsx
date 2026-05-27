@@ -12,6 +12,10 @@ import ReadingProgressBar from "@/components/ReadingProgressBar";
 import MostReadWidget from "@/components/MostReadWidget";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import ArticleReactions from "@/components/ArticleReactions";
+import ArticleComments from "@/components/ArticleComments";
+import TableOfContents from "@/components/TableOfContents";
+import AuthorBioCard from "@/components/AuthorBioCard";
 
 // Calculate estimated reading time from HTML content
 function getReadingTime(html: string): string {
@@ -102,6 +106,8 @@ export default function ArticlePage() {
                 <iframe src={article.videoUrl} className="w-full h-full" allowFullScreen title={article.title} />
               </div>
             )}
+            {/* Table of Contents */}
+            <TableOfContents content={article.content} />
             {/* Content */}
             <div className="article-prose max-w-none"
               dangerouslySetInnerHTML={{ __html: article.content }} />
@@ -116,11 +122,17 @@ export default function ArticlePage() {
                 </div>
               </div>
             )}
+            {/* Reactions */}
+            <ArticleReactions articleId={article.id} />
             {/* Bottom share section */}
-            <div className="mt-8 pt-6 border-t border-[oklch(0.22_0_0)]">
+            <div className="mt-6 pt-6 border-t border-[oklch(0.22_0_0)]">
               <p className="text-xs font-bold uppercase tracking-widest text-[oklch(0.45_0_0)] mb-3">Enjoyed this story? Share it</p>
               <ShareButtons title={article.title} />
             </div>
+            {/* Author bio */}
+            {author && <AuthorBioCard author={author} />}
+            {/* Comments */}
+            <ArticleComments articleId={article.id} />
           </article>
           <aside className="space-y-6">
             <MostReadWidget />
