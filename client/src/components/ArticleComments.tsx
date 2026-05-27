@@ -34,8 +34,12 @@ function CommentItem({ comment, replies, sessionId, isAuthenticated, isAdmin, on
 
   return (
     <div className={`flex gap-3 ${comment.isPinned ? 'bg-[oklch(0.85_0.18_95)]/5 border border-[oklch(0.85_0.18_95)]/20 rounded-lg p-3 -mx-3' : ''}`}>
-      <div className="w-9 h-9 rounded-full bg-[oklch(0.22_0_0)] flex items-center justify-center text-[oklch(0.85_0.18_95)] font-black text-sm shrink-0">
-        {(comment.userName ?? "U").charAt(0).toUpperCase()}
+      <div className="w-9 h-9 rounded-full overflow-hidden bg-[oklch(0.22_0_0)] flex items-center justify-center text-[oklch(0.85_0.18_95)] font-black text-sm shrink-0">
+        {comment.userAvatar ? (
+          <img src={comment.userAvatar} alt={comment.userName ?? 'User'} className="w-full h-full object-cover" />
+        ) : (
+          (comment.userName ?? "U").charAt(0).toUpperCase()
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -95,8 +99,12 @@ function CommentItem({ comment, replies, sessionId, isAuthenticated, isAdmin, on
           <div className="mt-3 space-y-3 pl-4 border-l-2 border-[oklch(0.20_0_0)]">
             {replies.map(reply => (
               <div key={reply.id} className="flex gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-[oklch(0.20_0_0)] flex items-center justify-center text-[oklch(0.85_0.18_95)] font-black text-xs shrink-0">
-                  {(reply.userName ?? "U").charAt(0).toUpperCase()}
+                <div className="w-7 h-7 rounded-full overflow-hidden bg-[oklch(0.20_0_0)] flex items-center justify-center text-[oklch(0.85_0.18_95)] font-black text-xs shrink-0">
+                  {reply.userAvatar ? (
+                    <img src={reply.userAvatar} alt={reply.userName ?? 'User'} className="w-full h-full object-cover" />
+                  ) : (
+                    (reply.userName ?? "U").charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-0.5 flex-wrap">

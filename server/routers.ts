@@ -75,7 +75,7 @@ export const appRouter = router({
           : 'c.isPinned DESC, c.parentId ASC, c.createdAt ASC';
         return rawQuery<any>(
           `SELECT c.id, c.content, c.createdAt, c.marketingOptIn, c.parentId, c.upvotes, c.isPinned,
-                  u.name as userName, u.id as userId
+                  u.name as userName, u.id as userId, u.avatar as userAvatar
            FROM article_comments c JOIN users u ON c.userId = u.id
            WHERE c.articleId = ? AND c.status = 'approved'
            ORDER BY ${orderBy} LIMIT ?`,
