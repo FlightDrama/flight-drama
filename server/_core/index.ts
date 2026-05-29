@@ -95,7 +95,19 @@ async function startServer() {
     }
   });
 
-  // CMS reverse proxy — proxies /cms-admin/* to the cloud computer CMS on port 3001
+  // CMS API proxy — routes /cms-api/* to the cloud computer CMS API (avoids mixed content)
+  app.use("/cms-api", createProxyMiddleware({
+    target: "http://34.52.212.6:3001",
+    changeOrigin: true,
+    pathRewrite: { "^/cms-api": "" },
+    on: {
+      error: (err: any, req: any, res: any) => {
+        (res as any).status(502).json({ error: "CMS API temporarily unavailable" });
+      }
+    }
+  }));
+
+  // CMS frontend proxy — serves the CMS UI at /cms-admin
   app.use("/cms-admin", createProxyMiddleware({
     target: "http://34.52.212.6:3001",
     changeOrigin: true,
