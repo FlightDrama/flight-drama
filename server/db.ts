@@ -180,14 +180,27 @@ export async function updateAdSlot(id: number, data: Partial<{ position: string;
 }
 
 // Raw SQL query helper for tables not in Drizzle schema
+// Dedicated mysql2 pool for raw parameterized queries (bypasses Drizzle's execute wrapper)
+let _rawPool: any = null;
+async function getRawPool() {
+  if (!_rawPool && process.env.DATABASE_URL) {
+    try {
+      const mysql2 = await import('mysql2/promise');
+      _rawPool = await mysql2.createPool({ uri: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true }, connectionLimit: 5 });
+    } catch (e) { console.error('[rawQuery] Pool creation failed:', e); }
+  }
+  return _rawPool;
+}
+
 export async function rawQuery<T = any>(sql: string, params: any[] = []): Promise<T[]> {
-  const db = await getDb();
-  if (!db) return [];
-  // Access the underlying mysql2 connection via Drizzle's internal client
-  const result = await (db as any).execute(sql, params);
-  // Drizzle wraps mysql2 results — first element is rows array
-  const rows = Array.isArray(result) ? result[0] : result;
-  return (Array.isArray(rows) ? rows : []) as T[];
+  const pool = await getRawPool();
+  if (!pool) return [];
+  try {
+    const [rows] = await pool.execute(sql, params);
+    return (Array.isArray(rows) ? rows : []) as T[];
+  } catch (e: any) {
+    throw new Error(`Failed query: ${sql} params: ${JSON.stringify(params)} error: ${e.message}`);
+  }
 }
 
 export async function getMostReadArticles(limit = 5) {
