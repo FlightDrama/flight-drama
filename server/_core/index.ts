@@ -3,6 +3,7 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import Stripe from "stripe";
+import { createProxyMiddleware } from "http-proxy-middleware";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
@@ -93,6 +94,18 @@ async function startServer() {
       return res.status(500).json({ error: "Upload failed" });
     }
   });
+
+  // CMS reverse proxy — proxies /cms-admin/* to the cloud computer CMS on port 3001
+  app.use("/cms-admin", createProxyMiddleware({
+    target: "http://34.52.212.6:3001",
+    changeOrigin: true,
+    pathRewrite: { "^/cms-admin": "" },
+    on: {
+      error: (err: any, req: any, res: any) => {
+        (res as any).status(502).send("CMS temporarily unavailable");
+      }
+    }
+  }));
 
   // SEO 301 redirect handler — resolves old WordPress URLs
   app.use(async (req, res, next) => {
