@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Instagram } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import RunwayDivider from "@/components/RunwayDivider";
@@ -252,6 +253,103 @@ export default function VideoPage() {
             <ExternalLink className="w-3.5 h-3.5" />
             View all shorts on YouTube →
           </a>
+        </div>
+
+        <RunwayDivider />
+
+        {/* Instagram Reels Section */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-1">
+            <Instagram className="w-5 h-5 text-[oklch(0.85_0.18_95)]" />
+            <span className="text-xs font-black uppercase tracking-widest text-[oklch(0.85_0.18_95)]">
+              @flightdrama · Instagram Reels
+            </span>
+          </div>
+          <h2 className="text-2xl font-black text-white mb-1">Latest Reels</h2>
+          <p className="text-[oklch(0.55_0_0)] text-sm mb-4">ATC audio, cockpit recordings, and aviation drama from our Instagram — 104K followers</p>
+
+          {/* Instagram CTA */}
+          <div className="mb-5 bg-gradient-to-r from-[oklch(0.18_0_0)] to-[oklch(0.15_0_0)] border border-[oklch(0.22_0_0)] rounded-lg p-4 flex flex-col sm:flex-row items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 flex items-center justify-center shrink-0">
+              <Instagram className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1 text-center sm:text-left">
+              <p className="font-black text-white">Flight Drama on Instagram</p>
+              <p className="text-sm text-[oklch(0.55_0_0)]">104K followers · ATC audio, cockpit recordings, and aviation drama daily</p>
+            </div>
+            <a
+              href="https://www.instagram.com/flightdrama/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-5 py-2.5 rounded-lg font-black text-sm transition-all"
+            >
+              <Instagram className="w-4 h-4" />
+              Follow
+            </a>
+          </div>
+
+          {/* Instagram Reels Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {[
+              { shortcode: 'DY451OgN6KH', views: '4.1K', title: "'I Love Your Radio Calls': Tampa Tower And Pilot Go Off Script On Frequency", date: 'May 28' },
+              { shortcode: 'DY3doGAsmRw', views: '6.5K', title: 'ATC starts debating KFC vs Burger King with pilots', date: 'May 28' },
+              { shortcode: 'DY2sug4tLyB', views: '15K', title: 'Captain Sullivan cracks a joke after his retirement landing', date: 'May 26' },
+              { shortcode: 'DY2lYoFNEze', views: '6.1K', title: 'Cockpit audio from a dramatic approach', date: 'May 26' },
+              { shortcode: 'DY2HNMrosbA', views: '11.2K', title: 'ATC audio from a tense go-around', date: 'May 26' },
+              { shortcode: 'DY1Z_Pst6HK', views: '17.1K', title: 'Pilot and ATC exchange goes viral', date: 'May 25' },
+              { shortcode: 'DYzibPrIcbH', views: '40.5K', title: 'Incredible cockpit footage during severe weather', date: 'May 24' },
+              { shortcode: 'DYxf-EzoQbI', views: '501K', title: "'We're Getting the Crap Beat Out of Us': Severe Turbulence Near Washington Dulles", date: 'May 20', viral: true },
+              { shortcode: 'DYxSNq8IxEa', views: '998K', title: "Pilot Gets 'DESCEND' Warning While Sitting at the Gate", date: 'Mar 30', viral: true },
+              { shortcode: 'DYxLYOTIFtS', views: '69.3K', title: 'ATC audio from a major incident', date: 'May 20' },
+              { shortcode: 'DYxEh46oyl8', views: '11.8K', title: 'Cockpit drama at a busy airport', date: 'May 20' },
+              { shortcode: 'DYw9o_gIZho', views: '191K', title: 'Viral aviation moment captured on camera', date: 'May 19' },
+            ].map((reel) => (
+              <a
+                key={reel.shortcode}
+                href={`https://www.instagram.com/flightdrama/reel/${reel.shortcode}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative rounded-lg overflow-hidden group bg-gradient-to-br from-[oklch(0.18_0_0)] to-[oklch(0.13_0_0)] border border-[oklch(0.22_0_0)] hover:border-pink-500/40 transition-colors block"
+              >
+                <div className="aspect-[9/16] relative flex items-center justify-center bg-[oklch(0.12_0_0)]">
+                  {/* Instagram thumbnail via oEmbed */}
+                  <img
+                    src={`https://www.instagram.com/p/${reel.shortcode}/media/?size=m`}
+                    alt={reel.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all shadow-lg">
+                      <Play className="w-5 h-5 text-white ml-0.5" fill="white" />
+                    </div>
+                  </div>
+                  {/* Badges */}
+                  <div className="absolute top-2 left-2 flex gap-1 flex-wrap">
+                    <span className="bg-gradient-to-r from-purple-600 to-pink-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                      <Instagram className="w-2.5 h-2.5" /> REEL
+                    </span>
+                    {reel.viral && (
+                      <span className="bg-[oklch(0.85_0.18_95)] text-black text-[9px] font-black px-1.5 py-0.5 rounded">
+                        🔥 VIRAL
+                      </span>
+                    )}
+                  </div>
+                  {/* View count */}
+                  <div className="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                    {reel.views} views
+                  </div>
+                  <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded">
+                    {reel.date}
+                  </div>
+                </div>
+                <div className="p-2">
+                  <p className="text-[11px] text-[oklch(0.65_0_0)] leading-tight line-clamp-2">{reel.title}</p>
+                </div>
+              </a>
+            ))}
+          </div>
         </div>
       </main>
 
