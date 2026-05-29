@@ -84,8 +84,9 @@ export default function ArticleCard({
             <img
               src={featuredImage}
               alt={title}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105 opacity-0"
               loading="lazy"
+              onLoad={(e) => { (e.target as HTMLImageElement).classList.remove('opacity-0'); }}
             />
           ) : (
             <div className="w-full h-full bg-[oklch(0.18_0_0)] flex items-center justify-center">
@@ -143,8 +144,9 @@ export default function ArticleCard({
             <img
               src={featuredImage}
               alt={title}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105 opacity-0"
               loading="lazy"
+              onLoad={(e) => { (e.target as HTMLImageElement).classList.remove('opacity-0'); }}
             />
           ) : (
             <div className="w-full h-full bg-[oklch(0.18_0_0)] flex items-center justify-center text-4xl">
@@ -232,8 +234,9 @@ export default function ArticleCard({
           <img
             src={featuredImage}
             alt={title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105 opacity-0"
             loading="lazy"
+            onLoad={(e) => { (e.target as HTMLImageElement).classList.remove('opacity-0'); }}
           />
         ) : (
           <div className="w-full h-full bg-[oklch(0.18_0_0)] flex items-center justify-center text-3xl">
