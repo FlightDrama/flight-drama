@@ -107,10 +107,28 @@ export default function ArticlePage() {
                 <img src={article.featuredImage} alt={article.title} className="w-full object-cover max-h-[500px]" />
               </div>
             )}
-            {/* Video embed */}
-            {article.videoUrl && (
+            {/* Video embed — YouTube/generic */}
+            {article.videoUrl && !article.videoUrl.includes('instagram.com') && (
               <div className="rounded-lg overflow-hidden mb-6 aspect-video">
                 <iframe src={article.videoUrl} className="w-full h-full" allowFullScreen title={article.title} />
+              </div>
+            )}
+            {/* Instagram Reel embed */}
+            {article.videoUrl && article.videoUrl.includes('instagram.com') && (
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xs font-black uppercase tracking-widest text-[oklch(0.85_0.18_95)]">✈ Watch the Original Reel</span>
+                </div>
+                <div className="flex justify-center bg-[oklch(0.13_0_0)] border border-[oklch(0.22_0_0)] rounded-xl p-4">
+                  <iframe
+                    src={`${article.videoUrl}embed/`}
+                    className="rounded-xl"
+                    style={{ width: '320px', height: '568px', border: 'none' }}
+                    allowFullScreen
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                    title={article.title}
+                  />
+                </div>
               </div>
             )}
             {/* Pro badge on article header */}

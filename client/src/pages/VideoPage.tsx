@@ -6,6 +6,7 @@ import RunwayDivider from "@/components/RunwayDivider";
 import { Play, Youtube, ExternalLink, Search, X } from "lucide-react";
 
 // All 48 real Flight Drama YouTube Shorts with manually assigned categories
+// v2 — Instagram Reels section added, sort/filter, skeleton loading
 const SHORTS = [
   { id: "zhGwoZw7nTg", category: "incidents" },
   { id: "-czd-uq0d5g", category: "incidents" },

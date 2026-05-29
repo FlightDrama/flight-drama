@@ -27,6 +27,7 @@ export default function Home() {
   const searchParams = new URLSearchParams(searchStr);
   const urlSearch = searchParams.get("search") || undefined;
   const [activeFilter, setActiveFilter] = useState<string | undefined>(undefined);
+  const [sortBy, setSortBy] = useState<'recent' | 'popular'>('recent');
   const [page, setPage] = useState(0);
   const LIMIT = 24;
   const { data: categories } = trpc.categories.list.useQuery();
@@ -37,7 +38,7 @@ export default function Home() {
   }, [activeFilter, categories]);
   const { data: heroArticles } = trpc.articles.list.useQuery({ limit: 1, featured: true, breaking: true });
   const { data: featuredArticles } = trpc.articles.list.useQuery({ limit: 4, featured: true });
-  const { data: articles, isLoading } = trpc.articles.list.useQuery({ limit: LIMIT, offset: page * LIMIT, categoryId, search: urlSearch });
+  const { data: articles, isLoading } = trpc.articles.list.useQuery({ limit: LIMIT, offset: page * LIMIT, categoryId, search: urlSearch, sortBy });
   const { data: trendingArticles } = trpc.articles.list.useQuery({ limit: 6, offset: 0 });
   const { data: subscriberCount } = trpc.newsletter.count.useQuery();
   const hero = heroArticles?.[0] ?? featuredArticles?.[0];
@@ -79,11 +80,21 @@ export default function Home() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 gap-3">
               <h2 className="font-display text-xl text-white tracking-wider">
                 {activeFilter ? CATEGORY_FILTERS.find((f) => f.value === activeFilter)?.label + " News" : urlSearch ? "Search Results" : "Latest Aviation News"}
               </h2>
-              <span className="text-xs text-[oklch(0.45_0_0)]">{articles?.length ?? 0} stories</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs text-[oklch(0.45_0_0)] hidden sm:block">{articles?.length ?? 0} stories</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => { setSortBy(e.target.value as 'recent' | 'popular'); setPage(0); }}
+                  className="text-xs bg-[oklch(0.18_0_0)] border border-[oklch(0.28_0_0)] text-white px-2 py-1.5 focus:outline-none focus:border-[oklch(0.85_0.18_95)] transition-colors cursor-pointer"
+                >
+                  <option value="recent">Most Recent</option>
+                  <option value="popular">Most Viewed</option>
+                </select>
+              </div>
             </div>
             {isLoading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">

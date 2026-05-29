@@ -46,7 +46,7 @@ export async function getUserCount() {
   return Number(r[0]?.count ?? 0);
 }
 
-export async function getArticles(opts: { limit?: number; offset?: number; categoryId?: number; postType?: string; featured?: boolean; breaking?: boolean; search?: string; }) {
+export async function getArticles(opts: { limit?: number; offset?: number; categoryId?: number; postType?: string; featured?: boolean; breaking?: boolean; search?: string; sortBy?: 'recent' | 'popular'; }) {
   const db = await getDb(); if (!db) return [];
   const conds: any[] = [];
   if (opts.categoryId) conds.push(eq(articles.categoryId, opts.categoryId));
@@ -54,7 +54,8 @@ export async function getArticles(opts: { limit?: number; offset?: number; categ
   if (opts.featured) conds.push(eq(articles.isFeatured, true));
   if (opts.breaking) conds.push(eq(articles.isBreaking, true));
   if (opts.search) conds.push(like(articles.title, `%${opts.search}%`));
-  const base = db.select({ id: articles.id, title: articles.title, slug: articles.slug, excerpt: articles.excerpt, featuredImage: articles.featuredImage, videoUrl: articles.videoUrl, postType: articles.postType, categoryId: articles.categoryId, authorId: articles.authorId, tags: articles.tags, views: articles.views, isFeatured: articles.isFeatured, isBreaking: articles.isBreaking, isPro: articles.isPro, publishedAt: articles.publishedAt, authorName: authors.name, authorSlug: authors.slug, authorAvatar: authors.avatar, categoryName: categories.name, categorySlug: categories.slug, categoryColour: categories.colour }).from(articles).leftJoin(authors, eq(articles.authorId, authors.id)).leftJoin(categories, eq(articles.categoryId, categories.id)).orderBy(desc(articles.publishedAt)).limit(opts.limit ?? 20).offset(opts.offset ?? 0);
+  const orderCol = opts.sortBy === 'popular' ? desc(articles.views) : desc(articles.publishedAt);
+  const base = db.select({ id: articles.id, title: articles.title, slug: articles.slug, excerpt: articles.excerpt, featuredImage: articles.featuredImage, videoUrl: articles.videoUrl, postType: articles.postType, categoryId: articles.categoryId, authorId: articles.authorId, tags: articles.tags, views: articles.views, isFeatured: articles.isFeatured, isBreaking: articles.isBreaking, isPro: articles.isPro, publishedAt: articles.publishedAt, authorName: authors.name, authorSlug: authors.slug, authorAvatar: authors.avatar, categoryName: categories.name, categorySlug: categories.slug, categoryColour: categories.colour }).from(articles).leftJoin(authors, eq(articles.authorId, authors.id)).leftJoin(categories, eq(articles.categoryId, categories.id)).orderBy(orderCol).limit(opts.limit ?? 20).offset(opts.offset ?? 0);
   return conds.length ? base.where(and(...conds)) : base;
 }
 export async function getArticleBySlug(slug: string) {
