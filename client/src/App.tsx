@@ -35,6 +35,7 @@ import ShopPage from "./pages/ShopPage";
 import AwardsPage from "./pages/AwardsPage";
 import PodcastPage from "./pages/PodcastPage";
 import ScrollToTop from "./components/ScrollToTop";
+import CmsAdmin from "./pages/CmsAdmin";
 import FloatingNewsletter from "./components/FloatingNewsletter";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
@@ -60,6 +61,7 @@ function Router() {
         <Route path="/newsletter" component={NewsletterPage} />
         <Route path="/pro" component={ProPage} />
         <Route path="/pro/success" component={ProSuccessPage} />
+        <Route path="/cms-admin" component={CmsAdmin} />
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin/articles" component={AdminArticles} />
         <Route path="/admin/subscribers" component={AdminSubscribers} />
