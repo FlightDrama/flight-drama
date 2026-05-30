@@ -367,6 +367,63 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
   const [metaKeywords, setMetaKeywords] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const AUTOSAVE_KEY = `fd_cms_autosave_${articleId ?? 'new'}`;
+
+  // ── Auto-save to localStorage every 30 seconds ────────────────────────────────
+  useEffect(() => {
+    if (!title && !content) return; // Don't save empty drafts
+    const timer = setInterval(() => {
+      try {
+        const draft = { title, slug, excerpt, content, categoryId, authorId, featuredImage, isBreaking, isFeatured, isPro, tags, publishedAt, metaTitle, metaDescription, metaKeywords, savedAt: new Date().toISOString() };
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(draft));
+        setAutoSaveStatus('saved');
+        setTimeout(() => setAutoSaveStatus('idle'), 2000);
+      } catch {}
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [title, slug, excerpt, content, categoryId, authorId, featuredImage, isBreaking, isFeatured, isPro, tags, publishedAt, metaTitle, metaDescription, metaKeywords, AUTOSAVE_KEY]);
+
+  // Restore auto-saved draft on mount (new articles only)
+  useEffect(() => {
+    if (isNew && !loaded) {
+      const savedDraft = localStorage.getItem(AUTOSAVE_KEY);
+      if (savedDraft) {
+        try {
+          const draft = JSON.parse(savedDraft);
+          const savedTime = new Date(draft.savedAt);
+          const minutesAgo = Math.round((Date.now() - savedTime.getTime()) / 60000);
+          // Only restore if saved within the last 24 hours
+          if (minutesAgo < 1440) {
+            const restore = window.confirm(`A draft was auto-saved ${minutesAgo < 1 ? 'just now' : minutesAgo + ' minutes ago'}. Restore it?`);
+            if (restore) {
+              setTitle(draft.title || '');
+              setSlug(draft.slug || '');
+              setExcerpt(draft.excerpt || '');
+              setContent(draft.content || '');
+              setCategoryId(draft.categoryId || '');
+              setAuthorId(draft.authorId || '');
+              setFeaturedImage(draft.featuredImage || '');
+              setIsBreaking(draft.isBreaking || false);
+              setIsFeatured(draft.isFeatured || false);
+              setIsPro(draft.isPro || false);
+              setTags(draft.tags || '');
+              setPublishedAt(draft.publishedAt || new Date().toISOString().slice(0, 16));
+              setMetaTitle(draft.metaTitle || '');
+              setMetaDescription(draft.metaDescription || '');
+              setMetaKeywords(draft.metaKeywords || '');
+              toast.success('Draft restored ✈');
+            }
+          }
+        } catch {}
+      }
+    }
+  }, [isNew, loaded, AUTOSAVE_KEY]);
+
+  // Clear auto-save on successful publish
+  const clearAutoSave = () => {
+    try { localStorage.removeItem(AUTOSAVE_KEY); } catch {}
+  };
 
   // Load AI-generated article from sessionStorage (when coming from AI Tools)
   useEffect(() => {
@@ -450,11 +507,11 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
     };
     if (isNew) {
       createMutation.mutate(payload, {
-        onSuccess: () => { toast.success(asDraft ? "Saved as draft ✈" : "Article published ✈"); onSaved(); }
+        onSuccess: () => { clearAutoSave(); toast.success(asDraft ? "Saved as draft ✈" : "Article published ✈"); onSaved(); }
       });
     } else {
       updateMutation.mutate({ id: articleId!, ...payload }, {
-        onSuccess: () => { toast.success(asDraft ? "Saved as draft ✈" : "Article saved ✈"); onSaved(); }
+        onSuccess: () => { clearAutoSave(); toast.success(asDraft ? "Saved as draft ✈" : "Article saved ✈"); onSaved(); }
       });
     }
   };
@@ -516,7 +573,18 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
         <div className="space-y-4">
           {/* Publish */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-            <div className="text-xs text-gray-500 font-bold uppercase tracking-wide mb-3">Publish</div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs text-gray-500 font-bold uppercase tracking-wide">Publish</div>
+              {autoSaveStatus === 'saved' && (
+                <span className="text-[10px] text-green-400 font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>
+                  Draft saved
+                </span>
+              )}
+              {autoSaveStatus === 'idle' && title && (
+                <span className="text-[10px] text-gray-600">Auto-saves every 30s</span>
+              )}
+            </div>
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-gray-600 block mb-1">Published Date</label>
