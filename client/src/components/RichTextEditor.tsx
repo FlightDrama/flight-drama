@@ -25,6 +25,7 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import Highlight from "@tiptap/extension-highlight";
 import Typography from "@tiptap/extension-typography";
 import CharacterCount from "@tiptap/extension-character-count";
+import Youtube from "@tiptap/extension-youtube";
 import { useCallback, useRef, useState, useEffect } from "react";
 import { toast } from "sonner";
 
@@ -79,6 +80,8 @@ export default function RichTextEditor({
   const [linkUrl, setLinkUrl] = useState("");
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showEmbedInput, setShowEmbedInput] = useState(false);
+  const [embedUrl, setEmbedUrl] = useState("");
 
   const editor = useEditor({
     extensions: [
@@ -102,6 +105,7 @@ export default function RichTextEditor({
       Highlight.configure({ multicolor: false }),
       Typography,
       CharacterCount,
+      Youtube.configure({ width: 840, height: 472, HTMLAttributes: { class: 'cms-youtube' } }),
     ],
     content: value || "",
     onUpdate: ({ editor: ed }) => {
@@ -183,6 +187,47 @@ export default function RichTextEditor({
   }, [uploadImage]);
 
   // ── Link handling ─────────────────────────────────────────────────────────
+  // ── Embed handler (YouTube, Instagram, TikTok, Twitter) ──────────────────
+  const handleEmbed = useCallback(() => {
+    if (!embedUrl.trim()) return;
+    const url = embedUrl.trim();
+
+    // YouTube
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      editor?.commands.setYoutubeVideo({ src: url });
+      setShowEmbedInput(false);
+      setEmbedUrl('');
+      return;
+    }
+
+    // Instagram, TikTok, Twitter/X, Facebook — insert as responsive iframe
+    let embedHtml = '';
+    if (url.includes('instagram.com')) {
+      const shortcode = url.match(/\/p\/([^/]+)/)?.[1] || url.match(/\/reel\/([^/]+)/)?.[1];
+      if (shortcode) {
+        embedHtml = `<div class="cms-embed cms-embed-instagram"><iframe src="https://www.instagram.com/p/${shortcode}/embed/" width="400" height="480" frameborder="0" scrolling="no" allowtransparency="true"></iframe></div>`;
+      }
+    } else if (url.includes('tiktok.com')) {
+      const videoId = url.match(/video\/([0-9]+)/)?.[1];
+      if (videoId) {
+        embedHtml = `<div class="cms-embed cms-embed-tiktok"><iframe src="https://www.tiktok.com/embed/v2/${videoId}" width="325" height="575" frameborder="0" allowfullscreen></iframe></div>`;
+      }
+    } else if (url.includes('twitter.com') || url.includes('x.com')) {
+      embedHtml = `<div class="cms-embed cms-embed-twitter"><blockquote class="twitter-tweet"><a href="${url}"></a></blockquote><script async src="https://platform.twitter.com/widgets.js"></script></div>`;
+    } else if (url.includes('facebook.com')) {
+      embedHtml = `<div class="cms-embed cms-embed-facebook"><iframe src="https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(url)}&width=500" width="500" height="400" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen></iframe></div>`;
+    }
+
+    if (embedHtml) {
+      editor?.chain().focus().insertContent(embedHtml).run();
+    } else {
+      // Fallback: insert as generic iframe
+      editor?.chain().focus().insertContent(`<div class="cms-embed"><iframe src="${url}" width="100%" height="400" frameborder="0" allowfullscreen></iframe></div>`).run();
+    }
+    setShowEmbedInput(false);
+    setEmbedUrl('');
+  }, [editor, embedUrl]);
+
   const setLink = useCallback(() => {
     if (!linkUrl) {
       editor?.chain().focus().unsetLink().run();
@@ -325,6 +370,36 @@ export default function RichTextEditor({
           {uploading ? "⏳" : "🖼"}
         </ToolBtn>
 
+        {/* YouTube/Social Embed */}
+        <div className="relative">
+          <ToolBtn
+            onClick={() => { setShowEmbedInput(!showEmbedInput); setEmbedUrl(""); }}
+            active={showEmbedInput}
+            title="Embed YouTube / Instagram / TikTok / Twitter"
+          >
+            ▶
+          </ToolBtn>
+          {showEmbedInput && (
+            <div className="absolute top-9 left-0 z-50 bg-[#1a1a1a] border border-[#333] rounded-lg p-3 shadow-xl" style={{ minWidth: 340 }}>
+              <div className="text-xs text-gray-400 font-bold mb-2">Embed Video or Social Post</div>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="url"
+                  value={embedUrl}
+                  onChange={(e) => setEmbedUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleEmbed()}
+                  placeholder="YouTube, Instagram, TikTok, Twitter URL..."
+                  className="flex-1 bg-[#111] border border-[#333] text-white text-xs px-2 py-1.5 rounded focus:outline-none focus:border-[#F5C518]"
+                  autoFocus
+                />
+                <button onClick={handleEmbed} className="bg-[#F5C518] text-black text-xs font-bold px-2 py-1 rounded whitespace-nowrap">Embed</button>
+                <button onClick={() => setShowEmbedInput(false)} className="text-gray-500 text-xs px-1">✕</button>
+              </div>
+              <div className="text-[10px] text-gray-600">Supports: YouTube, Instagram Reels, TikTok, Twitter/X, Facebook</div>
+            </div>
+          )}
+        </div>
+
         <ToolSep />
 
         {/* Undo/Redo */}
@@ -466,6 +541,11 @@ export default function RichTextEditor({
         .cms-editor-content [data-text-align="center"] { text-align: center; }
         .cms-editor-content [data-text-align="right"] { text-align: right; }
         .cms-editor-content [data-text-align="justify"] { text-align: justify; }
+        .cms-editor-content .cms-youtube { max-width: 100%; margin: 1em 0; border-radius: 6px; overflow: hidden; }
+        .cms-editor-content .cms-youtube iframe { max-width: 100%; border-radius: 6px; }
+        .cms-editor-content .cms-embed { margin: 1em 0; display: flex; justify-content: center; }
+        .cms-editor-content .cms-embed iframe { max-width: 100%; border-radius: 6px; }
+        .cms-editor-content .twitter-tweet { margin: 0 auto !important; }
       `}</style>
     </div>
   );

@@ -348,6 +348,11 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
   const [isPro, setIsPro] = useState(false);
   const [tags, setTags] = useState("");
   const [publishedAt, setPublishedAt] = useState(new Date().toISOString().slice(0, 16));
+  const [isDraft, setIsDraft] = useState(false);
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
+  const [metaKeywords, setMetaKeywords] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   // Load existing article data
@@ -395,21 +400,27 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
     if (isNew) setSlug(t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80));
   };
 
-  const handleSave = () => {
+  const handleSave = (asDraft = false) => {
     if (!title || !slug || !content) { toast.error("Title, slug, and content are required"); return; }
     const payload = {
       title, slug, excerpt: excerpt || undefined,
       content, categoryId: categoryId || undefined,
       authorId: authorId || undefined,
       featuredImage: featuredImage || undefined,
-      isBreaking, isFeatured, isPro,
+      isBreaking: asDraft ? false : isBreaking,
+      isFeatured: asDraft ? false : isFeatured,
+      isPro,
       tags: tags ? JSON.stringify(tags.split(",").map(t => t.trim()).filter(Boolean)) : undefined,
       publishedAt: publishedAt.replace("T", " "),
     };
     if (isNew) {
-      createMutation.mutate(payload);
+      createMutation.mutate(payload, {
+        onSuccess: () => { toast.success(asDraft ? "Saved as draft ✈" : "Article published ✈"); onSaved(); }
+      });
     } else {
-      updateMutation.mutate({ id: articleId!, ...payload });
+      updateMutation.mutate({ id: articleId!, ...payload }, {
+        onSuccess: () => { toast.success(asDraft ? "Saved as draft ✈" : "Article saved ✈"); onSaved(); }
+      });
     }
   };
 
@@ -481,12 +492,27 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
                   className="w-full bg-[#0d0d0d] border border-[#333] text-white px-2 py-1.5 rounded text-sm focus:outline-none focus:border-[#F5C518]"
                 />
               </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleSave(false)}
+                  disabled={isPending}
+                  className="flex-1 bg-[#F5C518] text-black font-black py-2 rounded hover:bg-[#e0b015] transition-colors disabled:opacity-50 text-sm"
+                >
+                  {isPending ? "Saving..." : isNew ? "Publish ✈" : "Save"}
+                </button>
+                <button
+                  onClick={() => handleSave(true)}
+                  disabled={isPending}
+                  className="flex-1 bg-[#1a1a1a] border border-[#333] text-gray-400 font-bold py-2 rounded hover:text-white hover:border-[#555] transition-colors disabled:opacity-50 text-sm"
+                >
+                  Save Draft
+                </button>
+              </div>
               <button
-                onClick={handleSave}
-                disabled={isPending}
-                className="w-full bg-[#F5C518] text-black font-black py-2.5 rounded hover:bg-[#e0b015] transition-colors disabled:opacity-50"
+                onClick={() => setShowPreview(!showPreview)}
+                className="w-full bg-[#0d0d0d] border border-[#333] text-gray-400 font-bold py-2 rounded hover:text-white hover:border-[#555] transition-colors text-sm"
               >
-                {isPending ? "Saving..." : isNew ? "Publish ✈" : "Save Changes"}
+                {showPreview ? "Hide Preview" : "👁 Live Preview"}
               </button>
             </div>
           </div>
@@ -568,8 +594,77 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
               placeholder="Boeing, Safety (comma separated)"
             />
           </div>
+
+          {/* SEO Metadata */}
+          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="text-xs text-gray-500 font-bold uppercase tracking-wide">SEO</div>
+              <span className="text-[10px] bg-green-400/15 text-green-400 px-1.5 py-0.5 rounded font-bold">Search Rankings</span>
+            </div>
+            <div className="space-y-2">
+              <div>
+                <label className="text-xs text-gray-600 block mb-1">Meta Title <span className="text-gray-600">({metaTitle.length}/60)</span></label>
+                <input
+                  type="text"
+                  value={metaTitle}
+                  onChange={(e) => setMetaTitle(e.target.value.slice(0, 160))}
+                  className={`w-full bg-[#0d0d0d] border text-white px-2 py-1.5 rounded text-sm focus:outline-none transition-colors ${metaTitle.length > 60 ? 'border-red-500' : 'border-[#333] focus:border-[#F5C518]'}`}
+                  placeholder={title || "Article title for search engines"}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 block mb-1">Meta Description <span className="text-gray-600">({metaDescription.length}/160)</span></label>
+                <textarea
+                  value={metaDescription}
+                  onChange={(e) => setMetaDescription(e.target.value.slice(0, 320))}
+                  rows={3}
+                  className={`w-full bg-[#0d0d0d] border text-white px-2 py-1.5 rounded text-sm focus:outline-none resize-none transition-colors ${metaDescription.length > 160 ? 'border-orange-500' : 'border-[#333] focus:border-[#F5C518]'}`}
+                  placeholder={excerpt || "Brief description for search results (aim for 120-160 chars)"}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 block mb-1">Focus Keywords</label>
+                <input
+                  type="text"
+                  value={metaKeywords}
+                  onChange={(e) => setMetaKeywords(e.target.value)}
+                  className="w-full bg-[#0d0d0d] border border-[#333] text-white px-2 py-1.5 rounded text-sm focus:outline-none focus:border-[#F5C518]"
+                  placeholder="Boeing 737, aviation safety, MCAS"
+                />
+              </div>
+              {/* SEO preview */}
+              {(metaTitle || title) && (
+                <div className="bg-white rounded p-3 mt-2">
+                  <div className="text-[13px] text-blue-700 font-medium truncate">{metaTitle || title}</div>
+                  <div className="text-[11px] text-green-700 truncate">flightdrama.com/article/{slug}</div>
+                  <div className="text-[12px] text-gray-600 line-clamp-2 mt-0.5">{metaDescription || excerpt || "No description set"}</div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Live Preview Panel */}
+      {showPreview && (
+        <div className="mt-6 bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#222]">
+            <div className="text-sm font-bold text-white">Live Preview — How this article will look on flightdrama.com</div>
+            <button onClick={() => setShowPreview(false)} className="text-gray-500 hover:text-white text-xs">✕ Close</button>
+          </div>
+          <div className="p-6 bg-[#0a0a0a]">
+            {featuredImage && (
+              <img src={featuredImage} alt={title} className="w-full max-h-80 object-cover rounded-lg mb-6" />
+            )}
+            <h1 className="text-3xl font-black text-white mb-3 leading-tight">{title || "Article Title"}</h1>
+            {excerpt && <p className="text-lg text-gray-400 mb-5 border-l-4 border-[#F5C518] pl-4">{excerpt}</p>}
+            <div
+              className="article-prose max-w-none"
+              dangerouslySetInnerHTML={{ __html: content || "<p class='text-gray-500'>Start writing to see a preview...</p>" }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
