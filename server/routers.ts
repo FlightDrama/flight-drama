@@ -208,6 +208,177 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => deleteArticle(input.id)),
   }),
+  // ── AI Content Tools ─────────────────────────────────────────────────────────────────────────────
+  aiTools: router({
+    generateArticle: adminGuard
+      .input(z.object({
+        topic: z.string().min(5).max(500),
+        keywords: z.string().optional(),
+        urls: z.array(z.string()).optional(),
+        tone: z.enum(['news', 'analysis', 'opinion', 'feature']).default('news'),
+        length: z.enum(['short', 'medium', 'long']).default('medium'),
+      }))
+      .mutation(async ({ input }) => {
+        const { invokeLLM } = await import('./_core/llm');
+
+        // Fetch URL content if provided
+        let urlContext = '';
+        if (input.urls && input.urls.length > 0) {
+          for (const url of input.urls.slice(0, 3)) {
+            try {
+              const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) });
+              const html = await res.text();
+              // Strip HTML tags and get text
+              const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 3000);
+              urlContext += `\n\n--- Content from ${url} ---\n${text}`;
+            } catch {}
+          }
+        }
+
+        const lengthGuide = { short: '400-600 words', medium: '700-1000 words', long: '1200-1800 words' }[input.length];
+        const toneGuide = {
+          news: 'Breaking news style — factual, urgent, inverted pyramid structure',
+          analysis: 'In-depth analysis — expert commentary, context, implications',
+          opinion: 'Opinion/editorial — strong point of view, engaging voice',
+          feature: 'Feature article — narrative storytelling, human interest angle',
+        }[input.tone];
+
+        const prompt = `You are a senior aviation journalist for Flight Drama, a major aviation news website with millions of followers. Write a high-quality, SEO-optimised aviation article.
+
+TOPIC: ${input.topic}
+KEYWORDS TO INCLUDE: ${input.keywords || 'none specified'}
+STYLE: ${toneGuide}
+LENGTH: ${lengthGuide}
+${urlContext ? `\nSOURCE MATERIAL (use as reference, do not copy verbatim):${urlContext}` : ''}
+
+Requirements:
+- Write in British English
+- Use proper HTML formatting: <h2> for section headings, <p> for paragraphs, <blockquote> for key quotes, <ul>/<li> for lists
+- Include at least 2-3 <h2> subheadings
+- Make it engaging, accurate, and authoritative
+- Do NOT include a main <h1> title (that will be added separately)
+- Do NOT include any markdown, only HTML tags
+- End with a strong concluding paragraph
+
+Return a JSON object with these fields:
+- title: A compelling article headline (max 80 chars)
+- excerpt: A 1-2 sentence summary for article cards (max 160 chars)
+- content: The full article HTML
+- metaTitle: SEO title (max 60 chars)
+- metaDescription: SEO description (max 160 chars)
+- suggestedTags: Array of 3-5 relevant tags`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: 'system', content: 'You are a professional aviation journalist. Always respond with valid JSON only, no markdown code blocks.' },
+            { role: 'user', content: prompt },
+          ],
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'article_generation',
+              strict: true,
+              schema: {
+                type: 'object',
+                properties: {
+                  title: { type: 'string' },
+                  excerpt: { type: 'string' },
+                  content: { type: 'string' },
+                  metaTitle: { type: 'string' },
+                  metaDescription: { type: 'string' },
+                  suggestedTags: { type: 'array', items: { type: 'string' } },
+                },
+                required: ['title', 'excerpt', 'content', 'metaTitle', 'metaDescription', 'suggestedTags'],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+
+        const raw = response.choices[0].message.content;
+        try {
+          return JSON.parse(typeof raw === 'string' ? raw : JSON.stringify(raw));
+        } catch {
+          throw new Error('AI generation failed — please try again');
+        }
+      }),
+
+    videoToArticle: adminGuard
+      .input(z.object({
+        videoUrl: z.string().url(),
+        additionalContext: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { transcribeAudio } = await import('./_core/voiceTranscription');
+        const { invokeLLM } = await import('./_core/llm');
+
+        // Transcribe the video/audio
+        let transcript = '';
+        try {
+          const result = await transcribeAudio({ audioUrl: input.videoUrl, language: 'en', prompt: 'Aviation news, ATC communications, pilot announcements' });
+          if ('text' in result) { transcript = result.text; } else { throw new Error('Transcription failed: ' + result.error); }
+        } catch (e: any) {
+          throw new Error(`Transcription failed: ${e.message}. Ensure the URL points to an audio/video file (mp3, mp4, wav, webm).`);
+        }
+
+        if (!transcript || transcript.trim().length < 20) {
+          throw new Error('Could not extract meaningful content from the video. Please check the URL.');
+        }
+
+        const prompt = `You are a senior aviation journalist for Flight Drama. A video/audio recording has been transcribed. Convert this transcript into a polished news article.
+
+TRANSCRIPT:
+${transcript.slice(0, 8000)}
+
+${input.additionalContext ? `ADDITIONAL CONTEXT: ${input.additionalContext}` : ''}
+
+Requirements:
+- Write in British English
+- Use proper HTML: <h2> subheadings, <p> paragraphs, <blockquote> for key quotes from the transcript
+- Include the most newsworthy quotes verbatim in blockquotes
+- 600-900 words
+- Do NOT include a main <h1> title
+- Do NOT include markdown, only HTML
+
+Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggestedTags`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: 'system', content: 'You are a professional aviation journalist. Always respond with valid JSON only.' },
+            { role: 'user', content: prompt },
+          ],
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'article_generation',
+              strict: true,
+              schema: {
+                type: 'object',
+                properties: {
+                  title: { type: 'string' },
+                  excerpt: { type: 'string' },
+                  content: { type: 'string' },
+                  metaTitle: { type: 'string' },
+                  metaDescription: { type: 'string' },
+                  suggestedTags: { type: 'array', items: { type: 'string' } },
+                },
+                required: ['title', 'excerpt', 'content', 'metaTitle', 'metaDescription', 'suggestedTags'],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+
+        const raw = response.choices[0].message.content;
+        try {
+          const result = JSON.parse(typeof raw === 'string' ? raw : JSON.stringify(raw));
+          return { ...result, transcript: transcript.slice(0, 500) + (transcript.length > 500 ? '...' : '') };
+        } catch {
+          throw new Error('AI generation failed — please try again');
+        }
+      }),
+  }),
+
   categories: router({
     list: publicProcedure.query(() => getCategories()),
   }),

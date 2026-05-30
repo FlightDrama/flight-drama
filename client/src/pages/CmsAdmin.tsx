@@ -13,9 +13,10 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import RichTextEditor from "@/components/RichTextEditor";
+import CmsAiTools from "./CmsAiTools";
 
-// ── Types ──────────────────────────────────────────────────────────────────
-type View = "dashboard" | "articles" | "new-article" | "edit-article" | "categories" | "settings";
+// ── Types ─────────────────────────────────────────────────────────────────────────────
+type View = "dashboard" | "articles" | "new-article" | "edit-article" | "categories" | "ai-tools" | "settings";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function Badge({ children, colour = "yellow" }: { children: React.ReactNode; colour?: "yellow" | "green" | "red" | "blue" }) {
@@ -129,10 +130,11 @@ export default function CmsAdmin() {
     );
   }
 
-  const navItems: { id: View; label: string; icon: string }[] = [
+  const navItems: { id: View; label: string; icon: string; badge?: string }[] = [
     { id: "dashboard", label: "Dashboard", icon: "📊" },
     { id: "articles", label: "Articles", icon: "📰" },
     { id: "new-article", label: "New Article", icon: "✏️" },
+    { id: "ai-tools", label: "AI Tools", icon: "✨", badge: "NEW" },
     { id: "categories", label: "Categories", icon: "🏷️" },
     { id: "settings", label: "Settings", icon: "⚙️" },
   ];
@@ -164,7 +166,8 @@ export default function CmsAdmin() {
               }`}
             >
               <span>{item.icon}</span>
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {item.badge && <span className="text-[9px] bg-[#F5C518] text-black font-black px-1 py-0.5 rounded">{item.badge}</span>}
             </button>
           ))}
         </nav>
@@ -190,6 +193,16 @@ export default function CmsAdmin() {
         {view === "articles" && <CmsArticlesList onEdit={(id) => showView("edit-article", id)} onNew={() => showView("new-article")} />}
         {view === "new-article" && <CmsArticleEditor articleId={null} onSaved={() => showView("articles")} onBack={() => showView("articles")} />}
         {view === "edit-article" && <CmsArticleEditor articleId={editingId} onSaved={() => showView("articles")} onBack={() => showView("articles")} />}
+        {view === "ai-tools" && (
+          <CmsAiTools
+            onUseArticle={(article) => {
+              // Navigate to new article editor with pre-filled content
+              setView("new-article");
+              // Store generated article in sessionStorage for the editor to pick up
+              sessionStorage.setItem('fd_cms_generated_article', JSON.stringify(article));
+            }}
+          />
+        )}
         {view === "categories" && <CmsCategories />}
         {view === "settings" && <CmsSettings />}
       </main>
@@ -354,6 +367,28 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
   const [metaKeywords, setMetaKeywords] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [loaded, setLoaded] = useState(false);
+
+  // Load AI-generated article from sessionStorage (when coming from AI Tools)
+  useEffect(() => {
+    if (isNew && !loaded) {
+      const stored = sessionStorage.getItem('fd_cms_generated_article');
+      if (stored) {
+        try {
+          const gen = JSON.parse(stored);
+          setTitle(gen.title || '');
+          setExcerpt(gen.excerpt || '');
+          setContent(gen.content || '');
+          setMetaTitle(gen.metaTitle || '');
+          setMetaDescription(gen.metaDescription || '');
+          if (gen.suggestedTags) setTags(gen.suggestedTags.join(', '));
+          // Auto-generate slug from title
+          if (gen.title) setSlug(gen.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80));
+          sessionStorage.removeItem('fd_cms_generated_article');
+          toast.success('AI-generated article loaded into editor ✈');
+        } catch {}
+      }
+    }
+  }, [isNew, loaded]);
 
   // Load existing article data
   const { data: existingArticles } = trpc.articles.list.useQuery({ limit: 100 });

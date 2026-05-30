@@ -19,6 +19,7 @@ import TableOfContents from "@/components/TableOfContents";
 import AuthorBioCard from "@/components/AuthorBioCard";
 import ProContentGate from "@/components/ProContentGate";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useEffect } from "react";
 
 // Calculate estimated reading time from HTML content
 function getReadingTime(html: string): string {
@@ -40,6 +41,47 @@ export default function ArticlePage() {
   const category = data?.categories;
   const isPro = membership?.membership?.status === 'active';
   const isProGated = article?.isPro && !isPro;
+
+  // ── SEO Meta Tags — inject into document head ──────────────────────────────
+  useEffect(() => {
+    if (!article) return;
+    const siteTitle = 'Flight Drama';
+    const title = (article as any).metaTitle || article.title;
+    const description = (article as any).metaDescription || article.excerpt || '';
+    const keywords = (article as any).metaKeywords || '';
+    const image = article.featuredImage || '';
+    const url = window.location.href;
+
+    // Page title
+    document.title = title ? `${title} | ${siteTitle}` : siteTitle;
+
+    // Helper to set/create meta tags
+    const setMeta = (name: string, content: string, prop = false) => {
+      const attr = prop ? 'property' : 'name';
+      let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
+      if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
+      el.content = content;
+    };
+
+    setMeta('description', description);
+    if (keywords) setMeta('keywords', keywords);
+    setMeta('og:title', title, true);
+    setMeta('og:description', description, true);
+    setMeta('og:url', url, true);
+    setMeta('og:type', 'article', true);
+    setMeta('og:site_name', siteTitle, true);
+    if (image) setMeta('og:image', image, true);
+    setMeta('twitter:card', 'summary_large_image', true);
+    setMeta('twitter:title', title, true);
+    setMeta('twitter:description', description, true);
+    if (image) setMeta('twitter:image', image, true);
+    setMeta('twitter:site', '@FlightDrama', true);
+
+    // Cleanup on unmount
+    return () => {
+      document.title = siteTitle;
+    };
+  }, [article]);
 
   const handleShare = (platform: string) => {
     const url = window.location.href;
