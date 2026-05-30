@@ -7,11 +7,12 @@
  * Role check: user.role === 'admin'
  */
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import RichTextEditor from "@/components/RichTextEditor";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type View = "dashboard" | "articles" | "new-article" | "edit-article" | "categories" | "settings";
@@ -455,15 +456,13 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500 font-bold uppercase tracking-wide block mb-1">Content * (HTML)</label>
-            <textarea
+            <label className="text-xs text-gray-500 font-bold uppercase tracking-wide block mb-1">Content *</label>
+            <RichTextEditor
               value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={20}
-              className="w-full bg-[#111] border border-[#333] text-white px-3 py-2 rounded focus:outline-none focus:border-[#F5C518] transition-colors resize-y font-mono text-sm"
-              placeholder="<p>Article content in HTML...</p>"
+              onChange={setContent}
+              placeholder="Start writing your article... (drag & drop images, use the toolbar for formatting)"
+              minHeight={500}
             />
-            <p className="text-xs text-gray-600 mt-1">Write in HTML. Use &lt;h2&gt;, &lt;p&gt;, &lt;blockquote&gt;, &lt;ul&gt; tags.</p>
           </div>
         </div>
 

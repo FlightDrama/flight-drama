@@ -94,6 +94,25 @@ async function startServer() {
     }
   });
 
+  // CMS image upload endpoint — for the RichTextEditor drag-and-drop
+  const cmsUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+  app.post("/api/cms/upload-image", cmsUpload.single("image"), async (req, res) => {
+    try {
+      const ctx = await createContext({ req, res } as any);
+      if (!ctx.user || ctx.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin only' });
+      }
+      if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+      const { storagePut } = await import('../storage');
+      const ext = req.file.originalname.split('.').pop() ?? 'jpg';
+      const key = `cms-images/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { url } = await storagePut(key, req.file.buffer, req.file.mimetype);
+      return res.json({ url, key });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message ?? 'Upload failed' });
+    }
+  });
+
   // SEO 301 redirect handler — resolves old WordPress URLs
   app.use(async (req, res, next) => {
     const path = req.path;
