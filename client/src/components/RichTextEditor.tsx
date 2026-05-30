@@ -75,6 +75,7 @@ export default function RichTextEditor({
   minHeight = 400,
 }: RichTextEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
@@ -493,6 +494,12 @@ export default function RichTextEditor({
             >
               • List
             </button>
+            <button
+              onClick={() => galleryInputRef.current?.click()}
+              className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-[#2a2a2a] transition-colors"
+            >
+              🖼 Gallery
+            </button>
           </div>
         </FloatingMenu>
 
@@ -509,6 +516,44 @@ export default function RichTextEditor({
         onChange={(e) => {
           Array.from(e.target.files ?? []).forEach(uploadImage);
           e.target.value = "";
+        }}
+      />
+
+      {/* Hidden gallery file input — inserts multiple images as a grid */}
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={async (e) => {
+          const files = Array.from(e.target.files ?? []);
+          e.target.value = "";
+          if (files.length === 0) return;
+          if (files.length === 1) { uploadImage(files[0]); return; }
+          // Upload all images then insert as a gallery grid
+          const urls: string[] = [];
+          for (const file of files) {
+            try {
+              setUploading(true);
+              const formData = new FormData();
+              formData.append('image', file);
+              const token = localStorage.getItem('fd_cms_token');
+              const res = await fetch('/api/cms/upload-image', {
+                method: 'POST',
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                body: formData,
+              });
+              const data = await res.json();
+              if (data.url) urls.push(data.url);
+            } catch {}
+          }
+          setUploading(false);
+          if (urls.length === 0) return;
+          // Insert as a responsive gallery grid
+          const galleryHtml = `<div class="cms-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin:1em 0">${urls.map(url => `<img src="${url}" style="width:100%;height:200px;object-fit:cover;border-radius:6px" />`).join('')}</div>`;
+          editor?.chain().focus().insertContent(galleryHtml).run();
+          toast.success(`Gallery of ${urls.length} images inserted ✈`);
         }}
       />
 

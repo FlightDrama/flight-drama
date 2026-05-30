@@ -113,6 +113,39 @@ async function startServer() {
     }
   });
 
+  // Scheduled article publish handler — fires via Heartbeat cron every minute
+  app.post("/api/scheduled/publish-articles", async (req, res) => {
+    try {
+      const { sdk } = await import('./sdk');
+      const { rawQuery } = await import('../db');
+      const user = await sdk.authenticateRequest(req);
+      if (!user.isCron) return res.status(403).json({ error: 'cron-only' });
+
+      // Find all articles scheduled to publish now or in the past that are still draft/scheduled
+      const now = new Date();
+      const rows = await rawQuery<any>(
+        `SELECT id, title, slug FROM articles WHERE scheduledAt IS NOT NULL AND scheduledAt <= ? AND status = 'scheduled' LIMIT 50`,
+        [now]
+      );
+
+      if (rows.length === 0) return res.json({ ok: true, published: 0 });
+
+      // Publish each article
+      for (const article of rows) {
+        await rawQuery(
+          `UPDATE articles SET status = 'published', publishedAt = ?, scheduledAt = NULL WHERE id = ?`,
+          [now, article.id]
+        );
+      }
+
+      console.log(`[Scheduled Publish] Published ${rows.length} articles: ${rows.map((a: any) => a.slug).join(', ')}`);
+      return res.json({ ok: true, published: rows.length, articles: rows.map((a: any) => a.slug) });
+    } catch (e: any) {
+      console.error('[Scheduled Publish] Error:', e);
+      return res.status(500).json({ error: e.message, timestamp: new Date().toISOString() });
+    }
+  });
+
   // SEO 301 redirect handler — resolves old WordPress URLs
   app.use(async (req, res, next) => {
     const path = req.path;

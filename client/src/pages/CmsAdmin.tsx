@@ -377,6 +377,8 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
   const [tags, setTags] = useState("");
   const [publishedAt, setPublishedAt] = useState(new Date().toISOString().slice(0, 16));
   const [isDraft, setIsDraft] = useState(false);
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [showSchedule, setShowSchedule] = useState(false);
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [metaKeywords, setMetaKeywords] = useState("");
@@ -507,7 +509,7 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
     if (isNew) setSlug(t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80));
   };
 
-  const handleSave = (asDraft = false) => {
+  const handleSave = (asDraft = false, asScheduled = false) => {
     if (!title || !slug || !content) { toast.error("Title, slug, and content are required"); return; }
     const payload = {
       title, slug, excerpt: excerpt || undefined,
@@ -637,6 +639,39 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
                   Save Draft
                 </button>
               </div>
+              <button
+                onClick={() => setShowSchedule(!showSchedule)}
+                className={`w-full border font-bold py-2 rounded transition-colors text-sm ${
+                  showSchedule ? 'bg-[#F5C518]/10 border-[#F5C518]/30 text-[#F5C518]' : 'bg-[#0d0d0d] border-[#333] text-gray-400 hover:text-white hover:border-[#555]'
+                }`}
+              >
+                🗓 {scheduledAt ? `Scheduled: ${new Date(scheduledAt).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}` : 'Schedule for Later'}
+              </button>
+              {showSchedule && (
+                <div className="bg-[#0d0d0d] border border-[#F5C518]/20 rounded-lg p-3 space-y-2">
+                  <label className="text-xs text-gray-500 font-bold block">Publish automatically at:</label>
+                  <input
+                    type="datetime-local"
+                    value={scheduledAt}
+                    onChange={(e) => setScheduledAt(e.target.value)}
+                    min={new Date().toISOString().slice(0, 16)}
+                    className="w-full bg-[#111] border border-[#333] text-white px-2 py-1.5 rounded text-sm focus:outline-none focus:border-[#F5C518]"
+                  />
+                  {scheduledAt && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { handleSave(false, true); setShowSchedule(false); }}
+                        disabled={isPending}
+                        className="flex-1 bg-blue-600 text-white font-bold py-1.5 rounded text-xs hover:bg-blue-500 transition-colors disabled:opacity-50"
+                      >
+                        {isPending ? 'Scheduling...' : '🗓 Schedule'}
+                      </button>
+                      <button onClick={() => { setScheduledAt(''); setShowSchedule(false); }} className="text-gray-500 text-xs hover:text-white px-2">✕ Clear</button>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-gray-600">The article will publish automatically at the set time. The site must be published for scheduling to work.</p>
+                </div>
+              )}
               <button
                 onClick={() => setShowPreview(!showPreview)}
                 className="w-full bg-[#0d0d0d] border border-[#333] text-gray-400 font-bold py-2 rounded hover:text-white hover:border-[#555] transition-colors text-sm"
