@@ -207,6 +207,31 @@ export const appRouter = router({
     delete: adminGuard
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => deleteArticle(input.id)),
+    generatePreviewLink: adminGuard
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const crypto = await import('crypto');
+        const token = crypto.randomBytes(24).toString('hex');
+        await rawQuery('UPDATE articles SET previewToken = ? WHERE id = ?', [token, input.id]);
+        return { token, previewUrl: `/preview/${token}` };
+      }),
+    byPreviewToken: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const rows = await rawQuery<any>(
+          `SELECT a.*, c.name as categoryName, c.slug as categorySlug, c.colour as categoryColour,
+           au.name as authorName, au.bio as authorBio, au.avatar as authorAvatar
+           FROM articles a
+           LEFT JOIN categories c ON a.categoryId = c.id
+           LEFT JOIN authors au ON a.authorId = au.id
+           WHERE a.previewToken = ? LIMIT 1`,
+          [input.token]
+        );
+        if (!rows[0]) throw new Error('Preview not found or link has expired');
+        return rows[0];
+      }),
   }),
   // ── AI Content Tools ─────────────────────────────────────────────────────────────────────────────
   aiTools: router({
@@ -316,6 +341,15 @@ Return a JSON object with these fields:
         const isYouTube = input.videoUrl.includes('youtube.com') || input.videoUrl.includes('youtu.be');
         let transcript = '';
 
+        // Extract YouTube video ID for thumbnail
+        let youtubeThumbnail = '';
+        if (isYouTube) {
+          const ytIdMatch = input.videoUrl.match(/(?:v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+          if (ytIdMatch) {
+            youtubeThumbnail = `https://img.youtube.com/vi/${ytIdMatch[1]}/maxresdefault.jpg`;
+          }
+        }
+
         if (isYouTube) {
           // Use LLM to analyse the YouTube video directly
           try {
@@ -391,7 +425,7 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
         const raw = response.choices[0].message.content;
         try {
           const result = JSON.parse(typeof raw === 'string' ? raw : JSON.stringify(raw));
-          return { ...result, transcript: transcript.slice(0, 500) + (transcript.length > 500 ? '...' : '') };
+          return { ...result, transcript: transcript.slice(0, 500) + (transcript.length > 500 ? '...' : ''), featuredImage: youtubeThumbnail || undefined };
         } catch {
           throw new Error('AI generation failed — please try again');
         }

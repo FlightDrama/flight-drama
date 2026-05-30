@@ -258,6 +258,13 @@ function CmsArticlesList({ onEdit, onNew }: { onEdit: (id: number) => void; onNe
   const LIMIT = 20;
   const { data, refetch } = trpc.articles.list.useQuery({ limit: LIMIT, offset: page * LIMIT, search: search || undefined });
   const deleteMutation = trpc.articles.delete.useMutation({ onSuccess: () => refetch() });
+  const previewMutation = trpc.articles.generatePreviewLink.useMutation({
+    onSuccess: (data) => {
+      const url = `${window.location.origin}${data.previewUrl}`;
+      navigator.clipboard.writeText(url).then(() => toast.success('Preview link copied to clipboard! 🔗'));
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const handleDelete = (id: number, title: string) => {
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
@@ -316,6 +323,14 @@ function CmsArticlesList({ onEdit, onNew }: { onEdit: (id: number) => void; onNe
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button onClick={() => onEdit(a.id)} className="text-[#F5C518] text-xs hover:underline mr-3">Edit</button>
+                  <button
+                    onClick={() => previewMutation.mutate({ id: a.id })}
+                    disabled={previewMutation.isPending}
+                    className="text-blue-400 text-xs hover:underline mr-3"
+                    title="Generate a secret preview link to share this article for review"
+                  >
+                    {previewMutation.isPending ? '...' : '🔗 Preview'}
+                  </button>
                   <button onClick={() => handleDelete(a.id, a.title)} className="text-red-400 text-xs hover:underline">Delete</button>
                 </td>
               </tr>

@@ -20,6 +20,7 @@ interface GeneratedArticle {
   metaDescription: string;
   suggestedTags: string[];
   transcript?: string;
+  featuredImage?: string;
 }
 
 // ── Tab switcher ───────────────────────────────────────────────────────────
@@ -328,6 +329,17 @@ function VideoToArticle({ onUseArticle }: { onUseArticle?: (article: GeneratedAr
               Use This Article →
             </button>
           </div>
+
+          {result.featuredImage && (
+            <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs text-gray-500 font-bold uppercase tracking-wide">Featured Image — Auto-extracted from YouTube</div>
+                <span className="text-[10px] bg-green-400/15 text-green-400 px-1.5 py-0.5 rounded font-bold">✓ Auto-set</span>
+              </div>
+              <img src={result.featuredImage} alt="YouTube thumbnail" className="w-full rounded-lg object-cover" style={{ maxHeight: 200 }} />
+              <p className="text-xs text-gray-600 mt-2">This thumbnail will be used as the article's featured image. You can change it in the editor.</p>
+            </div>
+          )}
 
           {result.transcript && (
             <div className="bg-[#111] border border-[#222] rounded-xl p-4">
