@@ -258,23 +258,32 @@ function VideoToArticle({ onUseArticle }: { onUseArticle?: (article: GeneratedAr
     <div className="space-y-6">
       <div className="bg-[#111] border border-[#222] rounded-xl p-5">
         <div className="text-sm font-bold text-white mb-2">Convert Video or Audio to Article</div>
-        <p className="text-xs text-gray-500 mb-4">Paste a direct link to an audio or video file (MP3, MP4, WAV, WebM). The AI will transcribe it and write a full article from the content.</p>
+        <p className="text-xs text-gray-500 mb-4">Paste a YouTube URL or a direct link to an audio/video file. The AI will analyse the content and write a full article.</p>
 
         <div className="space-y-4">
           <div>
-            <label className="text-xs text-gray-500 font-bold uppercase tracking-wide block mb-1">Video / Audio URL *</label>
+            <label className="text-xs text-gray-500 font-bold uppercase tracking-wide block mb-1">YouTube URL or Audio/Video File URL *</label>
             <input
               type="url"
               value={videoUrl}
               onChange={(e) => setVideoUrl(e.target.value)}
               className="w-full bg-[#0d0d0d] border border-[#333] text-white px-3 py-2 rounded text-sm focus:outline-none focus:border-[#F5C518] font-mono"
-              placeholder="https://example.com/atc-audio.mp3"
+              placeholder="https://www.youtube.com/watch?v=... or https://example.com/audio.mp3"
             />
-            <div className="mt-2 p-3 bg-[#0d0d0d] border border-[#222] rounded-lg">
-              <div className="text-xs text-gray-500 font-bold mb-1">Supported formats:</div>
-              <div className="text-xs text-gray-600">MP3, MP4, WAV, WebM, OGG, M4A — Direct file links only (not YouTube/Instagram pages)</div>
-              <div className="text-xs text-gray-600 mt-1">For YouTube videos, use the Article Generator above with the YouTube URL as a source.</div>
-            </div>
+            {videoUrl && (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) ? (
+              <div className="mt-2 p-3 bg-[#F5C518]/5 border border-[#F5C518]/20 rounded-lg flex items-start gap-2">
+                <span className="text-[#F5C518] text-sm mt-0.5">▶</span>
+                <div>
+                  <div className="text-xs text-[#F5C518] font-bold">YouTube video detected</div>
+                  <div className="text-xs text-gray-500 mt-0.5">The AI will analyse the video content directly and extract key information, quotes, and facts to write the article.</div>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-2 p-3 bg-[#0d0d0d] border border-[#222] rounded-lg">
+                <div className="text-xs text-gray-500 font-bold mb-1">Supported audio/video formats:</div>
+                <div className="text-xs text-gray-600">MP3, MP4, WAV, WebM, OGG, M4A — Direct file links only</div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -298,10 +307,10 @@ function VideoToArticle({ onUseArticle }: { onUseArticle?: (article: GeneratedAr
             {videoMutation.isPending ? (
               <>
                 <span className="animate-spin">✈</span>
-                Transcribing and generating... (30-60 seconds)
+                {videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be') ? 'Analysing YouTube video... (30-60 seconds)' : 'Transcribing and generating... (30-60 seconds)'}
               </>
             ) : (
-              "🎬 Transcribe & Generate Article"
+              videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be') ? '▶ Analyse YouTube & Generate Article' : '🎥 Transcribe & Generate Article'
             )}
           </button>
         </div>

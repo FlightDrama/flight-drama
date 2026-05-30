@@ -523,6 +523,17 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
       <div className="flex items-center gap-3 mb-6">
         <button onClick={onBack} className="text-gray-500 hover:text-white text-sm transition-colors">← Articles</button>
         <h1 className="text-2xl font-black text-white">{isNew ? "New Article" : "Edit Article"}</h1>
+        {content && (() => {
+          const text = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+          const words = text.split(' ').filter(Boolean).length;
+          const readTime = Math.max(1, Math.round(words / 200));
+          return (
+            <div className="ml-auto flex items-center gap-3 text-xs text-gray-500">
+              <span className="bg-[#1a1a1a] border border-[#2a2a2a] px-2 py-1 rounded">{words.toLocaleString()} words</span>
+              <span className="bg-[#1a1a1a] border border-[#2a2a2a] px-2 py-1 rounded">{readTime} min read</span>
+            </div>
+          );
+        })()}
       </div>
 
       <div className="grid grid-cols-3 gap-6">

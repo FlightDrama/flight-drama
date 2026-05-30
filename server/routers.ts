@@ -312,13 +312,32 @@ Return a JSON object with these fields:
         const { transcribeAudio } = await import('./_core/voiceTranscription');
         const { invokeLLM } = await import('./_core/llm');
 
-        // Transcribe the video/audio
+        // Detect YouTube URLs and use LLM vision analysis instead of audio transcription
+        const isYouTube = input.videoUrl.includes('youtube.com') || input.videoUrl.includes('youtu.be');
         let transcript = '';
-        try {
-          const result = await transcribeAudio({ audioUrl: input.videoUrl, language: 'en', prompt: 'Aviation news, ATC communications, pilot announcements' });
-          if ('text' in result) { transcript = result.text; } else { throw new Error('Transcription failed: ' + result.error); }
-        } catch (e: any) {
-          throw new Error(`Transcription failed: ${e.message}. Ensure the URL points to an audio/video file (mp3, mp4, wav, webm).`);
+
+        if (isYouTube) {
+          // Use LLM to analyse the YouTube video directly
+          try {
+            const response = await invokeLLM({
+              messages: [
+                { role: 'system', content: 'You are an aviation journalist. Analyse this YouTube video and extract all spoken content, key facts, quotes, and information. Provide a detailed transcript and summary.' },
+                { role: 'user', content: [{ type: 'file_url', file_url: { url: input.videoUrl, mime_type: 'video/mp4' } }, { type: 'text', text: 'Please transcribe and summarise all spoken content in this video. Include all key quotes, facts, and information mentioned.' }] },
+              ],
+            });
+            const content = response.choices[0].message.content;
+            transcript = typeof content === 'string' ? content : JSON.stringify(content);
+          } catch (e: any) {
+            throw new Error(`YouTube analysis failed: ${e.message}. Try pasting the YouTube URL into the Article Generator instead and use it as a source URL.`);
+          }
+        } else {
+          // Direct audio/video file — use Whisper transcription
+          try {
+            const result = await transcribeAudio({ audioUrl: input.videoUrl, language: 'en', prompt: 'Aviation news, ATC communications, pilot announcements' });
+            if ('text' in result) { transcript = result.text; } else { throw new Error('Transcription failed: ' + result.error); }
+          } catch (e: any) {
+            throw new Error(`Transcription failed: ${e.message}. Ensure the URL points to an audio/video file (mp3, mp4, wav, webm).`);
+          }
         }
 
         if (!transcript || transcript.trim().length < 20) {
