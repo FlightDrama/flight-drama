@@ -7,7 +7,7 @@
  * Role check: user.role === 'admin'
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
@@ -350,6 +350,68 @@ function CmsArticlesList({ onEdit, onNew }: { onEdit: (id: number) => void; onNe
   );
 }
 
+// ── Revision History Panel ───────────────────────────────────────────────
+type RevisionItem = { id: number; title: string; content?: string; excerpt?: string; featuredImage?: string; savedAt: string; savedByName?: string };
+
+function RevisionHistoryPanel({ articleId, onRestore, onClose }: {
+  articleId: number;
+  onRestore: (rev: RevisionItem) => void;
+  onClose: () => void;
+}) {
+  const { data: revisions, isLoading } = trpc.articles.revisions.useQuery({ articleId });
+  const utils = trpc.useUtils();
+  const [loadingId, setLoadingId] = useState<number | null>(null);
+
+  const handleRestore = async (rev: RevisionItem) => {
+    setLoadingId(rev.id);
+    try {
+      const full = await utils.articles.revisionContent.fetch({ revisionId: rev.id });
+      onRestore(full as RevisionItem);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  return (
+    <div className="mt-6 bg-[#111] border border-[#F5C518]/30 rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#222]">
+        <div className="text-sm font-bold text-white">📜 Revision History</div>
+        <button onClick={onClose} className="text-gray-500 hover:text-white text-xs">✕ Close</button>
+      </div>
+      <div className="p-4">
+        {isLoading && <p className="text-gray-500 text-sm">Loading revisions...</p>}
+        {!isLoading && (!revisions || revisions.length === 0) && (
+          <p className="text-gray-500 text-sm">No revisions saved yet. Revisions are created automatically each time you save.</p>
+        )}
+        {revisions && revisions.length > 0 && (
+          <div className="space-y-2">
+            {revisions.map((rev: RevisionItem) => (
+              <div key={rev.id} className="flex items-center justify-between bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-white truncate">{rev.title}</div>
+                  <div className="text-xs text-gray-500">
+                    {new Date(rev.savedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {rev.savedByName && <span className="ml-2 text-gray-600">by {rev.savedByName}</span>}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleRestore(rev)}
+                  disabled={loadingId === rev.id}
+                  className="ml-3 text-xs bg-[#F5C518] text-black font-bold px-2 py-1 rounded hover:bg-[#e0b015] transition-colors disabled:opacity-50 shrink-0"
+                >
+                  {loadingId === rev.id ? '...' : 'Restore'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Article Editor ─────────────────────────────────────────────────────────
 function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | null; onSaved: () => void; onBack: () => void }) {
   const isNew = articleId === null;
@@ -386,6 +448,11 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
   const [loaded, setLoaded] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const AUTOSAVE_KEY = `fd_cms_autosave_${articleId ?? 'new'}`;
+  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [featuredImageUploading, setFeaturedImageUploading] = useState(false);
+  const [showRevisions, setShowRevisions] = useState(false);
+  const featuredImageInputRef = useRef<HTMLInputElement>(null);
+  const [featuredImageDragging, setFeaturedImageDragging] = useState(false);
 
   // ── Auto-save to localStorage every 30 seconds ────────────────────────────────
   useEffect(() => {
@@ -440,6 +507,46 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
   // Clear auto-save on successful publish
   const clearAutoSave = () => {
     try { localStorage.removeItem(AUTOSAVE_KEY); } catch {}
+  };
+
+  // ── Slug availability checker (debounced 600ms) ───────────────────────────
+  const slugCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const utils = trpc.useUtils();
+
+  useEffect(() => {
+    if (!slug || slug.length < 3) { setSlugStatus('idle'); return; }
+    setSlugStatus('checking');
+    if (slugCheckRef.current) clearTimeout(slugCheckRef.current);
+    slugCheckRef.current = setTimeout(async () => {
+      try {
+        const result = await utils.articles.checkSlug.fetch({ slug, excludeId: articleId ?? undefined });
+        setSlugStatus(result.available ? 'available' : 'taken');
+      } catch { setSlugStatus('idle'); }
+    }, 600);
+    return () => { if (slugCheckRef.current) clearTimeout(slugCheckRef.current); };
+  }, [slug, articleId]);
+
+  // ── Featured image upload handler ────────────────────────────────────────
+  const handleFeaturedImageUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) { toast.error('Please select an image file'); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error('Image must be under 10MB'); return; }
+    setFeaturedImageUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch('/api/cms/upload-image', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.url) {
+        setFeaturedImage(data.url);
+        toast.success('Featured image uploaded ✈');
+      } else {
+        throw new Error(data.error || 'Upload failed');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Upload failed');
+    } finally {
+      setFeaturedImageUploading(false);
+    }
   };
 
   // Load AI-generated article from sessionStorage (when coming from AI Tools)
@@ -501,7 +608,7 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
     onError: (e) => toast.error(e.message),
   });
   const updateMutation = trpc.articles.update.useMutation({
-    onSuccess: () => { toast.success("Article saved ✈"); onSaved(); },
+    onSuccess: () => { clearAutoSave(); toast.success('Article saved ✈'); onSaved(); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -568,13 +675,30 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
           </div>
           <div>
             <label className="text-xs text-gray-500 font-bold uppercase tracking-wide block mb-1">Slug *</label>
-            <input
-              type="text"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              className="w-full bg-[#111] border border-[#333] text-white px-3 py-2 rounded focus:outline-none focus:border-[#F5C518] transition-colors font-mono text-sm"
-              placeholder="article-slug"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/--+/g, '-'))}
+                className={`w-full bg-[#111] border text-white px-3 py-2 pr-8 rounded focus:outline-none transition-colors font-mono text-sm ${
+                  slugStatus === 'taken' ? 'border-red-500 focus:border-red-500' :
+                  slugStatus === 'available' ? 'border-green-500 focus:border-green-500' :
+                  'border-[#333] focus:border-[#F5C518]'
+                }`}
+                placeholder="article-slug"
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 text-sm">
+                {slugStatus === 'checking' && <span className="text-gray-500 animate-pulse">...</span>}
+                {slugStatus === 'available' && <span className="text-green-400" title="Slug is available">✓</span>}
+                {slugStatus === 'taken' && <span className="text-red-400" title="Slug already in use">✗</span>}
+              </div>
+            </div>
+            {slugStatus === 'taken' && (
+              <p className="text-xs text-red-400 mt-1">⚠ This slug is already used by another article. Please choose a different one.</p>
+            )}
+            {slugStatus === 'available' && (
+              <p className="text-xs text-green-400 mt-1">✓ Slug is available</p>
+            )}
           </div>
           <div>
             <label className="text-xs text-gray-500 font-bold uppercase tracking-wide block mb-1">Excerpt</label>
@@ -672,6 +796,16 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
                   <p className="text-[10px] text-gray-600">The article will publish automatically at the set time. The site must be published for scheduling to work.</p>
                 </div>
               )}
+              {!isNew && (
+                <button
+                  onClick={() => setShowRevisions(!showRevisions)}
+                  className={`w-full border font-bold py-2 rounded transition-colors text-sm ${
+                    showRevisions ? 'bg-[#F5C518]/10 border-[#F5C518]/30 text-[#F5C518]' : 'bg-[#0d0d0d] border-[#333] text-gray-400 hover:text-white hover:border-[#555]'
+                  }`}
+                >
+                  📜 Revision History
+                </button>
+              )}
               <button
                 onClick={() => setShowPreview(!showPreview)}
                 className="w-full bg-[#0d0d0d] border border-[#333] text-gray-400 font-bold py-2 rounded hover:text-white hover:border-[#555] transition-colors text-sm"
@@ -712,17 +846,60 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
 
           {/* Featured Image */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-            <div className="text-xs text-gray-500 font-bold uppercase tracking-wide mb-3">Featured Image</div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs text-gray-500 font-bold uppercase tracking-wide">Featured Image</div>
+              {featuredImage && (
+                <button onClick={() => setFeaturedImage('')} className="text-[10px] text-red-400 hover:text-red-300">✕ Remove</button>
+              )}
+            </div>
+            {/* Drag-and-drop zone */}
+            <div
+              className={`relative border-2 border-dashed rounded-lg transition-colors cursor-pointer ${
+                featuredImageDragging ? 'border-[#F5C518] bg-[#F5C518]/5' : 'border-[#333] hover:border-[#555]'
+              }`}
+              style={{ minHeight: featuredImage ? 0 : 80 }}
+              onClick={() => featuredImageInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setFeaturedImageDragging(true); }}
+              onDragLeave={() => setFeaturedImageDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setFeaturedImageDragging(false);
+                const file = e.dataTransfer.files[0];
+                if (file) handleFeaturedImageUpload(file);
+              }}
+            >
+              {featuredImage ? (
+                <div className="relative">
+                  <img src={featuredImage} alt="" className="w-full rounded-lg object-cover" style={{ maxHeight: 140 }} />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">🗂 Click or drag to replace</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-5 text-center">
+                  {featuredImageUploading ? (
+                    <><span className="text-[#F5C518] text-xl animate-spin">✈</span><span className="text-xs text-gray-500 mt-2">Uploading...</span></>
+                  ) : (
+                    <><span className="text-2xl">🖼</span><span className="text-xs text-gray-500 mt-1">Drag & drop or click to upload</span><span className="text-[10px] text-gray-600">JPG, PNG, WebP — max 10MB</span></>
+                  )}
+                </div>
+              )}
+            </div>
+            <input
+              ref={featuredImageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFeaturedImageUpload(f); e.target.value = ''; }}
+            />
+            {/* URL input as fallback */}
             <input
               type="text"
               value={featuredImage}
               onChange={(e) => setFeaturedImage(e.target.value)}
-              className="w-full bg-[#0d0d0d] border border-[#333] text-white px-2 py-1.5 rounded text-sm focus:outline-none focus:border-[#F5C518] font-mono"
-              placeholder="/manus-storage/..."
+              className="w-full bg-[#0d0d0d] border border-[#222] text-gray-600 px-2 py-1.5 rounded text-xs focus:outline-none focus:border-[#F5C518] font-mono mt-2"
+              placeholder="Or paste image URL directly..."
             />
-            {featuredImage && (
-              <img src={featuredImage} alt="" className="w-full rounded mt-2 object-cover" style={{ maxHeight: 100 }} />
-            )}
           </div>
 
           {/* Options */}
@@ -808,6 +985,22 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
           </div>
         </div>
       </div>
+
+      {/* Revision History Panel */}
+      {!isNew && showRevisions && (
+        <RevisionHistoryPanel
+          articleId={articleId!}
+          onRestore={(rev) => {
+            setTitle(rev.title);
+            setContent(rev.content || '');
+            setExcerpt(rev.excerpt || '');
+            setFeaturedImage(rev.featuredImage || '');
+            setShowRevisions(false);
+            toast.success('Revision restored ✈ — remember to save to keep these changes');
+          }}
+          onClose={() => setShowRevisions(false)}
+        />
+      )}
 
       {/* Live Preview Panel */}
       {showPreview && (

@@ -203,7 +203,26 @@ export const appRouter = router({
       .mutation(({ input }) => createArticle({ ...input, publishedAt: new Date() })),
     update: adminGuard
       .input(z.object({ id: z.number(), title: z.string().optional(), excerpt: z.string().optional(), content: z.string().optional(), featuredImage: z.string().optional(), isFeatured: z.boolean().optional(), isBreaking: z.boolean().optional(), isPro: z.boolean().optional(), categoryId: z.number().optional() }))
-      .mutation(({ input }) => { const { id, ...data } = input; return updateArticle(id, data); }),
+      .mutation(async ({ input, ctx }) => {
+        const { rawQuery } = await import('./db');
+        // Save a revision of the current state before updating
+        try {
+          const current = await rawQuery<any>('SELECT title, content, excerpt, featuredImage FROM articles WHERE id = ? LIMIT 1', [input.id]);
+          if (current[0]) {
+            await rawQuery(
+              'INSERT INTO article_revisions (articleId, title, content, excerpt, featuredImage, savedBy) VALUES (?, ?, ?, ?, ?, ?)',
+              [input.id, current[0].title, current[0].content, current[0].excerpt, current[0].featuredImage, ctx.user?.id ?? null]
+            );
+            // Keep only the last 10 revisions per article
+            await rawQuery(
+              'DELETE FROM article_revisions WHERE articleId = ? AND id NOT IN (SELECT id FROM (SELECT id FROM article_revisions WHERE articleId = ? ORDER BY savedAt DESC LIMIT 10) t)',
+              [input.id, input.id]
+            );
+          }
+        } catch {}
+        const { id, ...data } = input;
+        return updateArticle(id, data);
+      }),
     delete: adminGuard
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => deleteArticle(input.id)),
@@ -231,6 +250,51 @@ export const appRouter = router({
         );
         if (!rows[0]) throw new Error('Preview not found or link has expired');
         return rows[0];
+      }),
+    checkSlug: adminGuard
+      .input(z.object({ slug: z.string(), excludeId: z.number().optional() }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const rows = await rawQuery<any>(
+          `SELECT id FROM articles WHERE slug = ? ${input.excludeId ? 'AND id != ?' : ''} LIMIT 1`,
+          input.excludeId ? [input.slug, input.excludeId] : [input.slug]
+        );
+        return { available: rows.length === 0 };
+      }),
+    revisions: adminGuard
+      .input(z.object({ articleId: z.number() }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const rows = await rawQuery<any>(
+          `SELECT r.id, r.title, r.excerpt, r.featuredImage, r.savedAt, u.name as savedByName
+           FROM article_revisions r
+           LEFT JOIN users u ON r.savedBy = u.id
+           WHERE r.articleId = ?
+           ORDER BY r.savedAt DESC
+           LIMIT 10`,
+          [input.articleId]
+        );
+        return rows;
+      }),
+    revisionContent: adminGuard
+      .input(z.object({ revisionId: z.number() }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const rows = await rawQuery<any>('SELECT * FROM article_revisions WHERE id = ? LIMIT 1', [input.revisionId]);
+        if (!rows[0]) throw new Error('Revision not found');
+        return rows[0];
+      }),
+    restoreRevision: adminGuard
+      .input(z.object({ articleId: z.number(), revisionId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const { rawQuery } = await import('./db');
+        const [rev] = await rawQuery<any>('SELECT * FROM article_revisions WHERE id = ? AND articleId = ? LIMIT 1', [input.revisionId, input.articleId]);
+        if (!rev) throw new Error('Revision not found');
+        await rawQuery(
+          `UPDATE articles SET title = ?, content = ?, excerpt = ?, featuredImage = ?, updatedAt = NOW() WHERE id = ?`,
+          [rev.title, rev.content, rev.excerpt, rev.featuredImage, input.articleId]
+        );
+        return { success: true };
       }),
   }),
   // ── AI Content Tools ─────────────────────────────────────────────────────────────────────────────
