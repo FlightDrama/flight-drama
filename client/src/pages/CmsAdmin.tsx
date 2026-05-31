@@ -1275,37 +1275,118 @@ function CmsSettings() {
 function Cms404Log() {
   const [showResolved, setShowResolved] = useState(false);
   const [redirectInput, setRedirectInput] = useState<Record<number, string>>({});
-  const { data: errors, refetch, isLoading } = trpc.errorLog.list404s.useQuery({ resolved: showResolved ? true : false });
+  const [sortBy, setSortBy] = useState<'hits' | 'recent'>('hits');
+  const [filterText, setFilterText] = useState('');
+  const [showCsvImport, setShowCsvImport] = useState(false);
+  const [csvText, setCsvText] = useState('');
+  const { data: errors, refetch, isLoading } = trpc.errorLog.list404s.useQuery({ resolved: showResolved ? true : false, limit: 200 });
   const resolveMutation = trpc.errorLog.resolve404.useMutation({ onSuccess: () => { toast.success('Redirect created ✈'); refetch(); } });
   const deleteMutation = trpc.errorLog.delete404.useMutation({ onSuccess: () => refetch() });
   const clearMutation = trpc.errorLog.clearResolved.useMutation({ onSuccess: () => { toast.success('Cleared ✈'); refetch(); } });
+  const importMutation = trpc.errorLog.bulkImportRedirects.useMutation({
+    onSuccess: (res) => {
+      toast.success(`✈ Imported ${res.imported} redirects (${res.skipped} skipped)`);
+      setCsvText('');
+      setShowCsvImport(false);
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleCsvImport = () => {
+    const lines = csvText.trim().split('\n').filter(Boolean);
+    const rows = lines.map(line => {
+      const parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
+      return { oldPath: parts[0] || '', newPath: parts[1] || '' };
+    }).filter(r => r.oldPath && r.newPath);
+    if (rows.length === 0) { toast.error('No valid rows found. Format: old_url,new_url'); return; }
+    importMutation.mutate({ rows });
+  };
+
+  const filteredErrors = (errors || []).filter((e: any) =>
+    !filterText || e.path.toLowerCase().includes(filterText.toLowerCase())
+  ).sort((a: any, b: any) =>
+    sortBy === 'hits' ? b.hitCount - a.hitCount : new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime()
+  );
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-black text-white">404 Error Log</h1>
-          <p className="text-xs text-gray-500 mt-1">URLs that visitors tried to access but weren't found. Create redirects to fix them.</p>
+          <p className="text-xs text-gray-500 mt-1">URLs visitors tried to access but weren't found. Create redirects to fix them.</p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={() => setShowCsvImport(!showCsvImport)}
+            className={`text-xs px-3 py-1.5 rounded border font-bold transition-colors ${
+              showCsvImport ? 'bg-[#F5C518]/10 border-[#F5C518]/30 text-[#F5C518]' : 'bg-[#111] border-[#333] text-gray-400 hover:text-white'
+            }`}
+          >
+            📂 CSV Import
+          </button>
           <button
             onClick={() => setShowResolved(!showResolved)}
             className={`text-xs px-3 py-1.5 rounded border font-bold transition-colors ${
               showResolved ? 'bg-green-400/10 border-green-400/30 text-green-400' : 'bg-[#111] border-[#333] text-gray-400 hover:text-white'
             }`}
           >
-            {showResolved ? '✓ Showing Resolved' : 'Show Unresolved'}
+            {showResolved ? '✓ Resolved' : 'Unresolved'}
           </button>
           {showResolved && (
             <button onClick={() => clearMutation.mutate()} disabled={clearMutation.isPending} className="text-xs px-3 py-1.5 rounded border border-red-400/30 text-red-400 hover:bg-red-400/10 transition-colors">
-              Clear All Resolved
+              Clear All
             </button>
           )}
         </div>
       </div>
 
+      {/* CSV Import Panel */}
+      {showCsvImport && (
+        <div className="mb-4 bg-[#111] border border-[#F5C518]/20 rounded-xl p-4">
+          <div className="text-sm font-bold text-white mb-2">📂 Bulk Import Redirects via CSV</div>
+          <p className="text-xs text-gray-500 mb-3">Paste CSV with two columns: <code className="bg-[#0d0d0d] px-1 rounded">old_url,new_url</code> — one redirect per line. URLs can be full paths or just slugs.</p>
+          <textarea
+            value={csvText}
+            onChange={(e) => setCsvText(e.target.value)}
+            rows={6}
+            className="w-full bg-[#0d0d0d] border border-[#333] text-white text-xs px-3 py-2 rounded font-mono focus:outline-none focus:border-[#F5C518] resize-none mb-3"
+            placeholder="/2026/04/01/old-article-slug/,/article/new-article-slug&#10;/old-page,/new-page&#10;old-slug,/article/new-slug"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleCsvImport}
+              disabled={importMutation.isPending || !csvText.trim()}
+              className="bg-[#F5C518] text-black font-bold px-4 py-1.5 rounded text-sm hover:bg-[#e0b015] disabled:opacity-50 transition-colors"
+            >
+              {importMutation.isPending ? '✈ Importing...' : `✈ Import ${csvText.trim().split('\n').filter(Boolean).length} rows`}
+            </button>
+            <button onClick={() => { setShowCsvImport(false); setCsvText(''); }} className="text-gray-500 text-sm hover:text-white">✕ Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Filter + Sort bar */}
+      <div className="flex gap-3 mb-4">
+        <input
+          type="text"
+          value={filterText}
+          onChange={(e) => setFilterText(e.target.value)}
+          placeholder="Filter by URL path..."
+          className="flex-1 bg-[#111] border border-[#333] text-white px-3 py-2 rounded text-sm focus:outline-none focus:border-[#F5C518]"
+        />
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as 'hits' | 'recent')}
+          className="bg-[#111] border border-[#333] text-white px-2 py-2 rounded text-sm focus:outline-none focus:border-[#F5C518]"
+        >
+          <option value="hits">Sort: Most Hits</option>
+          <option value="recent">Sort: Most Recent</option>
+        </select>
+      </div>
+
       {isLoading && <p className="text-gray-500 text-sm">Loading...</p>}
-      {!isLoading && (!errors || errors.length === 0) && (
+      {!isLoading && filteredErrors.length === 0 && (
         <div className="bg-[#111] border border-[#222] rounded-xl p-8 text-center">
           <div className="text-3xl mb-2">✅</div>
           <p className="text-gray-400 font-bold">No {showResolved ? 'resolved' : 'unresolved'} 404 errors</p>
@@ -1313,8 +1394,9 @@ function Cms404Log() {
         </div>
       )}
 
-      {errors && errors.length > 0 && (
+      {filteredErrors.length > 0 && (
         <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+          <div className="px-4 py-2 border-b border-[#222] text-xs text-gray-600">{filteredErrors.length} error{filteredErrors.length !== 1 ? 's' : ''}{filterText ? ` matching "${filterText}"` : ''}</div>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#222] text-xs text-gray-500 uppercase tracking-wide">
@@ -1326,7 +1408,7 @@ function Cms404Log() {
               </tr>
             </thead>
             <tbody>
-              {errors.map((err: any) => (
+              {filteredErrors.map((err: any) => (
                 <tr key={err.id} className="border-b border-[#1a1a1a] hover:bg-[#161616]">
                   <td className="px-4 py-3">
                     <div className="font-mono text-xs text-white truncate max-w-xs" title={err.path}>{err.path}</div>

@@ -674,6 +674,33 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
         await rawQuery('DELETE FROM error_404_log WHERE resolved = 1');
         return { success: true };
       }),
+    bulkImportRedirects: adminGuard
+      .input(z.object({
+        rows: z.array(z.object({ oldPath: z.string(), newPath: z.string() }))
+      }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        let imported = 0;
+        let skipped = 0;
+        for (const row of input.rows) {
+          if (!row.oldPath || !row.newPath) { skipped++; continue; }
+          const oldPath = row.oldPath.startsWith('/') ? row.oldPath : '/' + row.oldPath;
+          const newPath = row.newPath.startsWith('/') ? row.newPath : '/' + row.newPath;
+          try {
+            await rawQuery(
+              'INSERT IGNORE INTO redirects (oldPath, newPath, statusCode) VALUES (?, ?, 301)',
+              [oldPath.slice(0, 999), newPath.slice(0, 999)]
+            );
+            // Also mark any matching 404 log entries as resolved
+            await rawQuery(
+              'UPDATE error_404_log SET resolved = 1, redirectTo = ? WHERE path = ?',
+              [newPath, oldPath]
+            );
+            imported++;
+          } catch { skipped++; }
+        }
+        return { imported, skipped };
+      }),
   }),
   categories: router({
     list: publicProcedure.query(() => getCategories()),

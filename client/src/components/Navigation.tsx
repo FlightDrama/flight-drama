@@ -15,7 +15,8 @@ import {
 import { Input } from "@/components/ui/input";
 
 const navLinks = [
-  { label: "News", href: "/" },
+  { label: "Home", href: "/" },
+  { label: "News", href: "/?tab=news" },
   { label: "Shorts", href: "/videos" },
   { label: "Flight Lookup", href: "/flight-lookup", isNew: true },
   { label: "Forum", href: "/forum" },
@@ -75,7 +76,7 @@ export default function Navigation() {
                   className={`px-3 py-2 text-sm font-semibold uppercase tracking-wide rounded transition-colors flex items-center gap-1 ${
                     link.isPro
                       ? "bg-[oklch(0.85_0.18_95)] text-black hover:bg-[oklch(0.78_0.18_95)]"
-                      : location === link.href
+                      : (link.href === '/' && location === '/') || (link.href !== '/' && link.href !== '/?tab=news' && location.startsWith(link.href.split('?')[0])) || (link.href === '/?tab=news' && location === '/')
                       ? "text-[oklch(0.85_0.18_95)]"
                       : "text-[oklch(0.75_0_0)] hover:text-white"
                   }`}
