@@ -251,6 +251,34 @@ export const appRouter = router({
         if (!rows[0]) throw new Error('Preview not found or link has expired');
         return rows[0];
       }),
+    duplicate: adminGuard
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const [orig] = await rawQuery<any>('SELECT * FROM articles WHERE id = ? LIMIT 1', [input.id]);
+        if (!orig) throw new Error('Article not found');
+        const newSlug = orig.slug + '-copy-' + Date.now().toString(36);
+        await rawQuery(
+          `INSERT INTO articles (title, slug, excerpt, content, featuredImage, videoUrl, postType, categoryId, authorId, tags, views, isFeatured, isBreaking, isPro, publishedAt, status, metaTitle, metaDescription, createdAt, updatedAt)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, NOW(), 'draft', ?, ?, NOW(), NOW())`,
+          [
+            orig.title + ' (Copy)',
+            newSlug,
+            orig.excerpt,
+            orig.content,
+            orig.featuredImage,
+            orig.videoUrl,
+            orig.postType || 'article',
+            orig.categoryId,
+            orig.authorId,
+            orig.tags,
+            orig.metaTitle,
+            orig.metaDescription,
+          ]
+        );
+        const [newArticle] = await rawQuery<any>('SELECT id FROM articles WHERE slug = ? LIMIT 1', [newSlug]);
+        return { id: newArticle.id, slug: newSlug };
+      }),
     bulkUpdate: adminGuard
       .input(z.object({
         ids: z.array(z.number()),
@@ -340,6 +368,42 @@ export const appRouter = router({
   }),
   // ── AI Content Tools ─────────────────────────────────────────────────────────────────────────────
   aiTools: router({
+    autoFormat: adminGuard
+      .input(z.object({ content: z.string(), title: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        const { invokeLLM } = await import('./_core/llm');
+        const prompt = `You are a professional aviation journalist and HTML editor. Reformat the following article HTML to be well-structured and engaging.
+
+ARTICLE TITLE: ${input.title || 'Unknown'}
+
+CURRENT HTML:
+${input.content.slice(0, 8000)}
+
+Requirements:
+- Keep ALL the original content and facts — do not add, remove, or change any information
+- Add proper <h2> subheadings to break up long sections (every 200-300 words)
+- Wrap key quotes or important statements in <blockquote> tags
+- Convert any lists of items into proper <ul><li> or <ol><li> HTML lists
+- Add a <table> if there are any comparative data points (e.g. aircraft specs, airline comparisons)
+- Ensure all paragraphs are in <p> tags
+- Add a <hr> divider before the concluding paragraph
+- Do NOT include a <h1> title
+- Do NOT add any new information
+- Return ONLY the formatted HTML, nothing else`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: 'system', content: 'You are an HTML formatter. Return only valid HTML, no markdown, no code blocks, no explanations.' },
+            { role: 'user', content: prompt },
+          ],
+          max_tokens: 6000,
+        });
+
+        const formatted = response.choices[0].message.content;
+        if (typeof formatted !== 'string') throw new Error('Formatting failed');
+        // Strip any accidental markdown code fences
+        return { content: formatted.replace(/^```html?\n?/i, '').replace(/\n?```$/i, '').trim() };
+      }),
     generateArticle: adminGuard
       .input(z.object({
         topic: z.string().min(5).max(500),

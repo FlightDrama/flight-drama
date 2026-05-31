@@ -83,6 +83,7 @@ export default function RichTextEditor({
   const [uploading, setUploading] = useState(false);
   const [showEmbedInput, setShowEmbedInput] = useState(false);
   const [embedUrl, setEmbedUrl] = useState("");
+  const [isFormatting, setIsFormatting] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -410,6 +411,47 @@ export default function RichTextEditor({
         <ToolBtn onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} active={false} title="Redo (Ctrl+Y)">
           ↪
         </ToolBtn>
+
+        <ToolSep />
+
+        {/* AI Auto-Format */}
+        <button
+          type="button"
+          onClick={async () => {
+            if (!editor || isFormatting) return;
+            const currentContent = editor.getHTML();
+            if (!currentContent || currentContent === '<p></p>') { toast.error('Nothing to format'); return; }
+            setIsFormatting(true);
+            try {
+              const res = await fetch('/api/trpc/aiTools.autoFormat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ json: { content: currentContent } }),
+              });
+              const data = await res.json();
+              const formatted = data?.result?.data?.json?.content;
+              if (formatted) {
+                editor.commands.setContent(formatted);
+                toast.success('✨ Article formatted with AI ✈');
+              } else {
+                throw new Error('No formatted content returned');
+              }
+            } catch (e: any) {
+              toast.error('Auto-format failed: ' + (e.message || 'Unknown error'));
+            } finally {
+              setIsFormatting(false);
+            }
+          }}
+          disabled={isFormatting}
+          title="AI Auto-Format — adds headings, blockquotes, lists, and tables where relevant"
+          className={`flex items-center gap-1 px-2 h-7 rounded text-xs font-bold transition-colors ${
+            isFormatting
+              ? 'bg-[#F5C518]/20 text-[#F5C518] cursor-wait'
+              : 'bg-[#F5C518]/10 text-[#F5C518] hover:bg-[#F5C518]/20'
+          }`}
+        >
+          {isFormatting ? <><span className="animate-spin inline-block">✈</span> Formatting...</> : '✨ AI Format'}
+        </button>
 
         {/* Character count */}
         <div className="ml-auto text-[10px] text-gray-600 pr-1">

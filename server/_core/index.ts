@@ -150,6 +150,80 @@ async function startServer() {
   app.use(async (req, res, next) => {
     const path = req.path;
     if (path.startsWith("/api") || path.startsWith("/manus-storage") || path.includes(".")) return next();
+
+    // Pattern 1: WordPress date-based URLs /YYYY/MM/DD/slug/ or /YYYY/MM/slug/
+    const wpDateSlugMatch = path.match(/^\/\d{4}\/\d{2}(?:\/\d{2})?\/([^/]+)\/?$/);
+    if (wpDateSlugMatch) {
+      const wpSlug = wpDateSlugMatch[1];
+      // Try to find an article by wpSlug or by matching the slug
+      try {
+        const { rawQuery } = await import('../db');
+        // First try exact wpSlug match
+        let rows = await rawQuery<any>('SELECT slug FROM articles WHERE wpSlug = ? LIMIT 1', [wpSlug]);
+        if (!rows[0]) {
+          // Try slug match (strip common WP suffixes)
+          rows = await rawQuery<any>('SELECT slug FROM articles WHERE slug = ? OR slug LIKE ? LIMIT 1', [wpSlug, wpSlug.replace(/-\d+$/, '') + '%']);
+        }
+        if (rows[0]) {
+          return res.redirect(301, `/article/${rows[0].slug}`);
+        }
+        // No exact match — try fuzzy match on slug words
+        const words = wpSlug.split('-').filter((w: string) => w.length > 4).slice(0, 3);
+        if (words.length >= 2) {
+          const likePattern = `%${words[0]}%${words[1]}%`;
+          rows = await rawQuery<any>('SELECT slug FROM articles WHERE slug LIKE ? LIMIT 1', [likePattern]);
+          if (rows[0]) {
+            return res.redirect(301, `/article/${rows[0].slug}`);
+          }
+        }
+      } catch {}
+      // No article found — redirect to homepage with 301
+      return res.redirect(301, '/');
+    }
+
+    // Pattern 2: WordPress /p/12345/ numeric post IDs
+    const wpPostIdMatch = path.match(/^\/p\/(\d+)\/?$/);
+    if (wpPostIdMatch) {
+      return res.redirect(301, '/');
+    }
+
+    // Pattern 3: WordPress category URLs /category/slug/
+    const wpCategoryMatch = path.match(/^\/category\/([^/]+)\/?$/);
+    if (wpCategoryMatch) {
+      return res.redirect(301, `/category/${wpCategoryMatch[1]}`);
+    }
+
+    // Pattern 4: WordPress tag URLs /tag/slug/
+    const wpTagMatch = path.match(/^\/tag\/([^/]+)\/?$/);
+    if (wpTagMatch) {
+      return res.redirect(301, '/');
+    }
+
+    // Pattern 5: WordPress author URLs /author/slug/
+    const wpAuthorMatch = path.match(/^\/author\/([^/]+)\/?$/);
+    if (wpAuthorMatch) {
+      return res.redirect(301, '/');
+    }
+
+    // Pattern 6: WordPress feed URLs
+    if (path === '/feed/' || path === '/feed' || path === '/rss' || path === '/rss.xml') {
+      return res.redirect(301, '/');
+    }
+
+    // Pattern 7: Bare slug at root level (e.g. /delta-flight-dl2351-emergency-landing/)
+    const bareSlugMatch = path.match(/^\/([a-z0-9-]{10,})\/?$/);
+    if (bareSlugMatch) {
+      const bareSlug = bareSlugMatch[1];
+      try {
+        const { rawQuery } = await import('../db');
+        const rows = await rawQuery<any>('SELECT slug FROM articles WHERE slug = ? OR wpSlug = ? LIMIT 1', [bareSlug, bareSlug]);
+        if (rows[0]) {
+          return res.redirect(301, `/article/${rows[0].slug}`);
+        }
+      } catch {}
+    }
+
+    // Pattern 8: Existing DB-stored redirects
     try {
       const redirect = await getRedirect(path);
       if (redirect) {

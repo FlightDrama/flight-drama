@@ -151,6 +151,13 @@ function CmsArticlesList({ onEdit, onNew }: { onEdit: (id: number) => void; onNe
   const { data, refetch } = trpc.articles.list.useQuery({ limit: LIMIT, offset: page * LIMIT, search: search || undefined });
   const { data: categories } = trpc.categories.list.useQuery();
   const deleteMutation = trpc.articles.delete.useMutation({ onSuccess: () => refetch() });
+  const duplicateMutation = trpc.articles.duplicate.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Article duplicated as draft ✈ — click Edit to open it`);
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const bulkMutation = trpc.articles.bulkUpdate.useMutation({
     onSuccess: (res) => {
       toast.success(`✈ ${res.affected} article${res.affected !== 1 ? 's' : ''} updated`);
@@ -318,6 +325,14 @@ function CmsArticlesList({ onEdit, onNew }: { onEdit: (id: number) => void; onNe
                     title="Generate a secret preview link to share this article for review"
                   >
                     {previewMutation.isPending ? '...' : '🔗 Preview'}
+                  </button>
+                  <button
+                    onClick={() => duplicateMutation.mutate({ id: a.id })}
+                    disabled={duplicateMutation.isPending}
+                    className="text-purple-400 text-xs hover:underline mr-3"
+                    title="Duplicate as draft"
+                  >
+                    {duplicateMutation.isPending ? '...' : '📄 Dupe'}
                   </button>
                   <button onClick={() => { if (confirm(`Delete "${a.title}"? This cannot be undone.`)) deleteMutation.mutate({ id: a.id }); }} className="text-red-400 text-xs hover:underline">Delete</button>
                 </td>
@@ -705,11 +720,53 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
+  // ── Keyboard shortcuts ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Don't fire shortcuts when typing in inputs/textareas (except the TipTap editor)
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'SELECT') return;
+      if (target.tagName === 'TEXTAREA' && !target.closest('.cms-editor-content')) return;
+
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
+
+      if (ctrlOrCmd && e.key === 's') {
+        e.preventDefault();
+        if (!isPending && title && slug && content) {
+          toast.info('⌨ Ctrl+S — Saving...');
+          // Trigger save via button click to avoid stale closure
+          document.querySelector<HTMLButtonElement>('[data-cms-save]')?.click();
+        }
+      } else if (ctrlOrCmd && e.shiftKey && e.key === 'P') {
+        e.preventDefault();
+        setShowPreview(p => !p);
+        toast.info('⌨ Ctrl+Shift+P — Preview toggled');
+      } else if (ctrlOrCmd && e.key === 'd') {
+        e.preventDefault();
+        if (!isPending && title && slug && content) {
+          toast.info('⌨ Ctrl+D — Saved as draft');
+          document.querySelector<HTMLButtonElement>('[data-cms-draft]')?.click();
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isPending, title, slug, content]);
+
   return (
     <div className="p-6 max-w-5xl">
       <div className="flex items-center gap-3 mb-6">
         <button onClick={onBack} className="text-gray-500 hover:text-white text-sm transition-colors">← Articles</button>
         <h1 className="text-2xl font-black text-white">{isNew ? "New Article" : "Edit Article"}</h1>
+        <div className="hidden md:flex items-center gap-1 text-[10px] text-gray-600 ml-2">
+          <span className="bg-[#1a1a1a] border border-[#2a2a2a] px-1.5 py-0.5 rounded font-mono">Ctrl+S</span>
+          <span>save</span>
+          <span className="bg-[#1a1a1a] border border-[#2a2a2a] px-1.5 py-0.5 rounded font-mono ml-2">Ctrl+D</span>
+          <span>draft</span>
+          <span className="bg-[#1a1a1a] border border-[#2a2a2a] px-1.5 py-0.5 rounded font-mono ml-2">Ctrl+⇧+P</span>
+          <span>preview</span>
+        </div>
         {content && (() => {
           const text = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
           const words = text.split(' ').filter(Boolean).length;
@@ -812,16 +869,20 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
               </div>
               <div className="flex gap-2">
                 <button
+                  data-cms-save
                   onClick={() => handleSave(false)}
                   disabled={isPending}
                   className="flex-1 bg-[#F5C518] text-black font-black py-2 rounded hover:bg-[#e0b015] transition-colors disabled:opacity-50 text-sm"
+                  title="Save (Ctrl+S)"
                 >
                   {isPending ? "Saving..." : isNew ? "Publish ✈" : "Save"}
                 </button>
                 <button
+                  data-cms-draft
                   onClick={() => handleSave(true)}
                   disabled={isPending}
                   className="flex-1 bg-[#1a1a1a] border border-[#333] text-gray-400 font-bold py-2 rounded hover:text-white hover:border-[#555] transition-colors disabled:opacity-50 text-sm"
+                  title="Save as Draft (Ctrl+D)"
                 >
                   Save Draft
                 </button>
