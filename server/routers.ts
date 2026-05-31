@@ -368,6 +368,38 @@ export const appRouter = router({
   }),
   // ── AI Content Tools ─────────────────────────────────────────────────────────────────────────────
   aiTools: router({
+    generateSEO: adminGuard
+      .input(z.object({ title: z.string(), content: z.string(), excerpt: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        const { invokeLLM } = await import('./_core/llm');
+        const textContent = input.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 3000);
+        const response = await invokeLLM({
+          messages: [
+            { role: 'system', content: 'You are an SEO expert for an aviation news website. Always respond with valid JSON only.' },
+            { role: 'user', content: `Generate SEO metadata for this aviation article.\n\nTITLE: ${input.title}\n\nCONTENT EXCERPT: ${textContent}\n\nRequirements:\n- metaTitle: 50-60 chars, include primary keyword, compelling\n- metaDescription: 150-160 chars, include call-to-action, summarise the key news\n- focusKeyword: the single most important search term (2-4 words)\n- suggestedTags: 5-8 relevant aviation tags\n\nReturn JSON: { metaTitle, metaDescription, focusKeyword, suggestedTags }` },
+          ],
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'seo_metadata',
+              strict: true,
+              schema: {
+                type: 'object',
+                properties: {
+                  metaTitle: { type: 'string' },
+                  metaDescription: { type: 'string' },
+                  focusKeyword: { type: 'string' },
+                  suggestedTags: { type: 'array', items: { type: 'string' } },
+                },
+                required: ['metaTitle', 'metaDescription', 'focusKeyword', 'suggestedTags'],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+        const raw = response.choices[0].message.content;
+        return JSON.parse(typeof raw === 'string' ? raw : JSON.stringify(raw));
+      }),
     autoFormat: adminGuard
       .input(z.object({ content: z.string(), title: z.string().optional() }))
       .mutation(async ({ input }) => {
@@ -601,6 +633,48 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
       }),
   }),
 
+  errorLog: router({
+    list404s: adminGuard
+      .input(z.object({ resolved: z.boolean().optional(), limit: z.number().default(50) }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const whereClause = input.resolved !== undefined ? `WHERE resolved = ${input.resolved ? 1 : 0}` : '';
+        return rawQuery<any>(
+          `SELECT * FROM error_404_log ${whereClause} ORDER BY hitCount DESC, lastSeen DESC LIMIT ?`,
+          [input.limit]
+        );
+      }),
+    resolve404: adminGuard
+      .input(z.object({ id: z.number(), redirectTo: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        if (input.redirectTo) {
+          // Add a redirect entry and mark as resolved
+          const [row] = await rawQuery<any>('SELECT path FROM error_404_log WHERE id = ? LIMIT 1', [input.id]);
+          if (row) {
+            await rawQuery(
+              'INSERT IGNORE INTO redirects (oldPath, newPath, statusCode) VALUES (?, ?, 301)',
+              [row.path, input.redirectTo]
+            );
+          }
+        }
+        await rawQuery('UPDATE error_404_log SET resolved = 1, redirectTo = ? WHERE id = ?', [input.redirectTo || null, input.id]);
+        return { success: true };
+      }),
+    delete404: adminGuard
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        await rawQuery('DELETE FROM error_404_log WHERE id = ?', [input.id]);
+        return { success: true };
+      }),
+    clearResolved: adminGuard
+      .mutation(async () => {
+        const { rawQuery } = await import('./db');
+        await rawQuery('DELETE FROM error_404_log WHERE resolved = 1');
+        return { success: true };
+      }),
+  }),
   categories: router({
     list: publicProcedure.query(() => getCategories()),
   }),

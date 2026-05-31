@@ -230,6 +230,23 @@ async function startServer() {
         return res.redirect(redirect.statusCode, redirect.newPath);
       }
     } catch {}
+
+    // No redirect found — log the 404 for monitoring (only for paths that look like article/page URLs)
+    if (path.length > 5 && !path.startsWith('/_') && !path.startsWith('/preview')) {
+      try {
+        const { rawQuery } = await import('../db');
+        await rawQuery(
+          `INSERT INTO error_404_log (path, referrer, userAgent, hitCount, firstSeen, lastSeen)
+           VALUES (?, ?, ?, 1, NOW(), NOW())
+           ON DUPLICATE KEY UPDATE hitCount = hitCount + 1, lastSeen = NOW()`,
+          [
+            path.slice(0, 999),
+            (req.headers.referer || req.headers.referrer || '').toString().slice(0, 999),
+            (req.headers['user-agent'] || '').toString().slice(0, 499),
+          ]
+        );
+      } catch {}
+    }
     next();
   });
 

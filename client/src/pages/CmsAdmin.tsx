@@ -16,7 +16,7 @@ import RichTextEditor from "@/components/RichTextEditor";
 import CmsAiTools from "./CmsAiTools";
 
 // ── Types ─────────────────────────────────────────────────────────────────────────────
-type View = "dashboard" | "articles" | "new-article" | "edit-article" | "categories" | "ai-tools" | "settings";
+type View = "dashboard" | "articles" | "new-article" | "edit-article" | "categories" | "ai-tools" | "settings" | "error-log";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function Badge({ children, colour = "yellow" }: { children: React.ReactNode; colour?: "yellow" | "green" | "red" | "blue" }) {
@@ -412,6 +412,36 @@ function RevisionHistoryPanel({ articleId, onRestore, onClose }: {
         )}
       </div>
     </div>
+  );
+}
+
+// ── AI SEO Button ──────────────────────────────────────────────────────────
+type SeoResult = { metaTitle: string; metaDescription: string; focusKeyword: string; suggestedTags: string[] };
+
+function AiSeoButton({ title, content, excerpt, onGenerated }: {
+  title: string;
+  content: string;
+  excerpt: string;
+  onGenerated: (seo: SeoResult) => void;
+}) {
+  const generateSEO = trpc.aiTools.generateSEO.useMutation({
+    onSuccess: (data) => onGenerated(data as SeoResult),
+    onError: (e: any) => toast.error("SEO generation failed: " + e.message),
+  });
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (!title && !content) { toast.error("Add a title and some content first"); return; }
+        generateSEO.mutate({ title, content, excerpt });
+      }}
+      disabled={generateSEO.isPending}
+      className="ml-auto text-[10px] bg-[#F5C518]/10 text-[#F5C518] hover:bg-[#F5C518]/20 font-bold px-2 py-0.5 rounded transition-colors disabled:opacity-50 flex items-center gap-1"
+      title="Auto-generate SEO meta title, description, and focus keyword using AI"
+    >
+      {generateSEO.isPending ? <><span className="animate-spin">✈</span> Generating...</> : "✨ AI Generate"}
+    </button>
   );
 }
 
@@ -1059,6 +1089,24 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
             <div className="flex items-center gap-2 mb-3">
               <div className="text-xs text-gray-500 font-bold uppercase tracking-wide">SEO</div>
               <span className="text-[10px] bg-green-400/15 text-green-400 px-1.5 py-0.5 rounded font-bold">Search Rankings</span>
+              <AiSeoButton
+                title={title}
+                content={content}
+                excerpt={excerpt}
+                onGenerated={(seo) => {
+                  setMetaTitle(seo.metaTitle);
+                  setMetaDescription(seo.metaDescription);
+                  setMetaKeywords(seo.focusKeyword);
+                  if (seo.suggestedTags?.length > 0) {
+                    setTags(prev => {
+                      const existing = prev ? prev.split(',').map(t => t.trim()).filter(Boolean) : [];
+                      const newTags = seo.suggestedTags.filter((t: string) => !existing.includes(t));
+                      return [...existing, ...newTags].join(', ');
+                    });
+                  }
+                  toast.success('✨ SEO metadata generated ✈');
+                }}
+              />
             </div>
             <div className="space-y-2">
               <div>
@@ -1223,6 +1271,114 @@ function CmsSettings() {
   );
 }
 
+// ── 404 Error Log ─────────────────────────────────────────────────────────
+function Cms404Log() {
+  const [showResolved, setShowResolved] = useState(false);
+  const [redirectInput, setRedirectInput] = useState<Record<number, string>>({});
+  const { data: errors, refetch, isLoading } = trpc.errorLog.list404s.useQuery({ resolved: showResolved ? true : false });
+  const resolveMutation = trpc.errorLog.resolve404.useMutation({ onSuccess: () => { toast.success('Redirect created ✈'); refetch(); } });
+  const deleteMutation = trpc.errorLog.delete404.useMutation({ onSuccess: () => refetch() });
+  const clearMutation = trpc.errorLog.clearResolved.useMutation({ onSuccess: () => { toast.success('Cleared ✈'); refetch(); } });
+
+  return (
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-black text-white">404 Error Log</h1>
+          <p className="text-xs text-gray-500 mt-1">URLs that visitors tried to access but weren't found. Create redirects to fix them.</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowResolved(!showResolved)}
+            className={`text-xs px-3 py-1.5 rounded border font-bold transition-colors ${
+              showResolved ? 'bg-green-400/10 border-green-400/30 text-green-400' : 'bg-[#111] border-[#333] text-gray-400 hover:text-white'
+            }`}
+          >
+            {showResolved ? '✓ Showing Resolved' : 'Show Unresolved'}
+          </button>
+          {showResolved && (
+            <button onClick={() => clearMutation.mutate()} disabled={clearMutation.isPending} className="text-xs px-3 py-1.5 rounded border border-red-400/30 text-red-400 hover:bg-red-400/10 transition-colors">
+              Clear All Resolved
+            </button>
+          )}
+        </div>
+      </div>
+
+      {isLoading && <p className="text-gray-500 text-sm">Loading...</p>}
+      {!isLoading && (!errors || errors.length === 0) && (
+        <div className="bg-[#111] border border-[#222] rounded-xl p-8 text-center">
+          <div className="text-3xl mb-2">✅</div>
+          <p className="text-gray-400 font-bold">No {showResolved ? 'resolved' : 'unresolved'} 404 errors</p>
+          <p className="text-gray-600 text-sm mt-1">{showResolved ? 'No resolved errors to show.' : 'All URLs are resolving correctly.'}</p>
+        </div>
+      )}
+
+      {errors && errors.length > 0 && (
+        <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[#222] text-xs text-gray-500 uppercase tracking-wide">
+                <th className="text-left px-4 py-3">URL Path</th>
+                <th className="text-left px-4 py-3">Hits</th>
+                <th className="text-left px-4 py-3">Last Seen</th>
+                <th className="text-left px-4 py-3">Referrer</th>
+                <th className="text-right px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {errors.map((err: any) => (
+                <tr key={err.id} className="border-b border-[#1a1a1a] hover:bg-[#161616]">
+                  <td className="px-4 py-3">
+                    <div className="font-mono text-xs text-white truncate max-w-xs" title={err.path}>{err.path}</div>
+                    {err.redirectTo && <div className="text-[10px] text-green-400 mt-0.5">→ {err.redirectTo}</div>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs font-bold ${
+                      err.hitCount >= 10 ? 'text-red-400' : err.hitCount >= 3 ? 'text-yellow-400' : 'text-gray-400'
+                    }`}>{err.hitCount}</span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">
+                    {new Date(err.lastSeen).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 text-xs truncate max-w-xs" title={err.referrer}>
+                    {err.referrer ? new URL(err.referrer.startsWith('http') ? err.referrer : 'https://' + err.referrer).hostname : '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    {!err.resolved ? (
+                      <div className="flex items-center gap-1 justify-end">
+                        <input
+                          type="text"
+                          value={redirectInput[err.id] ?? ''}
+                          onChange={(e) => setRedirectInput(prev => ({ ...prev, [err.id]: e.target.value }))}
+                          placeholder="/article/slug"
+                          className="bg-[#0d0d0d] border border-[#333] text-white text-xs px-2 py-1 rounded w-36 focus:outline-none focus:border-[#F5C518]"
+                        />
+                        <button
+                          onClick={() => resolveMutation.mutate({ id: err.id, redirectTo: redirectInput[err.id] || undefined })}
+                          disabled={resolveMutation.isPending}
+                          className="text-xs bg-green-600 text-white font-bold px-2 py-1 rounded hover:bg-green-500 disabled:opacity-50"
+                        >
+                          Fix
+                        </button>
+                        <button onClick={() => deleteMutation.mutate({ id: err.id })} className="text-red-400 text-xs hover:text-red-300">✕</button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 justify-end">
+                        <span className="text-[10px] text-green-400 font-bold">✓ Fixed</span>
+                        <button onClick={() => deleteMutation.mutate({ id: err.id })} className="text-gray-500 text-xs hover:text-red-400">✕</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main CMS Shell ─────────────────────────────────────────────────────────
 export default function CmsAdmin() {
   const { user, loading } = useAuth();
@@ -1243,6 +1399,7 @@ export default function CmsAdmin() {
     { id: "ai-tools" as View, label: "✨ AI Tools", badge: "NEW" },
     { id: "categories" as View, label: "🏷 Categories" },
     { id: "settings" as View, label: "⚙ Settings" },
+    { id: "error-log" as View, label: "🚨 404 Errors" },
   ];
 
   const navigate = (v: View, id?: number) => {
@@ -1307,6 +1464,7 @@ export default function CmsAdmin() {
           />
         )}
         {view === "settings" && <CmsSettings />}
+        {view === "error-log" && <Cms404Log />}
       </div>
     </div>
   );
