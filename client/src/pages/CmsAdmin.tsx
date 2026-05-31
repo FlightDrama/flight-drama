@@ -84,166 +84,54 @@ function CmsLogin({ onLogin }: { onLogin: () => void }) {
               disabled={loginMutation.isPending}
               className="w-full bg-[#F5C518] text-black font-black py-2.5 rounded hover:bg-[#e0b015] transition-colors disabled:opacity-50"
             >
-              {loginMutation.isPending ? "Signing in..." : "Sign In ✈"}
+              {loginMutation.isPending ? "Signing in..." : "Sign In →"}
             </button>
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ── Main CMS Shell ─────────────────────────────────────────────────────────
-export default function CmsAdmin() {
-  const { user, isAuthenticated, loading, logout } = useAuth();
-  const [view, setView] = useState<View>("dashboard");
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const utils = trpc.useUtils();
-
-  // Refresh auth after login
-  const handleLogin = () => {
-    utils.auth.me.invalidate();
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="text-[#F5C518] text-2xl animate-pulse">✈</div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated || !user) {
-    return <CmsLogin onLogin={handleLogin} />;
-  }
-
-  if (user.role !== "admin") {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-center p-4">
-        <div>
-          <div className="text-4xl mb-4">🚫</div>
-          <h1 className="text-xl font-black text-white mb-2">Access Denied</h1>
-          <p className="text-gray-500 mb-4">You need admin access to use the CMS.</p>
-          <a href="/" className="text-[#F5C518] hover:underline">← Back to Flight Drama</a>
-        </div>
-      </div>
-    );
-  }
-
-  const navItems: { id: View; label: string; icon: string; badge?: string }[] = [
-    { id: "dashboard", label: "Dashboard", icon: "📊" },
-    { id: "articles", label: "Articles", icon: "📰" },
-    { id: "new-article", label: "New Article", icon: "✏️" },
-    { id: "ai-tools", label: "AI Tools", icon: "✨", badge: "NEW" },
-    { id: "categories", label: "Categories", icon: "🏷️" },
-    { id: "settings", label: "Settings", icon: "⚙️" },
-  ];
-
-  const showView = (v: View, id?: number) => {
-    setView(v);
-    if (id !== undefined) setEditingId(id);
-  };
-
-  return (
-    <div className="min-h-screen bg-[#0a0a0a] flex">
-      {/* Sidebar */}
-      <aside className="w-52 bg-[#0d0d0d] border-r border-[#1a1a1a] flex flex-col shrink-0">
-        <div className="p-4 border-b border-[#1a1a1a]">
-          <div className="text-lg font-black text-white">
-            <span className="text-[#F5C518]">FLIGHT</span>DRAMA
-          </div>
-          <div className="text-[10px] text-gray-600 font-bold uppercase tracking-wider mt-0.5">CMS</div>
-        </div>
-        <nav className="flex-1 p-3 space-y-0.5">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => showView(item.id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
-                view === item.id || (view === "edit-article" && item.id === "articles")
-                  ? "bg-[#F5C518]/10 text-[#F5C518]"
-                  : "text-gray-500 hover:text-white hover:bg-[#1a1a1a]"
-              }`}
-            >
-              <span>{item.icon}</span>
-              <span className="flex-1">{item.label}</span>
-              {item.badge && <span className="text-[9px] bg-[#F5C518] text-black font-black px-1 py-0.5 rounded">{item.badge}</span>}
-            </button>
-          ))}
-        </nav>
-        <div className="p-3 border-t border-[#1a1a1a]">
-          <div className="text-xs text-gray-600 mb-2 truncate">{user.name || user.email}</div>
-          <div className="flex gap-2">
-            <a href="/" target="_blank" className="flex-1 text-center text-xs text-gray-500 hover:text-white bg-[#1a1a1a] border border-[#2a2a2a] px-2 py-1.5 rounded transition-colors">
-              View Site
-            </a>
-            <button
-              onClick={() => logout()}
-              className="flex-1 text-center text-xs text-gray-500 hover:text-white bg-[#1a1a1a] border border-[#2a2a2a] px-2 py-1.5 rounded transition-colors"
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        {view === "dashboard" && <CmsDashboard onEdit={(id) => showView("edit-article", id)} />}
-        {view === "articles" && <CmsArticlesList onEdit={(id) => showView("edit-article", id)} onNew={() => showView("new-article")} />}
-        {view === "new-article" && <CmsArticleEditor articleId={null} onSaved={() => showView("articles")} onBack={() => showView("articles")} />}
-        {view === "edit-article" && <CmsArticleEditor articleId={editingId} onSaved={() => showView("articles")} onBack={() => showView("articles")} />}
-        {view === "ai-tools" && (
-          <CmsAiTools
-            onUseArticle={(article) => {
-              // Navigate to new article editor with pre-filled content
-              setView("new-article");
-              // Store generated article in sessionStorage for the editor to pick up
-              sessionStorage.setItem('fd_cms_generated_article', JSON.stringify(article));
-            }}
-          />
-        )}
-        {view === "categories" && <CmsCategories />}
-        {view === "settings" && <CmsSettings />}
-      </main>
     </div>
   );
 }
 
 // ── Dashboard ──────────────────────────────────────────────────────────────
-function CmsDashboard({ onEdit }: { onEdit: (id: number) => void }) {
-  const { data: articles } = trpc.articles.list.useQuery({ limit: 5 });
-  const { data: subCount } = trpc.newsletter.count.useQuery();
-  const { data: articlesList } = trpc.articles.list.useQuery({ limit: 100 });
-  const articleCount = articlesList?.length;
+function CmsDashboard({ onNavigate }: { onNavigate: (v: View, id?: number) => void }) {
+  const { data: articles } = trpc.articles.list.useQuery({ limit: 5, sortBy: 'recent' });
+  const { data: allArticles } = trpc.articles.list.useQuery({ limit: 100 });
 
-  const stats = [
-    { label: "Total Articles", value: articleCount ?? "—", colour: "text-[#F5C518]" },
-    { label: "Subscribers", value: subCount ?? "—", colour: "text-green-400" },
-    { label: "Recent Views", value: articles?.reduce((a, b) => a + b.views, 0).toLocaleString() ?? "—", colour: "text-white" },
+  const quickLinks = [
+    { label: "✍ New Article", view: "new-article" as View, colour: "bg-[#F5C518] text-black" },
+    { label: "📋 All Articles", view: "articles" as View, colour: "bg-[#1a1a1a] text-white border border-[#333]" },
+    { label: "✨ AI Tools", view: "ai-tools" as View, colour: "bg-[#1a1a1a] text-white border border-[#333]" },
+    { label: "🏷 Categories", view: "categories" as View, colour: "bg-[#1a1a1a] text-white border border-[#333]" },
   ];
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-black text-white mb-6">Dashboard</h1>
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        {stats.map((s) => (
-          <div key={s.label} className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <div className={`text-3xl font-black ${s.colour}`}>{s.value}</div>
-            <div className="text-xs text-gray-500 font-bold uppercase tracking-wide mt-1">{s.label}</div>
-          </div>
+      <div className="grid grid-cols-2 gap-3 mb-8">
+        {quickLinks.map(({ label, view, colour }) => (
+          <button key={view} onClick={() => onNavigate(view)} className={`${colour} font-bold py-3 rounded-lg text-sm transition-colors hover:opacity-90`}>
+            {label}
+          </button>
         ))}
       </div>
-      <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-        <div className="text-xs text-gray-500 font-bold uppercase tracking-wide mb-4">Recent Articles</div>
+      <div className="bg-[#111] border border-[#222] rounded-xl p-4 mb-6">
+        <div className="text-xs text-gray-500 font-bold uppercase tracking-wide mb-3">Stats</div>
+        <div className="grid grid-cols-2 gap-4">
+          <div><div className="text-2xl font-black text-white">{allArticles?.length ?? 0}</div><div className="text-xs text-gray-500">Articles</div></div>
+          <div><div className="text-2xl font-black text-[#F5C518]">{allArticles?.reduce((s, a) => s + (a.views ?? 0), 0)?.toLocaleString() ?? 0}</div><div className="text-xs text-gray-500">Total Views</div></div>
+        </div>
+      </div>
+      <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+        <div className="text-xs text-gray-500 font-bold uppercase tracking-wide px-4 py-3 border-b border-[#222]">Recent Articles</div>
         {articles?.map((a) => (
-          <div key={a.id} className="flex items-center justify-between py-3 border-b border-[#1a1a1a] last:border-0">
+          <div key={a.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#1a1a1a] hover:bg-[#161616] cursor-pointer" onClick={() => onNavigate("edit-article", a.id)}>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-bold text-white truncate">{a.title}</div>
               <div className="text-xs text-gray-600">{formatDistanceToNow(new Date(a.publishedAt), { addSuffix: true })}</div>
             </div>
             <div className="text-xs text-gray-500 mx-4">{a.views} views</div>
-            <button onClick={() => onEdit(a.id)} className="text-xs text-[#F5C518] hover:underline">Edit</button>
+            <button onClick={() => onNavigate("edit-article", a.id)} className="text-xs text-[#F5C518] hover:underline">Edit</button>
           </div>
         ))}
       </div>
@@ -255,20 +143,62 @@ function CmsDashboard({ onEdit }: { onEdit: (id: number) => void }) {
 function CmsArticlesList({ onEdit, onNew }: { onEdit: (id: number) => void; onNew: () => void }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkAction, setBulkAction] = useState("");
+  const [showBulkCategory, setShowBulkCategory] = useState(false);
+  const [bulkCategoryId, setBulkCategoryId] = useState<number | "">("");
   const LIMIT = 20;
   const { data, refetch } = trpc.articles.list.useQuery({ limit: LIMIT, offset: page * LIMIT, search: search || undefined });
+  const { data: categories } = trpc.categories.list.useQuery();
   const deleteMutation = trpc.articles.delete.useMutation({ onSuccess: () => refetch() });
+  const bulkMutation = trpc.articles.bulkUpdate.useMutation({
+    onSuccess: (res) => {
+      toast.success(`✈ ${res.affected} article${res.affected !== 1 ? 's' : ''} updated`);
+      setSelected(new Set());
+      setBulkAction("");
+      setShowBulkCategory(false);
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const previewMutation = trpc.articles.generatePreviewLink.useMutation({
     onSuccess: (data) => {
       const url = `${window.location.origin}${data.previewUrl}`;
-      navigator.clipboard.writeText(url).then(() => toast.success('Preview link copied to clipboard! 🔗'));
+      navigator.clipboard.writeText(url).then(() => toast.success('Preview link copied! 🔗'));
     },
     onError: (e) => toast.error(e.message),
   });
 
-  const handleDelete = (id: number, title: string) => {
-    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
-    deleteMutation.mutate({ id });
+  const toggleSelect = (id: number) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelected(next);
+  };
+
+  const toggleAll = () => {
+    if (selected.size === (data?.length ?? 0)) setSelected(new Set());
+    else setSelected(new Set(data?.map(a => a.id) ?? []));
+  };
+
+  const applyBulkAction = () => {
+    if (!bulkAction || selected.size === 0) return;
+    const ids = Array.from(selected);
+    if (bulkAction === 'delete') {
+      if (!confirm(`Delete ${ids.length} article${ids.length !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+      bulkMutation.mutate({ ids, action: 'delete' });
+      return;
+    }
+    if (bulkAction === 'setCategory') {
+      setShowBulkCategory(true);
+      return;
+    }
+    bulkMutation.mutate({ ids, action: bulkAction as any });
+  };
+
+  const statusBadge = (a: any) => {
+    if (a.status === 'scheduled') return <span className="text-[10px] font-bold bg-blue-400/15 text-blue-400 px-1.5 py-0.5 rounded">🗓 Scheduled</span>;
+    if (a.status === 'draft') return <span className="text-[10px] font-bold bg-gray-400/15 text-gray-400 px-1.5 py-0.5 rounded">Draft</span>;
+    return <span className="text-[10px] font-bold bg-green-400/15 text-green-400 px-1.5 py-0.5 rounded">✓ Live</span>;
   };
 
   return (
@@ -288,11 +218,65 @@ function CmsArticlesList({ onEdit, onNew }: { onEdit: (id: number) => void; onNe
           className="w-full bg-[#111] border border-[#333] text-white px-3 py-2 rounded focus:outline-none focus:border-[#F5C518] transition-colors"
         />
       </div>
+
+      {/* Bulk action toolbar */}
+      {selected.size > 0 && (
+        <div className="mb-4 flex items-center gap-3 bg-[#F5C518]/10 border border-[#F5C518]/30 rounded-lg px-4 py-2 flex-wrap">
+          <span className="text-sm text-[#F5C518] font-bold">{selected.size} selected</span>
+          <select
+            value={bulkAction}
+            onChange={(e) => { setBulkAction(e.target.value); setShowBulkCategory(false); }}
+            className="bg-[#111] border border-[#333] text-white px-2 py-1 rounded text-sm focus:outline-none focus:border-[#F5C518]"
+          >
+            <option value="">Choose action...</option>
+            <option value="setFeatured">⭐ Set as Featured</option>
+            <option value="unsetFeatured">Remove Featured</option>
+            <option value="setBreaking">🔴 Set as Breaking</option>
+            <option value="unsetBreaking">Remove Breaking</option>
+            <option value="setCategory">🏷 Change Category</option>
+            <option value="delete">🗑 Delete selected</option>
+          </select>
+          {bulkAction === 'setCategory' && showBulkCategory && (
+            <select
+              value={bulkCategoryId}
+              onChange={(e) => setBulkCategoryId(e.target.value ? Number(e.target.value) : "")}
+              className="bg-[#111] border border-[#333] text-white px-2 py-1 rounded text-sm focus:outline-none focus:border-[#F5C518]"
+            >
+              <option value="">Select category...</option>
+              {categories?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
+          <button
+            onClick={() => {
+              if (bulkAction === 'setCategory' && showBulkCategory && bulkCategoryId) {
+                bulkMutation.mutate({ ids: Array.from(selected), action: 'setCategory', categoryId: Number(bulkCategoryId) });
+              } else {
+                applyBulkAction();
+              }
+            }}
+            disabled={!bulkAction || bulkMutation.isPending}
+            className="bg-[#F5C518] text-black font-bold px-3 py-1 rounded text-sm hover:bg-[#e0b015] disabled:opacity-50 transition-colors"
+          >
+            {bulkMutation.isPending ? 'Working...' : 'Apply'}
+          </button>
+          <button onClick={() => { setSelected(new Set()); setBulkAction(""); setShowBulkCategory(false); }} className="text-gray-500 text-xs hover:text-white ml-auto">✕ Clear</button>
+        </div>
+      )}
+
       <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#222] text-xs text-gray-500 uppercase tracking-wide">
+              <th className="px-4 py-3 w-8">
+                <input
+                  type="checkbox"
+                  checked={selected.size === (data?.length ?? 0) && (data?.length ?? 0) > 0}
+                  onChange={toggleAll}
+                  className="w-3.5 h-3.5 accent-yellow-400"
+                />
+              </th>
               <th className="text-left px-4 py-3">Title</th>
+              <th className="text-left px-4 py-3">Status</th>
               <th className="text-left px-4 py-3">Category</th>
               <th className="text-left px-4 py-3">Published</th>
               <th className="text-left px-4 py-3">Views</th>
@@ -302,11 +286,15 @@ function CmsArticlesList({ onEdit, onNew }: { onEdit: (id: number) => void; onNe
           </thead>
           <tbody>
             {data?.map((a) => (
-              <tr key={a.id} className="border-b border-[#1a1a1a] hover:bg-[#161616] transition-colors">
+              <tr key={a.id} className={`border-b border-[#1a1a1a] hover:bg-[#161616] transition-colors ${selected.has(a.id) ? 'bg-[#F5C518]/5' : ''}`}>
+                <td className="px-4 py-3">
+                  <input type="checkbox" checked={selected.has(a.id)} onChange={() => toggleSelect(a.id)} className="w-3.5 h-3.5 accent-yellow-400" />
+                </td>
                 <td className="px-4 py-3">
                   <div className="font-bold text-white truncate max-w-xs">{a.title}</div>
                   <div className="text-xs text-gray-600 truncate max-w-xs">{a.slug}</div>
                 </td>
+                <td className="px-4 py-3">{statusBadge(a)}</td>
                 <td className="px-4 py-3">
                   {a.categoryName && <Badge colour="yellow">{a.categoryName}</Badge>}
                 </td>
@@ -331,14 +319,14 @@ function CmsArticlesList({ onEdit, onNew }: { onEdit: (id: number) => void; onNe
                   >
                     {previewMutation.isPending ? '...' : '🔗 Preview'}
                   </button>
-                  <button onClick={() => handleDelete(a.id, a.title)} className="text-red-400 text-xs hover:underline">Delete</button>
+                  <button onClick={() => { if (confirm(`Delete "${a.title}"? This cannot be undone.`)) deleteMutation.mutate({ id: a.id }); }} className="text-red-400 text-xs hover:underline">Delete</button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
         <div className="flex items-center justify-between px-4 py-3 border-t border-[#222]">
-          <span className="text-xs text-gray-500">{data?.length ?? 0} articles</span>
+          <span className="text-xs text-gray-500">{data?.length ?? 0} articles{selected.size > 0 ? ` — ${selected.size} selected` : ''}</span>
           <div className="flex gap-2">
             <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0} className="text-xs text-gray-500 hover:text-white disabled:opacity-30">← Prev</button>
             <span className="text-xs text-gray-500">Page {page + 1}</span>
@@ -408,6 +396,80 @@ function RevisionHistoryPanel({ articleId, onRestore, onClose }: {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Tags Autocomplete ──────────────────────────────────────────────────────
+function TagsInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { data: allTags } = trpc.articles.tagSuggestions.useQuery();
+  const [inputVal, setInputVal] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const currentTags = value ? value.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+  const suggestions = allTags?.filter(t =>
+    inputVal.length > 0 &&
+    t.toLowerCase().includes(inputVal.toLowerCase()) &&
+    !currentTags.map(ct => ct.toLowerCase()).includes(t.toLowerCase())
+  ).slice(0, 8) ?? [];
+
+  const addTag = (tag: string) => {
+    const trimmed = tag.trim();
+    if (!trimmed) return;
+    if (currentTags.map(t => t.toLowerCase()).includes(trimmed.toLowerCase())) return;
+    const newTags = [...currentTags, trimmed];
+    onChange(newTags.join(', '));
+    setInputVal("");
+    setShowSuggestions(false);
+  };
+
+  const removeTag = (tag: string) => {
+    onChange(currentTags.filter(t => t !== tag).join(', '));
+  };
+
+  return (
+    <div className="relative">
+      {/* Tag chips */}
+      {currentTags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {currentTags.map(tag => (
+            <span key={tag} className="flex items-center gap-1 bg-[#F5C518]/15 text-[#F5C518] text-xs px-2 py-0.5 rounded font-bold">
+              #{tag}
+              <button onClick={() => removeTag(tag)} className="text-[#F5C518]/60 hover:text-[#F5C518] ml-0.5">×</button>
+            </span>
+          ))}
+        </div>
+      )}
+      {/* Input */}
+      <input
+        type="text"
+        value={inputVal}
+        onChange={(e) => { setInputVal(e.target.value); setShowSuggestions(true); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(inputVal); }
+          if (e.key === 'Backspace' && !inputVal && currentTags.length > 0) removeTag(currentTags[currentTags.length - 1]);
+        }}
+        onFocus={() => setShowSuggestions(true)}
+        onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+        className="w-full bg-[#0d0d0d] border border-[#333] text-white px-2 py-1.5 rounded text-sm focus:outline-none focus:border-[#F5C518]"
+        placeholder={currentTags.length > 0 ? "Add more tags..." : "Type a tag and press Enter..."}
+      />
+      {/* Suggestions dropdown */}
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg shadow-xl overflow-hidden">
+          {suggestions.map(tag => (
+            <button
+              key={tag}
+              onMouseDown={(e) => { e.preventDefault(); addTag(tag); }}
+              className="w-full text-left px-3 py-1.5 text-sm text-gray-300 hover:bg-[#F5C518]/10 hover:text-[#F5C518] transition-colors"
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
+      )}
+      <p className="text-[10px] text-gray-600 mt-1">Press Enter or comma to add a tag. Click × to remove.</p>
     </div>
   );
 }
@@ -562,6 +624,7 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
           setMetaTitle(gen.metaTitle || '');
           setMetaDescription(gen.metaDescription || '');
           if (gen.suggestedTags) setTags(gen.suggestedTags.join(', '));
+          if (gen.featuredImage) setFeaturedImage(gen.featuredImage);
           // Auto-generate slug from title
           if (gen.title) setSlug(gen.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80));
           sessionStorage.removeItem('fd_cms_generated_article');
@@ -604,7 +667,7 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
   }, [fullArticle, content]);
 
   const createMutation = trpc.articles.create.useMutation({
-    onSuccess: () => { toast.success("Article published ✈"); onSaved(); },
+    onSuccess: () => { clearAutoSave(); toast.success("Article published ✈"); onSaved(); },
     onError: (e) => toast.error(e.message),
   });
   const updateMutation = trpc.articles.update.useMutation({
@@ -927,13 +990,7 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
           {/* Tags */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-4">
             <div className="text-xs text-gray-500 font-bold uppercase tracking-wide mb-2">Tags</div>
-            <input
-              type="text"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              className="w-full bg-[#0d0d0d] border border-[#333] text-white px-2 py-1.5 rounded text-sm focus:outline-none focus:border-[#F5C518]"
-              placeholder="Boeing, Safety (comma separated)"
-            />
+            <TagsInput value={tags} onChange={setTags} />
           </div>
 
           {/* SEO Metadata */}
@@ -958,9 +1015,9 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
                 <textarea
                   value={metaDescription}
                   onChange={(e) => setMetaDescription(e.target.value.slice(0, 320))}
-                  rows={3}
-                  className={`w-full bg-[#0d0d0d] border text-white px-2 py-1.5 rounded text-sm focus:outline-none resize-none transition-colors ${metaDescription.length > 160 ? 'border-orange-500' : 'border-[#333] focus:border-[#F5C518]'}`}
-                  placeholder={excerpt || "Brief description for search results (aim for 120-160 chars)"}
+                  rows={2}
+                  className={`w-full bg-[#0d0d0d] border text-white px-2 py-1.5 rounded text-sm focus:outline-none transition-colors resize-none ${metaDescription.length > 160 ? 'border-orange-500' : 'border-[#333] focus:border-[#F5C518]'}`}
+                  placeholder={excerpt || "Description for search results"}
                 />
               </div>
               <div>
@@ -970,12 +1027,12 @@ function CmsArticleEditor({ articleId, onSaved, onBack }: { articleId: number | 
                   value={metaKeywords}
                   onChange={(e) => setMetaKeywords(e.target.value)}
                   className="w-full bg-[#0d0d0d] border border-[#333] text-white px-2 py-1.5 rounded text-sm focus:outline-none focus:border-[#F5C518]"
-                  placeholder="Boeing 737, aviation safety, MCAS"
+                  placeholder="aviation, Boeing, safety"
                 />
               </div>
-              {/* SEO preview */}
+              {/* Google preview */}
               {(metaTitle || title) && (
-                <div className="bg-white rounded p-3 mt-2">
+                <div className="mt-2 p-2 bg-white rounded text-left">
                   <div className="text-[13px] text-blue-700 font-medium truncate">{metaTitle || title}</div>
                   <div className="text-[11px] text-green-700 truncate">flightdrama.com/article/{slug}</div>
                   <div className="text-[12px] text-gray-600 line-clamp-2 mt-0.5">{metaDescription || excerpt || "No description set"}</div>
@@ -1062,40 +1119,133 @@ function CmsCategories() {
 
 // ── Settings ───────────────────────────────────────────────────────────────
 function CmsSettings() {
-  const { user } = useAuth();
-  const [cur, setCur] = useState("");
-  const [newP, setNewP] = useState("");
-  const [newP2, setNewP2] = useState("");
-  const resetMutation = trpc.customAuth.resetPassword.useMutation({
-    onSuccess: () => { toast.success("Password updated"); setCur(""); setNewP(""); setNewP2(""); },
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const updateProfileMutation = trpc.customAuth.updateProfile.useMutation({
+    onSuccess: () => { toast.success("Profile updated ✈"); },
     onError: (e: any) => toast.error(e.message),
   });
 
-  const handleChange = () => {
-    if (newP !== newP2) { toast.error("Passwords do not match"); return; }
-    if (newP.length < 8) { toast.error("Password must be at least 8 characters"); return; }
-    // Use the forgot password flow — first get a token, then reset
-    toast.info("To change your password, use the Forgot Password flow on the login page.");
+  const handleChangePassword = () => {
+    if (!newPassword) { toast.error("Please enter a new password"); return; }
+    if (newPassword !== confirmPassword) { toast.error("Passwords do not match"); return; }
+    if (newPassword.length < 8) { toast.error("Password must be at least 8 characters"); return; }
+    // Password change requires the reset flow — for now show a message
+    toast.info('To change your password, use the Forgot Password flow on the login page.');
   };
 
   return (
-    <div className="p-6 max-w-lg">
+    <div className="p-6">
       <h1 className="text-2xl font-black text-white mb-6">Settings</h1>
-      <div className="bg-[#111] border border-[#222] rounded-xl p-5 mb-4">
-        <div className="text-sm font-bold text-white mb-1">{user?.name}</div>
-        <div className="text-sm text-gray-500">{user?.email}</div>
-        <div className="mt-2"><Badge colour="yellow">{user?.role}</Badge></div>
-      </div>
-      <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+      <div className="bg-[#111] border border-[#222] rounded-xl p-6 max-w-md">
         <div className="text-sm font-bold text-white mb-4">Change Password</div>
         <div className="space-y-3">
-          <input type="password" value={cur} onChange={(e) => setCur(e.target.value)} placeholder="Current password" className="w-full bg-[#0d0d0d] border border-[#333] text-white px-3 py-2 rounded text-sm focus:outline-none focus:border-[#F5C518]" />
-          <input type="password" value={newP} onChange={(e) => setNewP(e.target.value)} placeholder="New password (min 8 chars)" className="w-full bg-[#0d0d0d] border border-[#333] text-white px-3 py-2 rounded text-sm focus:outline-none focus:border-[#F5C518]" />
-          <input type="password" value={newP2} onChange={(e) => setNewP2(e.target.value)} placeholder="Confirm new password" className="w-full bg-[#0d0d0d] border border-[#333] text-white px-3 py-2 rounded text-sm focus:outline-none focus:border-[#F5C518]" />
-          <button onClick={handleChange} className="bg-[#F5C518] text-black font-black px-4 py-2 rounded text-sm hover:bg-[#e0b015] transition-colors">
-            Update Password
+          <div>
+            <label className="text-xs text-gray-500 font-bold uppercase tracking-wide block mb-1">Current Password</label>
+            <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="w-full bg-[#0d0d0d] border border-[#333] text-white px-3 py-2 rounded focus:outline-none focus:border-[#F5C518]" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 font-bold uppercase tracking-wide block mb-1">New Password</label>
+            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full bg-[#0d0d0d] border border-[#333] text-white px-3 py-2 rounded focus:outline-none focus:border-[#F5C518]" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 font-bold uppercase tracking-wide block mb-1">Confirm New Password</label>
+            <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full bg-[#0d0d0d] border border-[#333] text-white px-3 py-2 rounded focus:outline-none focus:border-[#F5C518]" />
+          </div>
+          <button onClick={handleChangePassword} className="w-full bg-[#F5C518] text-black font-black py-2 rounded hover:bg-[#e0b015] transition-colors">
+            Change Password
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main CMS Shell ─────────────────────────────────────────────────────────
+export default function CmsAdmin() {
+  const { user, loading } = useAuth();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [view, setView] = useState<View>("dashboard");
+  const [editingArticleId, setEditingArticleId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (user && user.role === 'admin') setIsLoggedIn(true);
+  }, [user]);
+
+  if (loading) return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center"><div className="text-[#F5C518] text-2xl animate-pulse">✈</div></div>;
+  if (!isLoggedIn) return <CmsLogin onLogin={() => setIsLoggedIn(true)} />;
+
+  const navItems = [
+    { id: "dashboard" as View, label: "📊 Dashboard" },
+    { id: "articles" as View, label: "📋 Articles" },
+    { id: "ai-tools" as View, label: "✨ AI Tools", badge: "NEW" },
+    { id: "categories" as View, label: "🏷 Categories" },
+    { id: "settings" as View, label: "⚙ Settings" },
+  ];
+
+  const navigate = (v: View, id?: number) => {
+    setView(v);
+    if (id !== undefined) setEditingArticleId(id);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] flex">
+      {/* Sidebar */}
+      <div className="w-52 bg-[#0d0d0d] border-r border-[#1a1a1a] flex flex-col shrink-0">
+        <div className="px-4 py-5 border-b border-[#1a1a1a]">
+          <div className="text-lg font-black"><span className="text-[#F5C518]">FLIGHT</span>DRAMA</div>
+          <div className="text-[10px] text-gray-600 uppercase tracking-widest">CMS</div>
+        </div>
+        <nav className="flex-1 py-3">
+          {navItems.map(({ id, label, badge }) => (
+            <button
+              key={id}
+              onClick={() => { setView(id); setEditingArticleId(null); }}
+              className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2 ${
+                view === id || (view === 'new-article' && id === 'articles') || (view === 'edit-article' && id === 'articles')
+                  ? 'bg-[#F5C518]/10 text-[#F5C518] font-bold border-r-2 border-[#F5C518]'
+                  : 'text-gray-400 hover:text-white hover:bg-[#1a1a1a]'
+              }`}
+            >
+              {label}
+              {badge && <span className="ml-auto text-[9px] bg-[#F5C518] text-black font-black px-1 rounded">{badge}</span>}
+            </button>
+          ))}
+        </nav>
+        <div className="px-4 py-3 border-t border-[#1a1a1a]">
+          <div className="text-xs text-gray-600 truncate">{user?.email}</div>
+          <a href="/" className="text-xs text-[#F5C518] hover:underline">← View site</a>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 overflow-auto">
+        {view === "dashboard" && <CmsDashboard onNavigate={navigate} />}
+        {view === "articles" && (
+          <CmsArticlesList
+            onEdit={(id) => { setEditingArticleId(id); setView("edit-article"); }}
+            onNew={() => { setEditingArticleId(null); setView("new-article"); }}
+          />
+        )}
+        {(view === "new-article" || view === "edit-article") && (
+          <CmsArticleEditor
+            articleId={view === "new-article" ? null : editingArticleId}
+            onSaved={() => setView("articles")}
+            onBack={() => setView("articles")}
+          />
+        )}
+        {view === "categories" && <CmsCategories />}
+        {view === "ai-tools" && (
+          <CmsAiTools
+            onUseArticle={(article) => {
+              sessionStorage.setItem('fd_cms_generated_article', JSON.stringify(article));
+              setEditingArticleId(null);
+              setView("new-article");
+            }}
+          />
+        )}
+        {view === "settings" && <CmsSettings />}
       </div>
     </div>
   );

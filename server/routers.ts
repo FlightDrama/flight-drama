@@ -251,6 +251,47 @@ export const appRouter = router({
         if (!rows[0]) throw new Error('Preview not found or link has expired');
         return rows[0];
       }),
+    bulkUpdate: adminGuard
+      .input(z.object({
+        ids: z.array(z.number()),
+        action: z.enum(['delete', 'setFeatured', 'unsetFeatured', 'setBreaking', 'unsetBreaking', 'setCategory']),
+        categoryId: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        if (input.ids.length === 0) return { affected: 0 };
+        const placeholders = input.ids.map(() => '?').join(',');
+        if (input.action === 'delete') {
+          await rawQuery(`DELETE FROM articles WHERE id IN (${placeholders})`, input.ids);
+        } else if (input.action === 'setFeatured') {
+          await rawQuery(`UPDATE articles SET isFeatured = 1 WHERE id IN (${placeholders})`, input.ids);
+        } else if (input.action === 'unsetFeatured') {
+          await rawQuery(`UPDATE articles SET isFeatured = 0 WHERE id IN (${placeholders})`, input.ids);
+        } else if (input.action === 'setBreaking') {
+          await rawQuery(`UPDATE articles SET isBreaking = 1 WHERE id IN (${placeholders})`, input.ids);
+        } else if (input.action === 'unsetBreaking') {
+          await rawQuery(`UPDATE articles SET isBreaking = 0 WHERE id IN (${placeholders})`, input.ids);
+        } else if (input.action === 'setCategory' && input.categoryId) {
+          await rawQuery(`UPDATE articles SET categoryId = ? WHERE id IN (${placeholders})`, [input.categoryId, ...input.ids]);
+        }
+        return { affected: input.ids.length };
+      }),
+    tagSuggestions: adminGuard
+      .query(async () => {
+        const { rawQuery } = await import('./db');
+        const rows = await rawQuery<any>('SELECT tags FROM articles WHERE tags IS NOT NULL AND tags != \'[]\'');
+        const allTags = new Set<string>();
+        for (const row of rows) {
+          try {
+            const parsed = JSON.parse(row.tags);
+            if (Array.isArray(parsed)) parsed.forEach((t: string) => allTags.add(t.trim()));
+          } catch {
+            // comma-separated fallback
+            row.tags.split(',').forEach((t: string) => { if (t.trim()) allTags.add(t.trim()); });
+          }
+        }
+        return Array.from(allTags).sort();
+      }),
     checkSlug: adminGuard
       .input(z.object({ slug: z.string(), excludeId: z.number().optional() }))
       .query(async ({ input }) => {
