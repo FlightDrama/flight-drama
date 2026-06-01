@@ -1350,6 +1350,30 @@ function Cms404Log() {
     }
   }, [errors, allArticles]);
 
+  // Bulk accept all high-confidence AI suggestions
+  const handleBulkAccept = () => {
+    const highConfidence = (errors || [] as any[]).filter((e: any) => {
+      if (e.resolved) return false;
+      const suggestion = getSuggestion(e.path);
+      if (!suggestion) return false;
+      // Only auto-accept if score is high (>0.35)
+      const slug = e.path.replace(/\/$/, '').split('/').pop() || e.path;
+      let best = 0;
+      for (const article of allArticles || []) {
+        const score = Math.max(similarity(slug, article.slug), similarity(slug, article.title));
+        if (score > best) best = score;
+      }
+      return best > 0.35;
+    });
+    if (highConfidence.length === 0) { toast.error('No high-confidence suggestions to accept'); return; }
+    if (!confirm(`Accept ${highConfidence.length} AI-suggested redirect${highConfidence.length !== 1 ? 's' : ''}? This will create 301 redirects for all of them.`)) return;
+    const rows = highConfidence.map((e: any) => ({
+      oldPath: e.path,
+      newPath: getSuggestion(e.path),
+    })).filter((r: any) => r.newPath);
+    importMutation.mutate({ rows });
+  };
+
   const filteredErrors = (errors || []).filter((e: any) =>
     !filterText || e.path.toLowerCase().includes(filterText.toLowerCase())
   ).sort((a: any, b: any) =>
@@ -1364,6 +1388,14 @@ function Cms404Log() {
           <p className="text-xs text-gray-500 mt-1">URLs visitors tried to access but weren't found. Create redirects to fix them.</p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={handleBulkAccept}
+            disabled={importMutation.isPending}
+            className="text-xs px-3 py-1.5 rounded border border-[#F5C518]/30 bg-[#F5C518]/10 text-[#F5C518] font-bold hover:bg-[#F5C518]/20 transition-colors disabled:opacity-50"
+            title="Automatically accept all high-confidence AI redirect suggestions (score > 35%)"
+          >
+            {importMutation.isPending ? '✈ Accepting...' : '✨ Bulk Accept AI'}
+          </button>
           <button
             onClick={() => setShowCsvImport(!showCsvImport)}
             className={`text-xs px-3 py-1.5 rounded border font-bold transition-colors ${

@@ -10,6 +10,7 @@ import FlightStats from "@/components/FlightStats";
 import LiveFlightsWidget from "@/components/LiveFlightsWidget";
 import AdSlot from "@/components/AdSlot";
 import MostReadWidget from "@/components/MostReadWidget";
+import FlightSearchBar from "@/components/FlightSearchBar";
 
 const CATEGORY_FILTERS = [
   { label: "All", value: undefined },
@@ -70,6 +71,11 @@ export default function Home() {
             <h1 className="text-xl font-black text-white">Search: <span className="text-[oklch(0.85_0.18_95)]">"{urlSearch}"</span></h1>
           </div>
         )}
+        {/* Flight-themed search bar */}
+        <div className="mb-6">
+          <FlightSearchBar />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3">
             <div className="flex items-center gap-2 mb-5 overflow-x-auto pb-2">
