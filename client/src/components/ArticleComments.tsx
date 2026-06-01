@@ -82,17 +82,16 @@ function CommentItem({ comment, replies, sessionId, isAuthenticated, isAdmin, on
           <button
             onClick={() => {
               const url = `${window.location.origin}${window.location.pathname}#comment-${comment.id}`;
-              navigator.clipboard.writeText(url).then(() => {
-                // Brief visual feedback via title change
-              });
               const shareText = `"${comment.content.slice(0, 100)}${comment.content.length > 100 ? '...' : ''}" — ${comment.userName} on Flight Drama`;
               if (navigator.share) {
-                navigator.share({ title: 'Flight Drama Comment', text: shareText, url });
+                navigator.share({ title: 'Flight Drama Comment', text: shareText, url })
+                  .catch(() => {});
               } else {
-                navigator.clipboard.writeText(url);
-                // Show a tiny toast-like indicator
-                const btn = document.activeElement as HTMLButtonElement;
-                if (btn) { const orig = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => { if (btn) btn.textContent = orig; }, 1500); }
+                navigator.clipboard.writeText(url).then(() => {
+                  toast.success('✈ Link copied to clipboard');
+                }).catch(() => {
+                  toast.error('Could not copy link');
+                });
               }
             }}
             className="flex items-center gap-1 text-xs text-[oklch(0.35_0_0)] hover:text-[oklch(0.85_0.18_95)] transition-all duration-150 hover:scale-110 active:scale-90"
