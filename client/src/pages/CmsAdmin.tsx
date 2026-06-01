@@ -1303,6 +1303,53 @@ function Cms404Log() {
     importMutation.mutate({ rows });
   };
 
+  // Fetch all articles for auto-suggest matching
+  const { data: allArticles } = trpc.articles.list.useQuery({ limit: 200 });
+
+  // Fuzzy match: score how similar two strings are (0-1)
+  const similarity = (a: string, b: string): number => {
+    const wordsA = a.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+    const wordsB = b.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+    if (!wordsA.length || !wordsB.length) return 0;
+    const setB = new Set(wordsB);
+    const matches = wordsA.filter(w => w.length > 3 && setB.has(w)).length;
+    return matches / Math.max(wordsA.length, wordsB.length);
+  };
+
+  // Find the best matching article for a 404 path
+  const getSuggestion = (path: string): string => {
+    if (!allArticles || allArticles.length === 0) return '';
+    // Extract the slug part from the path (last segment)
+    const slug = path.replace(/\/$/, '').split('/').pop() || path;
+    let best = { score: 0, articleSlug: '' };
+    for (const article of allArticles) {
+      const score = Math.max(
+        similarity(slug, article.slug),
+        similarity(slug, article.title)
+      );
+      if (score > best.score) best = { score, articleSlug: article.slug };
+    }
+    return best.score > 0.2 ? `/article/${best.articleSlug}` : '';
+  };
+
+  // Auto-fill suggestions for all unresolved errors on load
+  const [suggestionsApplied, setSuggestionsApplied] = useState(false);
+  useEffect(() => {
+    if (errors && allArticles && !suggestionsApplied) {
+      const newInputs: Record<number, string> = {};
+      for (const err of errors as any[]) {
+        if (!err.resolved && !redirectInput[err.id]) {
+          const suggestion = getSuggestion(err.path);
+          if (suggestion) newInputs[err.id] = suggestion;
+        }
+      }
+      if (Object.keys(newInputs).length > 0) {
+        setRedirectInput(prev => ({ ...newInputs, ...prev }));
+        setSuggestionsApplied(true);
+      }
+    }
+  }, [errors, allArticles]);
+
   const filteredErrors = (errors || []).filter((e: any) =>
     !filterText || e.path.toLowerCase().includes(filterText.toLowerCase())
   ).sort((a: any, b: any) =>
@@ -1427,13 +1474,24 @@ function Cms404Log() {
                   </td>
                   <td className="px-4 py-3">
                     {!err.resolved ? (
-                      <div className="flex items-center gap-1 justify-end">
+                      <div className="flex flex-col items-end gap-1">
+                        {/* Auto-suggest badge */}
+                        {getSuggestion(err.path) && redirectInput[err.id] === getSuggestion(err.path) && (
+                          <span className="text-[9px] text-[#F5C518]/70 font-bold flex items-center gap-1">
+                            ✨ AI suggested
+                          </span>
+                        )}
+                        <div className="flex items-center gap-1">
                         <input
                           type="text"
                           value={redirectInput[err.id] ?? ''}
                           onChange={(e) => setRedirectInput(prev => ({ ...prev, [err.id]: e.target.value }))}
                           placeholder="/article/slug"
-                          className="bg-[#0d0d0d] border border-[#333] text-white text-xs px-2 py-1 rounded w-36 focus:outline-none focus:border-[#F5C518]"
+                          className={`bg-[#0d0d0d] border text-white text-xs px-2 py-1 rounded w-44 focus:outline-none focus:border-[#F5C518] ${
+                            redirectInput[err.id] && redirectInput[err.id] === getSuggestion(err.path)
+                              ? 'border-[#F5C518]/40'
+                              : 'border-[#333]'
+                          }`}
                         />
                         <button
                           onClick={() => resolveMutation.mutate({ id: err.id, redirectTo: redirectInput[err.id] || undefined })}
@@ -1443,6 +1501,7 @@ function Cms404Log() {
                           Fix
                         </button>
                         <button onClick={() => deleteMutation.mutate({ id: err.id })} className="text-red-400 text-xs hover:text-red-300">✕</button>
+                        </div>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 justify-end">
