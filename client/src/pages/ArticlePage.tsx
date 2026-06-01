@@ -234,25 +234,56 @@ export default function ArticlePage() {
             <section className="mt-10">
               <RunwayDivider label="You Might Also Like" />
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-4">
-                {filtered.map(a => {
-                  const wordCount = (a.excerpt ?? '').split(' ').length * 8; // rough estimate
+                {filtered.map((a, idx) => {
+                  const wordCount = (a.excerpt ?? '').split(' ').length * 8;
                   const readTime = Math.max(1, Math.round(wordCount / 200));
+                  const savedKey = `fd_saved_${a.slug}`;
+                  const isSaved = typeof window !== 'undefined' && !!localStorage.getItem(savedKey);
                   return (
                     <div
                       key={a.id}
-                      onClick={() => window.location.href = `/article/${a.slug}`}
-                      className="group cursor-pointer bg-[oklch(0.13_0_0)] border border-[oklch(0.20_0_0)] hover:border-[oklch(0.85_0.18_95)]/40 transition-all duration-200 rounded-lg overflow-hidden"
+                      className="group cursor-pointer bg-[oklch(0.13_0_0)] border border-[oklch(0.20_0_0)] hover:border-[oklch(0.85_0.18_95)]/40 transition-all duration-500 rounded-lg overflow-hidden opacity-0 translate-y-4"
+                      style={{
+                        animation: `fadeSlideIn 0.5s ease-out ${idx * 120}ms forwards`,
+                      }}
                     >
                       {a.featuredImage && (
-                        <div className="aspect-[16/9] overflow-hidden">
+                        <div className="aspect-[16/9] overflow-hidden relative">
                           <img
                             src={a.featuredImage}
                             alt={a.title}
+                            onClick={() => window.location.href = `/article/${a.slug}`}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
+                          {/* Save for later bookmark */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const key = `fd_saved_${a.slug}`;
+                              const currently = !!localStorage.getItem(key);
+                              if (currently) {
+                                localStorage.removeItem(key);
+                                (e.currentTarget as HTMLButtonElement).setAttribute('data-saved', 'false');
+                                (e.currentTarget as HTMLButtonElement).title = 'Save for later';
+                                (e.currentTarget.querySelector('svg') as SVGElement).setAttribute('fill', 'none');
+                              } else {
+                                localStorage.setItem(key, JSON.stringify({ slug: a.slug, title: a.title, image: a.featuredImage, savedAt: Date.now() }));
+                                (e.currentTarget as HTMLButtonElement).setAttribute('data-saved', 'true');
+                                (e.currentTarget as HTMLButtonElement).title = 'Saved!';
+                                (e.currentTarget.querySelector('svg') as SVGElement).setAttribute('fill', 'oklch(0.85 0.18 95)');
+                              }
+                            }}
+                            title={isSaved ? 'Saved!' : 'Save for later'}
+                            data-saved={isSaved ? 'true' : 'false'}
+                            className="absolute top-2 right-2 w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-90"
+                          >
+                            <svg viewBox="0 0 24 24" className="w-4 h-4" fill={isSaved ? 'oklch(0.85 0.18 95)' : 'none'} stroke={isSaved ? 'oklch(0.85 0.18 95)' : 'white'} strokeWidth="2">
+                              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                            </svg>
+                          </button>
                         </div>
                       )}
-                      <div className="p-4">
+                      <div className="p-4" onClick={() => window.location.href = `/article/${a.slug}`}>
                         {a.categoryName && (
                           <span className="text-[10px] font-black uppercase tracking-widest text-[oklch(0.85_0.18_95)] mb-2 block">
                             {a.categoryName}
