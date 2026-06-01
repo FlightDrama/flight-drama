@@ -61,22 +61,44 @@ function CommentItem({ comment, replies, sessionId, isAuthenticated, isAdmin, on
         <div className="flex items-center gap-3">
           <button
             onClick={() => onUpvote(comment.id)}
-            className={`flex items-center gap-1 text-xs transition-colors ${
-              isUpvoted ? "text-[oklch(0.85_0.18_95)] font-bold" : "text-[oklch(0.45_0_0)] hover:text-[oklch(0.65_0_0)]"
+            className={`flex items-center gap-1 text-xs transition-all duration-150 active:scale-90 ${
+              isUpvoted ? "text-[oklch(0.85_0.18_95)] font-bold" : "text-[oklch(0.45_0_0)] hover:text-[oklch(0.85_0.18_95)] hover:scale-110"
             }`}
-            title="Upvote"
+            title="Upvote this comment"
           >
             <ThumbsUp className={`w-3.5 h-3.5 ${isUpvoted ? "fill-[oklch(0.85_0.18_95)]" : ""}`} />
             {comment.upvotes > 0 && <span>{comment.upvotes}</span>}
           </button>
           <button
             onClick={() => onDownvote(comment.id)}
-            className={`flex items-center gap-1 text-xs transition-colors ${
-              isDownvoted ? "text-red-400 font-bold" : "text-[oklch(0.45_0_0)] hover:text-red-400"
+            className={`flex items-center gap-1 text-xs transition-all duration-150 active:scale-90 ${
+              isDownvoted ? "text-red-400 font-bold" : "text-[oklch(0.45_0_0)] hover:text-red-400 hover:scale-110"
             }`}
-            title="Downvote"
+            title="Downvote this comment"
           >
             <ThumbsUp className={`w-3.5 h-3.5 rotate-180 ${isDownvoted ? "fill-red-400" : ""}`} />
+          </button>
+          {/* Share this comment */}
+          <button
+            onClick={() => {
+              const url = `${window.location.origin}${window.location.pathname}#comment-${comment.id}`;
+              navigator.clipboard.writeText(url).then(() => {
+                // Brief visual feedback via title change
+              });
+              const shareText = `"${comment.content.slice(0, 100)}${comment.content.length > 100 ? '...' : ''}" — ${comment.userName} on Flight Drama`;
+              if (navigator.share) {
+                navigator.share({ title: 'Flight Drama Comment', text: shareText, url });
+              } else {
+                navigator.clipboard.writeText(url);
+                // Show a tiny toast-like indicator
+                const btn = document.activeElement as HTMLButtonElement;
+                if (btn) { const orig = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => { if (btn) btn.textContent = orig; }, 1500); }
+              }
+            }}
+            className="flex items-center gap-1 text-xs text-[oklch(0.35_0_0)] hover:text-[oklch(0.85_0.18_95)] transition-all duration-150 hover:scale-110 active:scale-90"
+            title="Share this comment"
+          >
+            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
           </button>
           {isAuthenticated && (
             <button

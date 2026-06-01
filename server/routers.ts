@@ -116,6 +116,7 @@ export const appRouter = router({
       .input(z.object({ limit: z.number().default(5) }))
       .query(async ({ input }) => {
         const { rawQuery } = await import('./db');
+        const limit = Math.max(1, Math.min(50, Math.floor(Number(input.limit))));
         return rawQuery<any>(
           `SELECT c.id, c.content, c.upvotes, c.createdAt,
                   u.name as userName, u.avatar as userAvatar,
@@ -125,8 +126,8 @@ export const appRouter = router({
            JOIN articles a ON c.articleId = a.id
            WHERE c.status = 'approved' AND c.upvotes > 0
            ORDER BY c.upvotes DESC, c.createdAt DESC
-           LIMIT ?`,
-          [input.limit]
+           LIMIT ${limit}`,
+          []
         );
       }),
     listPaginated: publicProcedure
