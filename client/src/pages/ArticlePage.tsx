@@ -227,14 +227,63 @@ export default function ArticlePage() {
           </aside>
         </div>
         {/* Related articles */}
-        {related && related.length > 0 && (
-          <section className="mt-8">
-            <RunwayDivider label="Related Stories" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {related.filter(r => r.slug !== slug).slice(0, 4).map(a => <ArticleCard key={a.id} {...a} publishedAt={a.publishedAt} size="medium" />)}
-            </div>
-          </section>
-        )}
+        {related && related.length > 1 && (() => {
+          const filtered = related.filter(r => r.slug !== slug).slice(0, 3);
+          if (filtered.length === 0) return null;
+          return (
+            <section className="mt-10">
+              <RunwayDivider label="You Might Also Like" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-4">
+                {filtered.map(a => {
+                  const wordCount = (a.excerpt ?? '').split(' ').length * 8; // rough estimate
+                  const readTime = Math.max(1, Math.round(wordCount / 200));
+                  return (
+                    <div
+                      key={a.id}
+                      onClick={() => window.location.href = `/article/${a.slug}`}
+                      className="group cursor-pointer bg-[oklch(0.13_0_0)] border border-[oklch(0.20_0_0)] hover:border-[oklch(0.85_0.18_95)]/40 transition-all duration-200 rounded-lg overflow-hidden"
+                    >
+                      {a.featuredImage && (
+                        <div className="aspect-[16/9] overflow-hidden">
+                          <img
+                            src={a.featuredImage}
+                            alt={a.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
+                      )}
+                      <div className="p-4">
+                        {a.categoryName && (
+                          <span className="text-[10px] font-black uppercase tracking-widest text-[oklch(0.85_0.18_95)] mb-2 block">
+                            {a.categoryName}
+                          </span>
+                        )}
+                        <h3 className="text-sm font-black text-white leading-snug line-clamp-2 group-hover:text-[oklch(0.85_0.18_95)] transition-colors mb-2">
+                          {a.title}
+                        </h3>
+                        <div className="flex items-center gap-2 text-[10px] text-[oklch(0.40_0_0)]">
+                          <span>{readTime} min read</span>
+                          <span>·</span>
+                          <span>{(a.views ?? 0).toLocaleString()} views</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {filtered[0]?.categoryName && (
+                <div className="text-center">
+                  <a
+                    href={`/?tab=${filtered[0].categoryName?.toLowerCase().replace(/\s+/g, '-') ?? 'news'}`}
+                    className="inline-flex items-center gap-2 text-xs font-bold text-[oklch(0.85_0.18_95)] hover:underline"
+                  >
+                    More {filtered[0].categoryName} stories →
+                  </a>
+                </div>
+              )}
+            </section>
+          );
+        })()}
       </main>
       <Footer />
     </div>
