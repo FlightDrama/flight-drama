@@ -14,6 +14,8 @@ export default function FlightSearchBar() {
   const [, navigate] = useLocation();
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [isSearching, setIsSearching] = useState(false);
+
   // Live suggestions — search articles as user types
   const { data: suggestions, isLoading: suggestionsLoading } = trpc.articles.list.useQuery(
     { limit: 5, search: query },
@@ -29,9 +31,13 @@ export default function FlightSearchBar() {
   const handleSearch = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (query.trim()) {
-      navigate(`/?search=${encodeURIComponent(query.trim())}`);
-      setFocused(false);
-      inputRef.current?.blur();
+      setIsSearching(true);
+      setTimeout(() => {
+        navigate(`/?search=${encodeURIComponent(query.trim())}`);
+        setFocused(false);
+        setIsSearching(false);
+        inputRef.current?.blur();
+      }, 800);
     }
   };
 
@@ -94,14 +100,36 @@ export default function FlightSearchBar() {
             className="flex-1 bg-transparent text-white text-sm py-3.5 pr-4 focus:outline-none placeholder:text-[oklch(0.35_0_0)] font-mono"
           />
 
-          {/* Clear button */}
-          {query && (
+          {/* Radar sweep loading overlay */}
+          {isSearching && (
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div
+                className="absolute inset-0 opacity-20"
+                style={{
+                  background: 'conic-gradient(from 0deg, transparent 0deg, oklch(0.85 0.18 95) 30deg, transparent 60deg)',
+                  animation: 'spin 0.8s linear infinite',
+                }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-[oklch(0.85_0.18_95)] text-xs font-black font-mono tracking-widest animate-pulse">
+                  SCANNING...
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Eject-themed clear button */}
+          {query && !isSearching && (
             <button
               type="button"
               onClick={() => { setQuery(""); inputRef.current?.focus(); }}
-              className="px-3 text-[oklch(0.40_0_0)] hover:text-white transition-colors text-lg leading-none"
+              className="px-3 text-[oklch(0.40_0_0)] hover:text-[oklch(0.85_0.18_95)] transition-colors group flex flex-col items-center gap-0"
+              title="EJECT — Clear search"
             >
-              ×
+              <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 20h14v-2H5v2zm7-18L5.33 13h13.34L12 2z"/>
+              </svg>
+              <span className="text-[7px] font-black tracking-widest leading-none">EJECT</span>
             </button>
           )}
 
