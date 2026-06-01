@@ -24,13 +24,16 @@ interface CommentItemProps {
   isAdmin?: boolean;
   onReply: (parentId: number, parentName: string) => void;
   upvotedIds: Set<number>;
+  downvotedIds: Set<number>;
   onUpvote: (commentId: number) => void;
+  onDownvote: (commentId: number) => void;
   onPin?: (id: number, pin: boolean) => void;
 }
 
-function CommentItem({ comment, replies, sessionId, isAuthenticated, isAdmin, onReply, upvotedIds, onUpvote, onPin }: CommentItemProps) {
+function CommentItem({ comment, replies, sessionId, isAuthenticated, isAdmin, onReply, upvotedIds, downvotedIds, onUpvote, onDownvote, onPin }: CommentItemProps) {
   const [showReplies, setShowReplies] = useState(true);
   const isUpvoted = upvotedIds.has(comment.id);
+  const isDownvoted = downvotedIds.has(comment.id);
 
   return (
     <div className={`flex gap-3 ${comment.isPinned ? 'bg-[oklch(0.85_0.18_95)]/5 border border-[oklch(0.85_0.18_95)]/20 rounded-lg p-3 -mx-3' : ''}`}>
@@ -61,9 +64,19 @@ function CommentItem({ comment, replies, sessionId, isAuthenticated, isAdmin, on
             className={`flex items-center gap-1 text-xs transition-colors ${
               isUpvoted ? "text-[oklch(0.85_0.18_95)] font-bold" : "text-[oklch(0.45_0_0)] hover:text-[oklch(0.65_0_0)]"
             }`}
+            title="Upvote"
           >
             <ThumbsUp className={`w-3.5 h-3.5 ${isUpvoted ? "fill-[oklch(0.85_0.18_95)]" : ""}`} />
             {comment.upvotes > 0 && <span>{comment.upvotes}</span>}
+          </button>
+          <button
+            onClick={() => onDownvote(comment.id)}
+            className={`flex items-center gap-1 text-xs transition-colors ${
+              isDownvoted ? "text-red-400 font-bold" : "text-[oklch(0.45_0_0)] hover:text-red-400"
+            }`}
+            title="Downvote"
+          >
+            <ThumbsUp className={`w-3.5 h-3.5 rotate-180 ${isDownvoted ? "fill-red-400" : ""}`} />
           </button>
           {isAuthenticated && (
             <button
@@ -204,6 +217,28 @@ export default function ArticleComments({ articleId }: { articleId: number }) {
   const handleUpvote = useCallback((commentId: number) => {
     upvoteMutation.mutate({ commentId, sessionId });
   }, [sessionId, upvoteMutation]);
+
+  const [downvotedIds, setDownvotedIds] = useState<Set<number>>(new Set());
+  const downvoteMutation = trpc.comments.downvote.useMutation({
+    onMutate: ({ commentId }) => {
+      setDownvotedIds(prev => {
+        const next = new Set(prev);
+        if (next.has(commentId)) next.delete(commentId); else next.add(commentId);
+        return next;
+      });
+    },
+    onSettled: () => refetch(),
+  });
+  const handleDownvote = useCallback((commentId: number) => {
+    downvoteMutation.mutate({ commentId, sessionId });
+  }, [sessionId, downvoteMutation]);
+
+  const [visibleCount, setVisibleCount] = useState(10);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const handleLoadMore = () => {
+    setLoadingMore(true);
+    setTimeout(() => { setVisibleCount(prev => prev + 10); setLoadingMore(false); }, 600);
+  };
 
   const pinMutation = trpc.comments.pin.useMutation({
     onSuccess: () => { toast.success('Comment pinned ✈'); refetch(); },
@@ -363,7 +398,7 @@ export default function ArticleComments({ articleId }: { articleId: number }) {
         </div>
       ) : topLevel.length > 0 ? (
         <div className="space-y-6">
-          {topLevel.map((comment: any) => (
+          {topLevel.slice(0, visibleCount).map((comment: any) => (
             <CommentItem
               key={comment.id}
               comment={comment}
@@ -373,10 +408,27 @@ export default function ArticleComments({ articleId }: { articleId: number }) {
               isAdmin={user?.role === 'admin'}
               onReply={(id, name) => { setReplyTo({ id, name }); setSubmitted(false); window.scrollTo({ top: document.querySelector("textarea")?.getBoundingClientRect().top! + window.scrollY - 100, behavior: "smooth" }); }}
               upvotedIds={upvotedIds}
+              downvotedIds={downvotedIds}
               onUpvote={handleUpvote}
+              onDownvote={handleDownvote}
               onPin={(id, pin) => pinMutation.mutate({ id, articleId, pin })}
             />
           ))}
+          {topLevel.length > visibleCount && (
+            <div className="text-center pt-2">
+              <button
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="flex items-center gap-2 mx-auto px-6 py-2.5 bg-[oklch(0.15_0_0)] border border-[oklch(0.25_0_0)] text-sm font-bold text-[oklch(0.65_0_0)] hover:text-white hover:border-[oklch(0.85_0.18_95)] transition-all rounded disabled:opacity-50"
+              >
+                {loadingMore ? (
+                  <><span className="w-4 h-4 border-2 border-[oklch(0.85_0.18_95)] border-t-transparent rounded-full animate-spin" />Loading...</>
+                ) : (
+                  <>↓ Load More Comments <span className="text-[oklch(0.85_0.18_95)] font-black">({topLevel.length - visibleCount} remaining)</span></>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="text-center py-8 text-[oklch(0.40_0_0)]">

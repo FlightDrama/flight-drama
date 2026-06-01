@@ -11,6 +11,7 @@ import LiveFlightsWidget from "@/components/LiveFlightsWidget";
 import AdSlot from "@/components/AdSlot";
 import MostReadWidget from "@/components/MostReadWidget";
 import FlightSearchBar from "@/components/FlightSearchBar";
+import TrendingCommentsWidget from "@/components/TrendingCommentsWidget";
 
 const CATEGORY_FILTERS = [
   { label: "All", value: undefined },
@@ -137,6 +138,7 @@ export default function Home() {
           <aside className="space-y-6">
             <NewsletterSignup source="homepage-sidebar" />
             <MostReadWidget />
+            <TrendingCommentsWidget />
             <LiveFlightsWidget />
             <AdSlot slot="sidebar" />
             <FlightStats />

@@ -93,6 +93,63 @@ export const appRouter = router({
         await rawQuery('UPDATE article_comments SET isPinned = ? WHERE id = ?', [input.pin ? 1 : 0, input.id]);
         return { success: true };
       }),
+    downvote: publicProcedure
+      .input(z.object({ commentId: z.number(), sessionId: z.string().min(8).max(64) }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const key = `dv_${input.sessionId}`;
+        const existing = await rawQuery<{id:number}>(
+          'SELECT id FROM comment_upvotes WHERE commentId = ? AND sessionId = ?',
+          [input.commentId, key]
+        );
+        if (existing.length > 0) {
+          await rawQuery('DELETE FROM comment_upvotes WHERE commentId = ? AND sessionId = ?', [input.commentId, key]);
+          await rawQuery('UPDATE article_comments SET upvotes = upvotes + 1 WHERE id = ?', [input.commentId]);
+          return { added: false };
+        } else {
+          await rawQuery('INSERT IGNORE INTO comment_upvotes (commentId, sessionId) VALUES (?, ?)', [input.commentId, key]);
+          await rawQuery('UPDATE article_comments SET upvotes = GREATEST(0, upvotes - 1) WHERE id = ?', [input.commentId]);
+          return { added: true };
+        }
+      }),
+    trending: publicProcedure
+      .input(z.object({ limit: z.number().default(5) }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        return rawQuery<any>(
+          `SELECT c.id, c.content, c.upvotes, c.createdAt,
+                  u.name as userName, u.avatar as userAvatar,
+                  a.title as articleTitle, a.slug as articleSlug, a.featuredImage as articleImage
+           FROM article_comments c
+           JOIN users u ON c.userId = u.id
+           JOIN articles a ON c.articleId = a.id
+           WHERE c.status = 'approved' AND c.upvotes > 0
+           ORDER BY c.upvotes DESC, c.createdAt DESC
+           LIMIT ?`,
+          [input.limit]
+        );
+      }),
+    listPaginated: publicProcedure
+      .input(z.object({ articleId: z.number(), limit: z.number().min(1).max(50).default(10), offset: z.number().default(0), sort: z.enum(['newest','top']).default('newest') }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const orderBy = input.sort === 'top'
+          ? 'c.isPinned DESC, c.upvotes DESC, c.createdAt DESC'
+          : 'c.isPinned DESC, c.parentId ASC, c.createdAt ASC';
+        const rows = await rawQuery<any>(
+          `SELECT c.id, c.content, c.createdAt, c.marketingOptIn, c.parentId, c.upvotes, c.isPinned,
+                  u.name as userName, u.id as userId, u.avatar as userAvatar
+           FROM article_comments c JOIN users u ON c.userId = u.id
+           WHERE c.articleId = ? AND c.status = 'approved'
+           ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
+          [input.articleId, input.limit, input.offset]
+        );
+        const [countRow] = await rawQuery<any>(
+          'SELECT COUNT(*) as total FROM article_comments WHERE articleId = ? AND status = \'approved\'',
+          [input.articleId]
+        );
+        return { comments: rows, total: countRow?.total ?? 0 };
+      }),
     upvote: publicProcedure
       .input(z.object({ commentId: z.number(), sessionId: z.string().min(8).max(64) }))
       .mutation(async ({ input }) => {
