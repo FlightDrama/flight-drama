@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import NotificationBell from "@/components/NotificationBell";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -122,6 +123,9 @@ export default function Navigation() {
 
             {/* Right side */}
             <div className="flex items-center gap-2">
+              {/* Notification Bell */}
+              <NotificationBell />
+
               {/* Search */}
               {searchOpen ? (
                 <form onSubmit={handleSearch} className="flex items-center gap-2">
@@ -185,6 +189,11 @@ export default function Navigation() {
                     <DropdownMenuItem asChild>
                       <Link href="/leaderboard" className="flex items-center gap-2">
                         <span className="text-base leading-none">🏆</span> Crew Leaderboard
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/ranks" className="flex items-center gap-2">
+                        <span className="text-base leading-none">📊</span> Points & Ranks
                       </Link>
                     </DropdownMenuItem>
                     {user?.role === "admin" && (

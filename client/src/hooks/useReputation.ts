@@ -12,15 +12,12 @@ export function useReputation() {
     onSuccess: (result) => {
       if (!result || !result.ok) return;
       // Show rank-up toast if user crossed a rank threshold
-      if (result.newRank) {
-        const rank = getRankForScore(result.newScore ?? 0);
-        // Only show toast for rank changes — check if rank name matches
-        if (result.newRank !== rank.name) {
-          toast.success(`🎖️ Rank Up! You are now a ${result.newRank}`, {
-            description: `+${result.points} reputation points`,
-            duration: 5000,
-          });
-        }
+      if ((result as any).rankedUp && result.newRank) {
+        const rank = getRankForScore((result as any).newScore ?? 0);
+        toast.success(`${rank.icon} Rank Up! You are now a ${result.newRank}`, {
+          description: `Keep engaging to climb higher! ✈`,
+          duration: 6000,
+        });
       }
     },
   });

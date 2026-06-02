@@ -1042,6 +1042,33 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
       }),
   }),
 
+  // ── Notifications ────────────────────────────────────────────────
+  notifications: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const { rawQuery } = await import('./db');
+      return rawQuery<any>(
+        'SELECT id, type, title, message, icon, isRead, createdAt FROM notifications WHERE userId = ? ORDER BY createdAt DESC LIMIT 30',
+        [ctx.user.id]
+      );
+    }),
+    unreadCount: protectedProcedure.query(async ({ ctx }) => {
+      const { rawQuery } = await import('./db');
+      const [row] = await rawQuery<any>('SELECT COUNT(*) as count FROM notifications WHERE userId = ? AND isRead = 0', [ctx.user.id]);
+      return { count: Number(row?.count ?? 0) };
+    }),
+    markRead: protectedProcedure
+      .input(z.object({ id: z.number().optional() })) // omit id to mark all
+      .mutation(async ({ ctx, input }) => {
+        const { rawQuery } = await import('./db');
+        if (input.id) {
+          await rawQuery('UPDATE notifications SET isRead = 1 WHERE id = ? AND userId = ?', [input.id, ctx.user.id]);
+        } else {
+          await rawQuery('UPDATE notifications SET isRead = 1 WHERE userId = ?', [ctx.user.id]);
+        }
+        return { ok: true };
+      }),
+  }),
+
   // ── Reputation System ──────────────────────────────────────────────────
   reputation: router({
     // Award points for an action
@@ -1079,13 +1106,62 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
           [points, ctx.user.id]
         );
 
-        // Recalculate rank
-        const [userRow] = await rawQuery<any>('SELECT reputationScore FROM users WHERE id = ? LIMIT 1', [ctx.user.id]);
+        // Recalculate rank and detect rank-up
+        const [userRow] = await rawQuery<any>('SELECT reputationScore, reputationRank FROM users WHERE id = ? LIMIT 1', [ctx.user.id]);
         const newScore = userRow?.reputationScore ?? 0;
+        const oldRankName = userRow?.reputationRank ?? '';
         const newRank = getRankForScore(newScore);
         await rawQuery('UPDATE users SET reputationRank = ? WHERE id = ?', [newRank.name, ctx.user.id]);
 
-        return { ok: true, points, newScore, newRank: newRank.name };
+        // Create rank-up notification if rank changed
+        let rankedUp = false;
+        if (newRank.name !== oldRankName && oldRankName !== '') {
+          rankedUp = true;
+          await rawQuery(
+            `INSERT INTO notifications (userId, type, title, message, icon) VALUES (?, 'rank_up', ?, ?, ?)`,
+            [
+              ctx.user.id,
+              `Rank Up! You are now ${newRank.name}`,
+              `Congratulations! You've reached ${newRank.name} — ${newRank.description}. Keep engaging to climb higher!`,
+              newRank.icon,
+            ]
+          );
+          // Send rank-up email via Resend
+          try {
+            const [emailRow] = await rawQuery<any>('SELECT email, name FROM users WHERE id = ? LIMIT 1', [ctx.user.id]);
+            if (emailRow?.email) {
+              const { Resend } = await import('resend');
+              const resend = new Resend(process.env.RESEND_API_KEY);
+              await resend.emails.send({
+                from: 'Flight Drama <noreply@flightdrama.com>',
+                to: emailRow.email,
+                subject: `${newRank.icon} Rank Up! You are now a ${newRank.name} on Flight Drama`,
+                html: `
+                  <div style="background:#0a0a0a;color:#fff;font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
+                    <div style="text-align:center;margin-bottom:24px">
+                      <img src="https://flightdrama.com/manus-storage/FlightDrama_ca641ff4.jpg" alt="Flight Drama" style="height:48px;border-radius:8px">
+                    </div>
+                    <div style="text-align:center;padding:32px;background:#1a1a1a;border-radius:12px;border:1px solid #333">
+                      <div style="font-size:64px;margin-bottom:16px">${newRank.icon}</div>
+                      <h1 style="color:#f5c842;font-size:28px;margin:0 0 8px">Rank Up!</h1>
+                      <h2 style="color:#fff;font-size:20px;margin:0 0 16px">You are now a <strong>${newRank.name}</strong></h2>
+                      <p style="color:#999;margin:0 0 24px">${newRank.description}</p>
+                      <p style="color:#666;font-size:14px">Your reputation score: <strong style="color:#f5c842">${newScore.toLocaleString()} points</strong></p>
+                    </div>
+                    <div style="text-align:center;margin-top:24px">
+                      <a href="https://flightdrama.com/leaderboard" style="background:#f5c842;color:#000;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold">View Leaderboard ✈</a>
+                    </div>
+                    <p style="color:#444;font-size:12px;text-align:center;margin-top:24px">Flight Drama · <a href="https://flightdrama.com" style="color:#666">flightdrama.com</a></p>
+                  </div>
+                `,
+              });
+            }
+          } catch (e) {
+            console.error('[Reputation] Failed to send rank-up email:', e);
+          }
+        }
+
+        return { ok: true, points, newScore, newRank: newRank.name, rankedUp };
       }),
 
     // Get user reputation profile

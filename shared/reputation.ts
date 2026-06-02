@@ -1,170 +1,251 @@
 /**
  * Flight Drama Reputation System
- * 15 flight-themed ranks inspired by real aviation career progression
- * Reddit-style scoring across all user interactions
+ * 20 flight-themed ranks covering the full aviation career spectrum:
+ * - Ground/Maintenance crew
+ * - Cabin crew
+ * - Flight crew (pilots)
+ * - Management/Operations
  */
 
 export interface Rank {
   id: number;
   name: string;
-  icon: string;         // emoji
+  icon: string;
   minScore: number;
   maxScore: number;
   description: string;
-  colour: string;       // tailwind/hex colour
-  stripes: number;      // epaulette stripes (0-4)
+  colour: string;
+  stripes: number;
+  category: 'ground' | 'cabin' | 'flight' | 'management';
 }
 
 export const RANKS: Rank[] = [
+  // ── Ground / Maintenance ──────────────────────────────────────────────────
   {
     id: 1,
-    name: "Ground Crew",
+    name: "Ramp Agent",
     icon: "🔧",
     minScore: 0,
     maxScore: 24,
-    description: "Just arrived on the apron. Welcome to the team.",
+    description: "Just arrived on the apron. Marshalling aircraft and loading bags.",
     colour: "#6b7280",
     stripes: 0,
+    category: 'ground',
   },
   {
     id: 2,
-    name: "Student Pilot",
-    icon: "🎓",
+    name: "Aircraft Technician",
+    icon: "⚙️",
     minScore: 25,
     maxScore: 99,
-    description: "Learning the ropes in the circuit.",
+    description: "Licensed to turn wrenches. Keeping the fleet airworthy.",
     colour: "#6b7280",
     stripes: 0,
+    category: 'ground',
   },
   {
     id: 3,
-    name: "Private Pilot",
-    icon: "🛩️",
+    name: "Engine Engineer",
+    icon: "🛠️",
     minScore: 100,
     maxScore: 249,
-    description: "PPL in hand. Cleared for solo flight.",
-    colour: "#3b82f6",
+    description: "Turbofan specialist. You know every stage of a CFM56.",
+    colour: "#6b7280",
     stripes: 1,
+    category: 'ground',
   },
   {
     id: 4,
-    name: "Instrument Rated",
-    icon: "🎯",
+    name: "Licensed Aircraft Engineer",
+    icon: "📋",
     minScore: 250,
     maxScore: 499,
-    description: "Flying in the clouds. IFR certified.",
+    description: "CAA/EASA Part-66 licence holder. Signing off airworthiness.",
     colour: "#3b82f6",
     stripes: 1,
+    category: 'ground',
   },
+
+  // ── Cabin Crew ────────────────────────────────────────────────────────────
   {
     id: 5,
-    name: "Commercial Pilot",
-    icon: "✈️",
+    name: "Cabin Crew Trainee",
+    icon: "🎀",
     minScore: 500,
     maxScore: 999,
-    description: "CPL holder. Getting paid to fly.",
-    colour: "#8b5cf6",
-    stripes: 2,
+    description: "In training. Learning safety procedures and service standards.",
+    colour: "#ec4899",
+    stripes: 0,
+    category: 'cabin',
   },
   {
     id: 6,
-    name: "First Officer",
-    icon: "🪙",
+    name: "Flight Attendant",
+    icon: "💺",
     minScore: 1000,
     maxScore: 1999,
-    description: "Right-hand seat. Building hours on the line.",
-    colour: "#8b5cf6",
-    stripes: 2,
+    description: "Qualified cabin crew. Safety first, service always.",
+    colour: "#ec4899",
+    stripes: 1,
+    category: 'cabin',
   },
   {
     id: 7,
-    name: "Senior First Officer",
-    icon: "⭐",
+    name: "Senior Flight Attendant",
+    icon: "🌸",
     minScore: 2000,
     maxScore: 3499,
-    description: "Experienced right-seater. Command course approaching.",
-    colour: "#f59e0b",
-    stripes: 3,
+    description: "Experienced crew member. Mentoring new joiners.",
+    colour: "#a855f7",
+    stripes: 2,
+    category: 'cabin',
   },
   {
     id: 8,
-    name: "Captain",
-    icon: "🎖️",
+    name: "Cabin Service Director",
+    icon: "👑",
     minScore: 3500,
     maxScore: 5999,
-    description: "Left seat. The final authority.",
-    colour: "#f59e0b",
-    stripes: 4,
+    description: "Leading the cabin. Responsible for the entire crew and service.",
+    colour: "#a855f7",
+    stripes: 3,
+    category: 'cabin',
   },
+
+  // ── Flight Crew (Pilots) ──────────────────────────────────────────────────
   {
     id: 9,
-    name: "Senior Captain",
-    icon: "🏅",
+    name: "Student Pilot",
+    icon: "🎓",
     minScore: 6000,
     maxScore: 9999,
-    description: "Thousands of hours. Mentor to new crews.",
-    colour: "#f59e0b",
-    stripes: 4,
+    description: "Learning to fly. Hours in the circuit, building confidence.",
+    colour: "#3b82f6",
+    stripes: 0,
+    category: 'flight',
   },
   {
     id: 10,
-    name: "Check Captain",
-    icon: "🔍",
+    name: "Private Pilot",
+    icon: "🛩️",
     minScore: 10000,
     maxScore: 14999,
-    description: "Examiner. Assesses others for command.",
-    colour: "#ef4444",
-    stripes: 4,
+    description: "PPL holder. Cleared for solo flight.",
+    colour: "#3b82f6",
+    stripes: 1,
+    category: 'flight',
   },
   {
     id: 11,
-    name: "Fleet Captain",
-    icon: "🛡️",
+    name: "Commercial Pilot",
+    icon: "✈️",
     minScore: 15000,
     maxScore: 24999,
-    description: "Head of type. Defines standards for the fleet.",
-    colour: "#ef4444",
-    stripes: 4,
+    description: "CPL in hand. Getting paid to fly.",
+    colour: "#8b5cf6",
+    stripes: 2,
+    category: 'flight',
   },
   {
     id: 12,
-    name: "Chief Pilot",
-    icon: "🦅",
+    name: "First Officer",
+    icon: "🪙",
     minScore: 25000,
     maxScore: 39999,
-    description: "Responsible for all flight operations.",
-    colour: "#dc2626",
-    stripes: 4,
+    description: "Right-hand seat on the line. Building hours toward command.",
+    colour: "#8b5cf6",
+    stripes: 2,
+    category: 'flight',
   },
   {
     id: 13,
-    name: "Director of Flight Ops",
-    icon: "🌟",
+    name: "Senior First Officer",
+    icon: "⭐",
     minScore: 40000,
     maxScore: 59999,
-    description: "The top of the operational pyramid.",
-    colour: "#dc2626",
-    stripes: 4,
+    description: "Experienced right-seater. Command course on the horizon.",
+    colour: "#f59e0b",
+    stripes: 3,
+    category: 'flight',
   },
   {
     id: 14,
-    name: "Aviation Legend",
-    icon: "🏆",
+    name: "Captain",
+    icon: "🎖️",
     minScore: 60000,
-    maxScore: 99999,
-    description: "A name known across the industry.",
-    colour: "#d97706",
+    maxScore: 89999,
+    description: "Left seat. The final authority on every flight.",
+    colour: "#f59e0b",
     stripes: 4,
+    category: 'flight',
   },
   {
     id: 15,
-    name: "Hall of Fame",
-    icon: "🌠",
-    minScore: 100000,
-    maxScore: Infinity,
-    description: "The highest honour. Your name is in the logbooks forever.",
+    name: "Senior Captain",
+    icon: "🏅",
+    minScore: 90000,
+    maxScore: 129999,
+    description: "Thousands of hours. A mentor to new crews.",
     colour: "#f59e0b",
     stripes: 4,
+    category: 'flight',
+  },
+  {
+    id: 16,
+    name: "Check Captain",
+    icon: "🔍",
+    minScore: 130000,
+    maxScore: 179999,
+    description: "Examiner. Assesses others for command and type ratings.",
+    colour: "#ef4444",
+    stripes: 4,
+    category: 'flight',
+  },
+
+  // ── Management / Operations ───────────────────────────────────────────────
+  {
+    id: 17,
+    name: "Fleet Captain",
+    icon: "🛡️",
+    minScore: 180000,
+    maxScore: 249999,
+    description: "Head of type. Defines standards for the entire fleet.",
+    colour: "#ef4444",
+    stripes: 4,
+    category: 'management',
+  },
+  {
+    id: 18,
+    name: "Chief Pilot",
+    icon: "🦅",
+    minScore: 250000,
+    maxScore: 349999,
+    description: "Responsible for all flight operations and crew standards.",
+    colour: "#dc2626",
+    stripes: 4,
+    category: 'management',
+  },
+  {
+    id: 19,
+    name: "Aviation Legend",
+    icon: "🏆",
+    minScore: 350000,
+    maxScore: 499999,
+    description: "A name known across the industry. Your record speaks for itself.",
+    colour: "#d97706",
+    stripes: 4,
+    category: 'management',
+  },
+  {
+    id: 20,
+    name: "Hall of Fame",
+    icon: "🌠",
+    minScore: 500000,
+    maxScore: Infinity,
+    description: "The highest honour in aviation. Your name is in the logbooks forever.",
+    colour: "#f59e0b",
+    stripes: 4,
+    category: 'management',
   },
 ];
 
@@ -173,32 +254,32 @@ export const RANKS: Rank[] = [
  */
 export const REPUTATION_POINTS: Record<string, number> = {
   // Article interactions
-  article_reaction:        2,   // reacting to an article (✈ love it, 🔥 hot take, etc.)
-  article_comment:         5,   // posting a comment on an article
-  article_comment_reply:   3,   // replying to a comment on an article
-  article_comment_upvote:  1,   // upvoting someone else's comment
-  article_share:           4,   // sharing an article (any platform)
-  article_save:            1,   // saving an article to Departure Lounge
+  article_reaction:        2,
+  article_comment:         5,
+  article_comment_reply:   3,
+  article_comment_upvote:  1,
+  article_share:           4,
+  article_save:            1,
 
   // Forum interactions
-  forum_post:             10,   // creating a new forum thread
-  forum_reply:             5,   // replying in a forum thread
-  forum_upvote_given:      1,   // upvoting a forum post
-  forum_upvote_received:   2,   // having your forum post upvoted
+  forum_post:             10,
+  forum_reply:             5,
+  forum_upvote_given:      1,
+  forum_upvote_received:   2,
 
   // Newsletter
-  newsletter_signup:       5,   // subscribing to the newsletter
+  newsletter_signup:       5,
 
   // Profile
-  profile_complete:       10,   // completing profile (avatar + bio)
-  profile_avatar:          5,   // uploading a profile photo
+  profile_complete:       10,
+  profile_avatar:          5,
 
   // Milestones (one-time bonuses)
-  first_comment:          10,   // first ever comment
-  first_forum_post:       15,   // first ever forum post
-  first_share:             5,   // first ever share
-  tenth_comment:          20,   // 10th comment milestone
-  fiftieth_comment:       50,   // 50th comment milestone
+  first_comment:          10,
+  first_forum_post:       15,
+  first_share:             5,
+  tenth_comment:          20,
+  fiftieth_comment:       50,
 };
 
 /**
