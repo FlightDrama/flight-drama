@@ -6,7 +6,7 @@ import { getLoginUrl } from "@/const";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { MessageSquare, Eye, ArrowLeft, Pin, Lock, Plus, Radio } from "lucide-react";
-import PilotBadge from "@/components/PilotBadge";
+import { getRankForScore } from "../../../shared/reputation";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { useReputation } from "@/hooks/useReputation";
@@ -62,7 +62,11 @@ export default function ForumBoardPage() {
           {threads?.map(thread => (
             <Link key={thread.id} href={`/forum/thread/${thread.id}`} className="block bg-[oklch(0.15_0_0)] border border-[oklch(0.22_0_0)] rounded-lg p-4 hover:border-[oklch(0.85_0.18_95)]/30 transition-colors group">
               <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-[oklch(0.85_0.18_95)] flex items-center justify-center text-black font-black text-sm shrink-0">{thread.userName?.charAt(0)?.toUpperCase() ?? "?"}</div>
+                <div className="w-9 h-9 rounded-full overflow-hidden bg-[oklch(0.85_0.18_95)] flex items-center justify-center text-black font-black text-sm shrink-0">
+                  {(thread as any).userAvatar
+                    ? <img src={(thread as any).userAvatar} alt={thread.userName ?? 'User'} className="w-full h-full object-cover" />
+                    : thread.userName?.charAt(0)?.toUpperCase() ?? "?"}
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     {thread.isPinned && <Pin className="w-3 h-3 text-[oklch(0.85_0.18_95)]" />}
@@ -71,7 +75,14 @@ export default function ForumBoardPage() {
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs text-[oklch(0.50_0_0)]">{thread.userName ?? "Anonymous"}</span>
-                    <PilotBadge postCount={thread.replyCount * 3 + 2} />
+                    {(() => {
+                      const rank = getRankForScore((thread as any).userReputation ?? 0);
+                      return (
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: rank.colour + '20', color: rank.colour, border: `1px solid ${rank.colour}30` }}>
+                          {rank.icon} {rank.name}
+                        </span>
+                      );
+                    })()}
                     <span className="text-xs text-[oklch(0.35_0_0)]">· {formatDistanceToNow(new Date(thread.createdAt), { addSuffix: true })}</span>
                   </div>
                 </div>

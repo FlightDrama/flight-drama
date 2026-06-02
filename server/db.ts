@@ -110,7 +110,7 @@ export async function getForumBoards() {
 }
 export async function getForumThreadsByBoard(boardId: number, limit = 20, offset = 0) {
   const db = await getDb(); if (!db) return [];
-  return db.select({ id: forumThreads.id, boardId: forumThreads.boardId, userId: forumThreads.userId, title: forumThreads.title, content: forumThreads.content, views: forumThreads.views, replyCount: forumThreads.replyCount, isPinned: forumThreads.isPinned, isLocked: forumThreads.isLocked, lastReplyAt: forumThreads.lastReplyAt, createdAt: forumThreads.createdAt, userName: users.name }).from(forumThreads).leftJoin(users, eq(forumThreads.userId, users.id)).where(eq(forumThreads.boardId, boardId)).orderBy(desc(forumThreads.isPinned), desc(forumThreads.lastReplyAt)).limit(limit).offset(offset);
+  return db.select({ id: forumThreads.id, boardId: forumThreads.boardId, userId: forumThreads.userId, title: forumThreads.title, content: forumThreads.content, views: forumThreads.views, replyCount: forumThreads.replyCount, isPinned: forumThreads.isPinned, isLocked: forumThreads.isLocked, lastReplyAt: forumThreads.lastReplyAt, createdAt: forumThreads.createdAt, userName: users.name, userAvatar: users.avatar, userReputation: users.reputationScore }).from(forumThreads).leftJoin(users, eq(forumThreads.userId, users.id)).where(eq(forumThreads.boardId, boardId)).orderBy(desc(forumThreads.isPinned), desc(forumThreads.lastReplyAt)).limit(limit).offset(offset);
 }
 export async function getForumThread(id: number) {
   const db = await getDb(); if (!db) return undefined;
