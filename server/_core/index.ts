@@ -146,6 +146,69 @@ async function startServer() {
     }
   });
 
+  // Sitemap.xml — dynamically generated from all published articles
+  app.get('/sitemap.xml', async (req, res) => {
+    try {
+      const { rawQuery } = await import('../db');
+      const articles = await rawQuery<any>(
+        `SELECT slug, publishedAt, updatedAt FROM articles WHERE status = 'published' ORDER BY publishedAt DESC`
+      );
+      const categories = await rawQuery<any>(`SELECT slug FROM categories`);
+      const siteUrl = 'https://flightdrama.com';
+
+      const staticPages = [
+        { url: siteUrl, priority: '1.0', changefreq: 'daily' },
+        { url: `${siteUrl}/videos`, priority: '0.8', changefreq: 'weekly' },
+        { url: `${siteUrl}/forum`, priority: '0.7', changefreq: 'daily' },
+        { url: `${siteUrl}/newsletter`, priority: '0.6', changefreq: 'monthly' },
+        { url: `${siteUrl}/pro`, priority: '0.7', changefreq: 'monthly' },
+        { url: `${siteUrl}/advertise`, priority: '0.6', changefreq: 'monthly' },
+        { url: `${siteUrl}/awards`, priority: '0.6', changefreq: 'monthly' },
+        { url: `${siteUrl}/podcast`, priority: '0.5', changefreq: 'weekly' },
+        { url: `${siteUrl}/shop`, priority: '0.5', changefreq: 'monthly' },
+        { url: `${siteUrl}/flight-lookup`, priority: '0.8', changefreq: 'daily' },
+      ];
+
+      const categoryUrls = categories.map((c: any) => ({
+        url: `${siteUrl}/category/${c.slug}`,
+        priority: '0.7',
+        changefreq: 'daily'
+      }));
+
+      const articleUrls = articles.map((a: any) => ({
+        url: `${siteUrl}/article/${a.slug}`,
+        lastmod: new Date(a.updatedAt || a.publishedAt).toISOString().split('T')[0],
+        priority: '0.9',
+        changefreq: 'weekly'
+      }));
+
+      const allUrls = [...staticPages, ...categoryUrls, ...articleUrls];
+
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${allUrls.map(u => `  <url>
+    <loc>${u.url}</loc>
+    ${(u as any).lastmod ? `<lastmod>${(u as any).lastmod}</lastmod>` : ''}
+    <changefreq>${u.changefreq}</changefreq>
+    <priority>${u.priority}</priority>
+  </url>`).join('\n')}
+</urlset>`;
+
+      res.set('Content-Type', 'application/xml; charset=utf-8');
+      res.set('Cache-Control', 'public, max-age=3600');
+      return res.send(xml);
+    } catch (e: any) {
+      console.error('[Sitemap] Error:', e.message);
+      return res.status(500).send('Sitemap generation failed');
+    }
+  });
+
+  // Robots.txt
+  app.get('/robots.txt', (req, res) => {
+    res.set('Content-Type', 'text/plain');
+    res.send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /cms-admin\nDisallow: /api\nSitemap: https://flightdrama.com/sitemap.xml\n`);
+  });
+
   // SEO 301 redirect handler — resolves old WordPress URLs
   app.use(async (req, res, next) => {
     const path = req.path;
@@ -187,9 +250,10 @@ async function startServer() {
       return res.redirect(301, '/');
     }
 
-    // Pattern 3: WordPress category URLs /category/slug/
-    const wpCategoryMatch = path.match(/^\/category\/([^/]+)\/?$/);
+    // Pattern 3: WordPress category URLs /category/slug/ (trailing slash only)
+    const wpCategoryMatch = path.match(/^\/category\/([^/]+)\/$/);
     if (wpCategoryMatch) {
+      // Only redirect if it has a trailing slash — remove the slash
       return res.redirect(301, `/category/${wpCategoryMatch[1]}`);
     }
 
@@ -199,9 +263,11 @@ async function startServer() {
       return res.redirect(301, '/');
     }
 
-    // Pattern 5: WordPress author URLs /author/slug/
+    // Pattern 5: WordPress author URLs /author/slug/ — redirect to homepage
+    // But only if it looks like a WP author hash (long alphanumeric), not a real user page
     const wpAuthorMatch = path.match(/^\/author\/([^/]+)\/?$/);
     if (wpAuthorMatch) {
+      // WP author slugs are typically long hashes — redirect to homepage
       return res.redirect(301, '/');
     }
 
