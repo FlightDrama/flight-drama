@@ -12,6 +12,7 @@ import { ArrowLeft, MessageSquare, Eye, Radio } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { useReputation } from "@/hooks/useReputation";
+import { getRankForScore } from "../../../shared/reputation";
 
 export default function ForumThreadPage() {
   const { id } = useParams<{ id: string }>();
@@ -53,12 +54,21 @@ export default function ForumThreadPage() {
               <h1 className="text-2xl font-black text-white mb-4 leading-tight">{thread.title}</h1>
               {/* Author row with pilot rank */}
               <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[oklch(0.20_0_0)]">
-                <div className="w-10 h-10 rounded-full bg-[oklch(0.85_0.18_95)] flex items-center justify-center text-black font-black">
-                  {thread.userName?.charAt(0)?.toUpperCase() ?? "?"}
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-[oklch(0.85_0.18_95)] flex items-center justify-center text-black font-black shrink-0">
+                  {(thread as any).userAvatar
+                    ? <img src={(thread as any).userAvatar} alt={thread.userName ?? 'User'} className="w-full h-full object-cover" />
+                    : thread.userName?.charAt(0)?.toUpperCase() ?? "?"}
                 </div>
                 <div>
                   <p className="text-sm font-black text-white">{thread.userName ?? "Anonymous"}</p>
-                  <PilotBadge postCount={thread.replyCount + 5} />
+                  {(() => {
+                    const rank = getRankForScore((thread as any).userReputation ?? 0);
+                    return (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: rank.colour + '20', color: rank.colour, border: `1px solid ${rank.colour}30` }}>
+                        {rank.icon} {rank.name}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <span className="ml-auto text-xs text-[oklch(0.40_0_0)]">
                   {formatDistanceToNow(new Date(thread.createdAt), { addSuffix: true })}
@@ -81,13 +91,21 @@ export default function ForumThreadPage() {
                 <div key={reply.id} className="bg-[oklch(0.13_0_0)] border border-[oklch(0.20_0_0)] rounded-lg overflow-hidden group hover:border-[oklch(0.28_0_0)] transition-colors">
                   {/* Reply header */}
                   <div className="flex items-center gap-3 px-4 py-2.5 bg-[oklch(0.15_0_0)] border-b border-[oklch(0.18_0_0)]">
-                    <div className="w-7 h-7 rounded-full bg-[oklch(0.85_0.18_95)] flex items-center justify-center text-black font-black text-xs shrink-0">
-                      {reply.userName?.charAt(0)?.toUpperCase() ?? "?"}
+                    <div className="w-7 h-7 rounded-full overflow-hidden bg-[oklch(0.85_0.18_95)] flex items-center justify-center text-black font-black text-xs shrink-0">
+                      {(reply as any).userAvatar
+                        ? <img src={(reply as any).userAvatar} alt={reply.userName ?? 'User'} className="w-full h-full object-cover" />
+                        : reply.userName?.charAt(0)?.toUpperCase() ?? "?"}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-bold text-white">{reply.userName ?? "Anonymous"}</span>
-                      <span className="mx-2 text-[oklch(0.30_0_0)]">·</span>
-                      <PilotBadge postCount={i * 7 + 3} />
+                      {(() => {
+                        const rank = getRankForScore((reply as any).userReputation ?? 0);
+                        return (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: rank.colour + '20', color: rank.colour, border: `1px solid ${rank.colour}30` }}>
+                            {rank.icon} {rank.name}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs text-[oklch(0.35_0_0)]">{formatDistanceToNow(new Date(reply.createdAt), { addSuffix: true })}</span>

@@ -114,12 +114,12 @@ export async function getForumThreadsByBoard(boardId: number, limit = 20, offset
 }
 export async function getForumThread(id: number) {
   const db = await getDb(); if (!db) return undefined;
-  const r = await db.select({ id: forumThreads.id, boardId: forumThreads.boardId, userId: forumThreads.userId, title: forumThreads.title, content: forumThreads.content, views: forumThreads.views, replyCount: forumThreads.replyCount, isPinned: forumThreads.isPinned, isLocked: forumThreads.isLocked, lastReplyAt: forumThreads.lastReplyAt, createdAt: forumThreads.createdAt, userName: users.name }).from(forumThreads).leftJoin(users, eq(forumThreads.userId, users.id)).where(eq(forumThreads.id, id)).limit(1);
+  const r = await db.select({ id: forumThreads.id, boardId: forumThreads.boardId, userId: forumThreads.userId, title: forumThreads.title, content: forumThreads.content, views: forumThreads.views, replyCount: forumThreads.replyCount, isPinned: forumThreads.isPinned, isLocked: forumThreads.isLocked, lastReplyAt: forumThreads.lastReplyAt, createdAt: forumThreads.createdAt, userName: users.name, userAvatar: users.avatar, userReputation: users.reputationScore }).from(forumThreads).leftJoin(users, eq(forumThreads.userId, users.id)).where(eq(forumThreads.id, id)).limit(1);
   return r[0];
 }
 export async function getForumReplies(threadId: number) {
   const db = await getDb(); if (!db) return [];
-  return db.select({ id: forumReplies.id, threadId: forumReplies.threadId, userId: forumReplies.userId, content: forumReplies.content, parentReplyId: forumReplies.parentReplyId, isDeleted: forumReplies.isDeleted, createdAt: forumReplies.createdAt, userName: users.name }).from(forumReplies).leftJoin(users, eq(forumReplies.userId, users.id)).where(and(eq(forumReplies.threadId, threadId), eq(forumReplies.isDeleted, false))).orderBy(forumReplies.createdAt);
+  return db.select({ id: forumReplies.id, threadId: forumReplies.threadId, userId: forumReplies.userId, content: forumReplies.content, parentReplyId: forumReplies.parentReplyId, isDeleted: forumReplies.isDeleted, createdAt: forumReplies.createdAt, userName: users.name, userAvatar: users.avatar, userReputation: users.reputationScore }).from(forumReplies).leftJoin(users, eq(forumReplies.userId, users.id)).where(and(eq(forumReplies.threadId, threadId), eq(forumReplies.isDeleted, false))).orderBy(forumReplies.createdAt);
 }
 export async function createForumThread(data: { boardId: number; userId: number; title: string; content: string; }) {
   const db = await getDb(); if (!db) throw new Error("DB unavailable");
