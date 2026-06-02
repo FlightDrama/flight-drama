@@ -148,6 +148,11 @@ export default function Navigation() {
                         <User className="w-4 h-4" /> My Pilot Profile
                       </Link>
                     </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/departure-lounge" className="flex items-center gap-2">
+                        <span className="text-base leading-none">🛫</span> Departure Lounge
+                      </Link>
+                    </DropdownMenuItem>
                     {user?.role === "admin" && (
                       <>
                         <DropdownMenuSeparator className="bg-[oklch(0.25_0_0)]" />

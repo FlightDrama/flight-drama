@@ -256,6 +256,7 @@ export default function ArticlePage() {
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
                           {/* Save for later bookmark */}
+                          {/* Bookmark button with toast */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -264,22 +265,40 @@ export default function ArticlePage() {
                               if (currently) {
                                 localStorage.removeItem(key);
                                 (e.currentTarget as HTMLButtonElement).setAttribute('data-saved', 'false');
-                                (e.currentTarget as HTMLButtonElement).title = 'Save for later';
                                 (e.currentTarget.querySelector('svg') as SVGElement).setAttribute('fill', 'none');
+                                (e.currentTarget.querySelector('svg') as SVGElement).setAttribute('stroke', 'white');
+                                toast.success('🛫 Removed from Departure Lounge');
                               } else {
                                 localStorage.setItem(key, JSON.stringify({ slug: a.slug, title: a.title, image: a.featuredImage, savedAt: Date.now() }));
                                 (e.currentTarget as HTMLButtonElement).setAttribute('data-saved', 'true');
-                                (e.currentTarget as HTMLButtonElement).title = 'Saved!';
                                 (e.currentTarget.querySelector('svg') as SVGElement).setAttribute('fill', 'oklch(0.85 0.18 95)');
+                                (e.currentTarget.querySelector('svg') as SVGElement).setAttribute('stroke', 'oklch(0.85 0.18 95)');
+                                toast.success('🛫 Added to Departure Lounge', { action: { label: 'View Lounge', onClick: () => window.location.href = '/departure-lounge' } });
                               }
                             }}
-                            title={isSaved ? 'Saved!' : 'Save for later'}
+                            title={isSaved ? 'Remove from Departure Lounge' : 'Save to Departure Lounge'}
                             data-saved={isSaved ? 'true' : 'false'}
                             className="absolute top-2 right-2 w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-90"
                           >
                             <svg viewBox="0 0 24 24" className="w-4 h-4" fill={isSaved ? 'oklch(0.85 0.18 95)' : 'none'} stroke={isSaved ? 'oklch(0.85 0.18 95)' : 'white'} strokeWidth="2">
                               <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                             </svg>
+                          </button>
+                          {/* Share button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const url = `${window.location.origin}/article/${a.slug}`;
+                              if (navigator.share) {
+                                navigator.share({ title: a.title, url }).catch(() => {});
+                              } else {
+                                navigator.clipboard.writeText(url).then(() => toast.success('✈ Link copied to clipboard'));
+                              }
+                            }}
+                            title="Share this article"
+                            className="absolute top-2 left-2 w-8 h-8 bg-black/60 hover:bg-black/80 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-90"
+                          >
+                            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
                           </button>
                         </div>
                       )}
