@@ -19,7 +19,46 @@ import TableOfContents from "@/components/TableOfContents";
 import AuthorBioCard from "@/components/AuthorBioCard";
 import ProContentGate from "@/components/ProContentGate";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+// Bookmark button for saving to Departure Lounge
+function BookmarkButton({ slug, title, image }: { slug: string; title: string; image: string | null }) {
+  const [saved, setSaved] = useState(() => {
+    try { return !!localStorage.getItem(`fd_saved_${slug}`); } catch { return false; }
+  });
+
+  const toggle = () => {
+    const key = `fd_saved_${slug}`;
+    if (saved) {
+      localStorage.removeItem(key);
+      setSaved(false);
+      toast.success('\uD83D\uDEEB Removed from Departure Lounge');
+    } else {
+      localStorage.setItem(key, JSON.stringify({ slug, title, image, savedAt: Date.now() }));
+      setSaved(true);
+      toast.success('\uD83D\uDEEB Added to Departure Lounge', {
+        action: { label: 'View Lounge', onClick: () => window.location.href = '/departure-lounge' }
+      });
+    }
+  };
+
+  return (
+    <button
+      onClick={toggle}
+      title={saved ? 'Remove from Departure Lounge' : 'Save to Departure Lounge'}
+      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border rounded transition-all duration-150 hover:scale-105 active:scale-95 ${
+        saved
+          ? 'bg-[oklch(0.85_0.18_95)]/10 border-[oklch(0.85_0.18_95)]/40 text-[oklch(0.85_0.18_95)]'
+          : 'bg-transparent border-[oklch(0.30_0_0)] text-[oklch(0.55_0_0)] hover:border-[oklch(0.85_0.18_95)]/40 hover:text-[oklch(0.85_0.18_95)]'
+      }`}
+    >
+      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+      </svg>
+      {saved ? 'Saved' : 'Save'}
+    </button>
+  );
+}
 
 // Calculate estimated reading time from HTML content
 function getReadingTime(html: string): string {
@@ -140,8 +179,12 @@ export default function ArticlePage() {
                 {getReadingTime(article.content)}
               </div>
               <div className="flex items-center gap-1 text-xs text-[oklch(0.45_0_0)]"><Eye className="w-3 h-3" />{article.views.toLocaleString()} views</div>
-              {/* Share */}
-              <div className="ml-auto"><ShareButtons title={article.title} compact /></div>
+              {/* Bookmark + Share */}
+              <div className="ml-auto flex items-center gap-2">
+                {/* Save to Departure Lounge */}
+                <BookmarkButton slug={article.slug} title={article.title} image={article.featuredImage} />
+                <ShareButtons title={article.title} compact />
+              </div>
             </div>
             {/* Featured image */}
             {article.featuredImage && (
