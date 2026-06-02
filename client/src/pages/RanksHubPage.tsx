@@ -35,6 +35,7 @@ function EpauletteBars({ count, colour }: { count: number; colour: string }) {
 const CATEGORY_META: Record<string, { label: string; colour: string; icon: string }> = {
   ground:     { label: "Ground / Maintenance", colour: "#6b7280", icon: "🔧" },
   cabin:      { label: "Cabin Crew",           colour: "#ec4899", icon: "💺" },
+  atc:        { label: "Air Traffic Control",  colour: "#10b981", icon: "📡" },
   flight:     { label: "Flight Crew",          colour: "#3b82f6", icon: "✈️" },
   management: { label: "Management",           colour: "#ef4444", icon: "🦅" },
 };
@@ -215,7 +216,7 @@ export default function RanksHubPage() {
         {/* ── ALL RANKS TAB ── */}
         {tab === 'ranks' && (
           <div className="space-y-4">
-            {(['ground', 'cabin', 'flight', 'management'] as const).map(cat => {
+            {(['ground', 'cabin', 'atc', 'flight', 'management'] as const).map(cat => {
               const meta = CATEGORY_META[cat];
               const catRanks = RANKS.filter(r => r.category === cat);
               return (

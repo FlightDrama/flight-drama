@@ -290,6 +290,15 @@
   ::-webkit-scrollbar-thumb:hover { background: oklch(0.85 0.18 95); }
   button:active { transform: scale(0.97); }
 
+  /* Rank badge glow animation for top 3 ranks */
+  @keyframes rankGlow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+  .rank-badge-glow {
+    animation: rankGlow 2s ease-in-out infinite;
+  }
+
   /* Affiliate card hover animations */
   .affiliate-card {
     transition: transform 0.2s cubic-bezier(0.23,1,0.32,1), border-color 0.2s ease, box-shadow 0.2s ease;

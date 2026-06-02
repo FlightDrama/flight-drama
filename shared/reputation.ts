@@ -1,10 +1,11 @@
 /**
  * Flight Drama Reputation System
- * 20 flight-themed ranks covering the full aviation career spectrum:
- * - Ground/Maintenance crew
- * - Cabin crew
- * - Flight crew (pilots)
- * - Management/Operations
+ * 24 flight-themed ranks covering the full aviation career spectrum:
+ * - Ground/Maintenance crew (4 ranks)
+ * - Cabin crew (4 ranks)
+ * - Air Traffic Control (4 ranks)
+ * - Flight crew / Pilots (8 ranks)
+ * - Management/Operations (4 ranks)
  */
 
 export interface Rank {
@@ -16,7 +17,7 @@ export interface Rank {
   description: string;
   colour: string;
   stripes: number;
-  category: 'ground' | 'cabin' | 'flight' | 'management';
+  category: 'ground' | 'cabin' | 'atc' | 'flight' | 'management';
 }
 
 export const RANKS: Rank[] = [
@@ -112,90 +113,136 @@ export const RANKS: Rank[] = [
     category: 'cabin',
   },
 
-  // ── Flight Crew (Pilots) ──────────────────────────────────────────────────
+  // ── Air Traffic Control ───────────────────────────────────────────────────
   {
     id: 9,
-    name: "Student Pilot",
-    icon: "🎓",
+    name: "ATC Trainee",
+    icon: "📡",
     minScore: 6000,
     maxScore: 9999,
+    description: "In training at the tower. Learning phraseology and procedures.",
+    colour: "#10b981",
+    stripes: 0,
+    category: 'atc',
+  },
+  {
+    id: 10,
+    name: "Ground Controller",
+    icon: "🗼",
+    minScore: 10000,
+    maxScore: 14999,
+    description: "Controlling aircraft on the ground. Taxiways and apron movements.",
+    colour: "#10b981",
+    stripes: 1,
+    category: 'atc',
+  },
+  {
+    id: 11,
+    name: "Approach Controller",
+    icon: "🎯",
+    minScore: 15000,
+    maxScore: 24999,
+    description: "Vectoring aircraft onto final approach. Precision and calm under pressure.",
+    colour: "#10b981",
+    stripes: 2,
+    category: 'atc',
+  },
+  {
+    id: 12,
+    name: "Area Controller",
+    icon: "🛰️",
+    minScore: 25000,
+    maxScore: 39999,
+    description: "En-route control. Managing high-altitude traffic across sectors.",
+    colour: "#059669",
+    stripes: 3,
+    category: 'atc',
+  },
+
+  // ── Flight Crew (Pilots) ──────────────────────────────────────────────────
+  {
+    id: 13,
+    name: "Student Pilot",
+    icon: "🎓",
+    minScore: 40000,
+    maxScore: 59999,
     description: "Learning to fly. Hours in the circuit, building confidence.",
     colour: "#3b82f6",
     stripes: 0,
     category: 'flight',
   },
   {
-    id: 10,
+    id: 14,
     name: "Private Pilot",
     icon: "🛩️",
-    minScore: 10000,
-    maxScore: 14999,
+    minScore: 60000,
+    maxScore: 89999,
     description: "PPL holder. Cleared for solo flight.",
     colour: "#3b82f6",
     stripes: 1,
     category: 'flight',
   },
   {
-    id: 11,
+    id: 15,
     name: "Commercial Pilot",
     icon: "✈️",
-    minScore: 15000,
-    maxScore: 24999,
+    minScore: 90000,
+    maxScore: 129999,
     description: "CPL in hand. Getting paid to fly.",
     colour: "#8b5cf6",
     stripes: 2,
     category: 'flight',
   },
   {
-    id: 12,
+    id: 16,
     name: "First Officer",
     icon: "🪙",
-    minScore: 25000,
-    maxScore: 39999,
+    minScore: 130000,
+    maxScore: 179999,
     description: "Right-hand seat on the line. Building hours toward command.",
     colour: "#8b5cf6",
     stripes: 2,
     category: 'flight',
   },
   {
-    id: 13,
+    id: 17,
     name: "Senior First Officer",
     icon: "⭐",
-    minScore: 40000,
-    maxScore: 59999,
+    minScore: 180000,
+    maxScore: 249999,
     description: "Experienced right-seater. Command course on the horizon.",
     colour: "#f59e0b",
     stripes: 3,
     category: 'flight',
   },
   {
-    id: 14,
+    id: 18,
     name: "Captain",
     icon: "🎖️",
-    minScore: 60000,
-    maxScore: 89999,
+    minScore: 250000,
+    maxScore: 349999,
     description: "Left seat. The final authority on every flight.",
     colour: "#f59e0b",
     stripes: 4,
     category: 'flight',
   },
   {
-    id: 15,
+    id: 19,
     name: "Senior Captain",
     icon: "🏅",
-    minScore: 90000,
-    maxScore: 129999,
+    minScore: 350000,
+    maxScore: 499999,
     description: "Thousands of hours. A mentor to new crews.",
     colour: "#f59e0b",
     stripes: 4,
     category: 'flight',
   },
   {
-    id: 16,
+    id: 20,
     name: "Check Captain",
     icon: "🔍",
-    minScore: 130000,
-    maxScore: 179999,
+    minScore: 500000,
+    maxScore: 699999,
     description: "Examiner. Assesses others for command and type ratings.",
     colour: "#ef4444",
     stripes: 4,
@@ -204,43 +251,43 @@ export const RANKS: Rank[] = [
 
   // ── Management / Operations ───────────────────────────────────────────────
   {
-    id: 17,
+    id: 21,
     name: "Fleet Captain",
     icon: "🛡️",
-    minScore: 180000,
-    maxScore: 249999,
+    minScore: 700000,
+    maxScore: 999999,
     description: "Head of type. Defines standards for the entire fleet.",
     colour: "#ef4444",
     stripes: 4,
     category: 'management',
   },
   {
-    id: 18,
+    id: 22,
     name: "Chief Pilot",
     icon: "🦅",
-    minScore: 250000,
-    maxScore: 349999,
+    minScore: 1000000,
+    maxScore: 1499999,
     description: "Responsible for all flight operations and crew standards.",
     colour: "#dc2626",
     stripes: 4,
     category: 'management',
   },
   {
-    id: 19,
+    id: 23,
     name: "Aviation Legend",
     icon: "🏆",
-    minScore: 350000,
-    maxScore: 499999,
+    minScore: 1500000,
+    maxScore: 2499999,
     description: "A name known across the industry. Your record speaks for itself.",
     colour: "#d97706",
     stripes: 4,
     category: 'management',
   },
   {
-    id: 20,
+    id: 24,
     name: "Hall of Fame",
     icon: "🌠",
-    minScore: 500000,
+    minScore: 2500000,
     maxScore: Infinity,
     description: "The highest honour in aviation. Your name is in the logbooks forever.",
     colour: "#f59e0b",

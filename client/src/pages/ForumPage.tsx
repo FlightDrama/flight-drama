@@ -4,6 +4,7 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import RunwayDivider from "@/components/RunwayDivider";
 import { PILOT_RANKS, getStripeDisplay } from "@/lib/pilotRank";
+import TopContributors from "@/components/TopContributors";
 import { MessageSquare, Plane, Shield, GraduationCap, AlertTriangle, Camera, MessageCircle, Radio } from "lucide-react";
 
 const ICONS: Record<string, any> = { Plane, Shield, GraduationCap, AlertTriangle, Camera, MessageCircle, MessageSquare };
@@ -40,8 +41,12 @@ export default function ForumPage() {
           <p className="text-[oklch(0.55_0_0)] mt-1">Join thousands of aviation enthusiasts. Select your board and request clearance to transmit.</p>
         </div>
 
+        {/* Two-column layout: boards + sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-2">
+
         {/* Forum boards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {boards?.map(board => {
             const Icon = ICONS[board.icon ?? "MessageSquare"] ?? MessageSquare;
             const code = BOARD_CODES[board.slug] ?? "FD";
@@ -66,6 +71,25 @@ export default function ForumPage() {
             );
           })}
         </div>
+          </div>{/* end lg:col-span-2 */}
+
+          {/* Sidebar */}
+          <div className="space-y-4">
+            <TopContributors />
+            <div className="bg-[oklch(0.13_0_0)] border border-[oklch(0.20_0_0)] rounded-xl p-4">
+              <h3 className="text-xs font-black uppercase tracking-widest text-[oklch(0.45_0_0)] mb-3">✈ Earn Your Wings</h3>
+              <div className="space-y-1.5">
+                {[{a:"Post a thread",p:10},{a:"Reply in forum",p:5},{a:"Comment on article",p:5},{a:"Share an article",p:4},{a:"React to article",p:2}].map(({a,p})=>(
+                  <div key={a} className="flex justify-between text-xs">
+                    <span className="text-[oklch(0.55_0_0)]">{a}</span>
+                    <span className="font-black text-[oklch(0.85_0.18_95)]">+{p}</span>
+                  </div>
+                ))}
+              </div>
+              <Link href="/crew-ranks" className="mt-3 block text-center text-[10px] text-[oklch(0.85_0.18_95)] hover:underline">View all 24 ranks →</Link>
+            </div>
+          </div>
+        </div>{/* end two-col grid */}
 
         <RunwayDivider label="Pilot Rank System" />
 
@@ -73,11 +97,11 @@ export default function ForumPage() {
         <div className="bg-[oklch(0.13_0_0)] border border-[oklch(0.22_0_0)] rounded-lg overflow-hidden mb-8">
           <div className="bg-[oklch(0.18_0_0)] px-5 py-3 border-b border-[oklch(0.22_0_0)]">
             <h2 className="font-black text-white text-sm uppercase tracking-wide">✈ Earn Your Wings — Forum Rank System</h2>
-            <p className="text-xs text-[oklch(0.50_0_0)] mt-0.5">Your rank increases as you post. Start as a Student Pilot and work your way up to Aviation Legend.</p>
+            <p className="text-xs text-[oklch(0.50_0_0)] mt-0.5">Your rank increases as you post. Start as a Ramp Agent and work your way up to Hall of Fame.</p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-0">
-            {PILOT_RANKS.map((rank, i) => (
-              <div key={rank.title} className={`p-3 border-r border-b border-[oklch(0.18_0_0)] last:border-r-0 ${i >= 5 ? "border-b-0" : ""}`}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-0">
+            {PILOT_RANKS.slice(0, 12).map((rank, i) => (
+              <div key={rank.title} className={`p-3 border-r border-b border-[oklch(0.18_0_0)] last:border-r-0`}>
                 <div className="text-xl mb-1">{rank.icon}</div>
                 <p className={`text-xs font-black ${rank.colour} leading-tight`}>{rank.title}</p>
                 {rank.stripes > 0 && (
@@ -95,9 +119,9 @@ export default function ForumPage() {
             <span className="text-3xl">👨‍✈️</span>
             <div>
               <h2 className="font-black text-xl mb-1">Request Clearance to Transmit</h2>
-              <p className="opacity-80 mb-4 text-sm">Sign in to post threads, reply to discussions, earn your pilot rank, and become part of the Flight Drama community.</p>
-              <Link href="/pro" className="inline-block bg-black text-[oklch(0.85_0.18_95)] px-5 py-2.5 rounded font-black text-sm hover:bg-[oklch(0.10_0_0)] transition-colors">
-                ✈ Get Flight Drama Pro for VIP Access
+              <p className="opacity-80 mb-4 text-sm">Sign in to post threads, reply to discussions, earn your rank, and become part of the Flight Drama community.</p>
+              <Link href="/crew-ranks" className="inline-block bg-black text-[oklch(0.85_0.18_95)] px-5 py-2.5 rounded font-black text-sm hover:bg-[oklch(0.10_0_0)] transition-colors">
+                🏆 View All 24 Ranks
               </Link>
             </div>
           </div>
