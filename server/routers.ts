@@ -1042,6 +1042,96 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
       }),
   }),
 
+  // ── Reputation System ──────────────────────────────────────────────────
+  reputation: router({
+    // Award points for an action
+    awardPoints: protectedProcedure
+      .input(z.object({
+        eventType: z.string(),
+        referenceId: z.number().optional(),
+        referenceType: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { rawQuery } = await import('./db');
+        const { REPUTATION_POINTS, getRankForScore } = await import('../shared/reputation');
+        const points = REPUTATION_POINTS[input.eventType];
+        if (!points || points <= 0) return { ok: false, reason: 'unknown event' };
+
+        // Check for duplicate events (prevent spam)
+        const dedupeEvents = ['article_reaction', 'article_comment_upvote', 'forum_upvote_given'];
+        if (dedupeEvents.includes(input.eventType) && input.referenceId) {
+          const existing = await rawQuery<any>(
+            'SELECT id FROM reputation_events WHERE userId = ? AND eventType = ? AND referenceId = ? LIMIT 1',
+            [ctx.user.id, input.eventType, input.referenceId]
+          );
+          if (existing.length > 0) return { ok: false, reason: 'already awarded' };
+        }
+
+        // Insert event
+        await rawQuery(
+          'INSERT INTO reputation_events (userId, eventType, points, referenceId, referenceType) VALUES (?, ?, ?, ?, ?)',
+          [ctx.user.id, input.eventType, points, input.referenceId ?? null, input.referenceType ?? null]
+        );
+
+        // Update user score
+        await rawQuery(
+          'UPDATE users SET reputationScore = reputationScore + ? WHERE id = ?',
+          [points, ctx.user.id]
+        );
+
+        // Recalculate rank
+        const [userRow] = await rawQuery<any>('SELECT reputationScore FROM users WHERE id = ? LIMIT 1', [ctx.user.id]);
+        const newScore = userRow?.reputationScore ?? 0;
+        const newRank = getRankForScore(newScore);
+        await rawQuery('UPDATE users SET reputationRank = ? WHERE id = ?', [newRank.name, ctx.user.id]);
+
+        return { ok: true, points, newScore, newRank: newRank.name };
+      }),
+
+    // Get user reputation profile
+    getProfile: publicProcedure
+      .input(z.object({ userId: z.number().optional() }))
+      .query(async ({ ctx, input }) => {
+        const { rawQuery } = await import('./db');
+        const { getRankProgress } = await import('../shared/reputation');
+        const userId = input.userId ?? ctx.user?.id;
+        if (!userId) return null;
+
+        const [user] = await rawQuery<any>(
+          'SELECT id, name, avatar, reputationScore, reputationRank, createdAt FROM users WHERE id = ? LIMIT 1',
+          [userId]
+        );
+        if (!user) return null;
+
+        const progress = getRankProgress(user.reputationScore ?? 0);
+        const events = await rawQuery<any>(
+          'SELECT eventType, points, createdAt FROM reputation_events WHERE userId = ? ORDER BY createdAt DESC LIMIT 20',
+          [userId]
+        );
+
+        return { user, progress, recentEvents: events };
+      }),
+
+    // Leaderboard
+    leaderboard: publicProcedure
+      .input(z.object({ limit: z.number().default(20) }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const { getRankForScore } = await import('../shared/reputation');
+        const rows = await rawQuery<any>(
+          'SELECT id, name, avatar, reputationScore, reputationRank FROM users WHERE reputationScore > 0 ORDER BY reputationScore DESC LIMIT ?',
+          [Math.min(input.limit, 100)]
+        );
+        return rows.map((r: any) => ({ ...r, rank: getRankForScore(r.reputationScore) }));
+      }),
+
+    // Get all ranks (for display)
+    getRanks: publicProcedure.query(async () => {
+      const { RANKS } = await import('../shared/reputation');
+      return RANKS;
+    }),
+  }),
+
   crm: router({
     stats: adminGuard.query(async () => {
       const [articleCount, subscriberCount, memberCount, userCount] = await Promise.all([getArticleCount(), getSubscriberCount(), getProMemberCount(), getUserCount()]);

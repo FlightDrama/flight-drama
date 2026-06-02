@@ -38,6 +38,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import CmsAdmin from "./pages/CmsAdmin";
 import ArticlePreviewPage from "./pages/ArticlePreviewPage";
 import DepartureLoungeePage from "./pages/DepartureLoungeePage";
+import LeaderboardPage from "./pages/LeaderboardPage";
 import FloatingNewsletter from "./components/FloatingNewsletter";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
@@ -86,6 +87,7 @@ function Router() {
         <Route path="/awards" component={AwardsPage} />
         <Route path="/podcast" component={PodcastPage} />
         <Route path="/departure-lounge" component={DepartureLoungeePage} />
+        <Route path="/leaderboard" component={LeaderboardPage} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

@@ -1,6 +1,8 @@
 import { toast } from "sonner";
 import { Link2, Check } from "lucide-react";
 import { useState } from "react";
+import { useReputation } from "@/hooks/useReputation";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 type ShareButtonsProps = {
   title: string;
@@ -10,15 +12,26 @@ type ShareButtonsProps = {
 
 export default function ShareButtons({ title, url, compact = false }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
   const shareUrl = url ?? (typeof window !== "undefined" ? window.location.href : "");
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedTitle = encodeURIComponent(title);
+  const { isAuthenticated } = useAuth();
+  const { awardPoints } = useReputation();
+
+  const handleShare = () => {
+    if (isAuthenticated && !shared) {
+      awardPoints('article_share');
+      setShared(true);
+    }
+  };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     toast.success("Link copied to clipboard!");
     setTimeout(() => setCopied(false), 2000);
+    handleShare();
   };
 
   const buttons = [
@@ -75,6 +88,7 @@ export default function ShareButtons({ title, url, compact = false }: ShareButto
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`Share on ${btn.label}`}
+            onClick={handleShare}
             className={`w-7 h-7 rounded bg-[oklch(0.20_0_0)] flex items-center justify-center text-[oklch(0.65_0_0)] hover:text-white transition-colors ${btn.bg}`}
           >
             {btn.icon}

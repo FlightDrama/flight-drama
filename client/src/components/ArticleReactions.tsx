@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { useReputation } from "@/hooks/useReputation";
 
 const REACTIONS = [
   { key: "love" as const,        emoji: "✈️",  label: "Love it" },
@@ -25,11 +27,17 @@ export default function ArticleReactions({ articleId }: { articleId: number }) {
   });
   const [myReactions, setMyReactions] = useState<Set<string>>(new Set());
   const [localCounts, setLocalCounts] = useState<Record<string, number>>({});
+  const { isAuthenticated } = useAuth();
+  const { awardPoints } = useReputation();
 
   const { data: counts, refetch } = trpc.reactions.get.useQuery({ articleId });
   const toggle = trpc.reactions.toggle.useMutation({
     onMutate: ({ reaction }) => {
       const isActive = myReactions.has(reaction);
+      // Award reputation points for first reaction (authenticated users only)
+      if (!isActive && isAuthenticated) {
+        awardPoints('article_reaction', articleId, 'article');
+      }
       setMyReactions(prev => {
         const next = new Set(prev);
         isActive ? next.delete(reaction) : next.add(reaction);

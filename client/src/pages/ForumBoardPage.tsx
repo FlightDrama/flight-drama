@@ -9,10 +9,12 @@ import { MessageSquare, Eye, ArrowLeft, Pin, Lock, Plus, Radio } from "lucide-re
 import PilotBadge from "@/components/PilotBadge";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { useReputation } from "@/hooks/useReputation";
 
 export default function ForumBoardPage() {
   const { boardSlug } = useParams<{ boardSlug: string }>();
   const { user, isAuthenticated } = useAuth();
+  const { awardPoints } = useReputation();
   const [showNewThread, setShowNewThread] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
@@ -20,7 +22,11 @@ export default function ForumBoardPage() {
   const board = boards?.find(b => b.slug === boardSlug);
   const { data: threads, refetch } = trpc.forum.threads.useQuery({ boardId: board?.id ?? 0 }, { enabled: !!board?.id });
   const createThread = trpc.forum.createThread.useMutation({
-    onSuccess: () => { setShowNewThread(false); setNewTitle(""); setNewContent(""); refetch(); toast.success("Thread created!"); },
+    onSuccess: (data) => {
+      setShowNewThread(false); setNewTitle(""); setNewContent(""); refetch();
+      toast.success("Thread created!");
+      awardPoints('forum_post', (data as any)?.id, 'forum_thread');
+    },
     onError: (e) => toast.error(e.message),
   });
 

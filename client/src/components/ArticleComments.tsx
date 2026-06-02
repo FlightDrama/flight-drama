@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { useReputation } from "@/hooks/useReputation";
 import { MessageSquare, Send, User, Lock, ThumbsUp, Reply, ChevronDown, ChevronUp, Pin, ArrowUpDown, ShieldCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -169,6 +170,7 @@ function CommentItem({ comment, replies, sessionId, isAuthenticated, isAdmin, on
 
 export default function ArticleComments({ articleId }: { articleId: number }) {
   const { user, isAuthenticated } = useAuth();
+  const { awardPoints } = useReputation();
   const [content, setContent] = useState("");
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -220,12 +222,22 @@ export default function ArticleComments({ articleId }: { articleId: number }) {
   const { data: comments, isLoading, refetch } = trpc.comments.list.useQuery({ articleId, limit: 50, sort });
 
   const createComment = trpc.comments.create.useMutation({
-    onSuccess: () => { setContent(""); setReplyTo(null); setSubmitted(true); toast.success("Comment submitted for review ✈"); },
+    onSuccess: () => {
+      setContent(""); setReplyTo(null); setSubmitted(true);
+      toast.success("Comment submitted for review ✈");
+      // Award reputation for comment
+      const eventType = replyTo ? 'article_comment_reply' : 'article_comment';
+      awardPoints(eventType, articleId, 'article');
+    },
     onError: (e) => toast.error(e.message),
   });
 
   const upvoteMutation = trpc.comments.upvote.useMutation({
     onMutate: ({ commentId }) => {
+      const wasUpvoted = upvotedIds.has(commentId);
+      if (!wasUpvoted && isAuthenticated) {
+        awardPoints('article_comment_upvote', commentId, 'comment');
+      }
       setUpvotedIds(prev => {
         const next = new Set(prev);
         prev.has(commentId) ? next.delete(commentId) : next.add(commentId);

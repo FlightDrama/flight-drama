@@ -182,6 +182,11 @@ export default function Navigation() {
                         <span className="text-base leading-none">🛫</span> Departure Lounge
                       </Link>
                     </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/leaderboard" className="flex items-center gap-2">
+                        <span className="text-base leading-none">🏆</span> Crew Leaderboard
+                      </Link>
+                    </DropdownMenuItem>
                     {user?.role === "admin" && (
                       <>
                         <DropdownMenuSeparator className="bg-[oklch(0.25_0_0)]" />

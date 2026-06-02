@@ -11,15 +11,21 @@ import ShareButtons from "@/components/ShareButtons";
 import { ArrowLeft, MessageSquare, Eye, Radio } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { useReputation } from "@/hooks/useReputation";
 
 export default function ForumThreadPage() {
   const { id } = useParams<{ id: string }>();
   const { isAuthenticated } = useAuth();
+  const { awardPoints } = useReputation();
   const [replyContent, setReplyContent] = useState("");
   const { data: thread } = trpc.forum.thread.useQuery({ id: Number(id) }, { enabled: !!id });
   const { data: replies, refetch } = trpc.forum.replies.useQuery({ threadId: Number(id) }, { enabled: !!id });
   const createReply = trpc.forum.createReply.useMutation({
-    onSuccess: () => { setReplyContent(""); refetch(); toast.success("Transmission received! Reply posted."); },
+    onSuccess: () => {
+      setReplyContent(""); refetch();
+      toast.success("Transmission received! Reply posted.");
+      awardPoints('forum_reply', Number(id), 'forum_thread');
+    },
     onError: (e) => toast.error(e.message),
   });
 
