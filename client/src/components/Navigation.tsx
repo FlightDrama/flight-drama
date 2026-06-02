@@ -22,6 +22,7 @@ const navLinks = [
   { label: "Flight Lookup", href: "/flight-lookup", isNew: true },
   { label: "Forum", href: "/forum" },
   { label: "Newsletter", href: "/newsletter" },
+  { label: "Ranks", href: "/crew-ranks", isRanks: true },
   { label: "Pro", href: "/pro", isPro: true },
 ];
 
@@ -96,6 +97,7 @@ export default function Navigation() {
                 >
                   {link.isPro && <Crown className="w-3 h-3" />}
                   {(link as any).isNew && <Plane className="w-3 h-3" />}
+                  {(link as any).isRanks && <span className="text-sm leading-none">🎖️</span>}
                   {link.label}
                   {(link as any).isNew && (
                     <span className="text-[8px] bg-[oklch(0.85_0.18_95)] text-black font-black px-1 py-0.5 leading-none ml-0.5">FREE</span>

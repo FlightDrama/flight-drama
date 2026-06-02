@@ -40,6 +40,7 @@ import ArticlePreviewPage from "./pages/ArticlePreviewPage";
 import DepartureLoungeePage from "./pages/DepartureLoungeePage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import RankChartPage from "./pages/RankChartPage";
+import RanksHubPage from "./pages/RanksHubPage";
 import FloatingNewsletter from "./components/FloatingNewsletter";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
@@ -90,6 +91,7 @@ function Router() {
         <Route path="/departure-lounge" component={DepartureLoungeePage} />
         <Route path="/leaderboard" component={LeaderboardPage} />
         <Route path="/ranks" component={RankChartPage} />
+        <Route path="/crew-ranks" component={RanksHubPage} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

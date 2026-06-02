@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { useReputation } from "@/hooks/useReputation";
+import { getRankForScore } from "../../../shared/reputation";
 import { MessageSquare, Send, User, Lock, ThumbsUp, Reply, ChevronDown, ChevronUp, Pin, ArrowUpDown, ShieldCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -53,6 +54,18 @@ function CommentItem({ comment, replies, sessionId, isAuthenticated, isAdmin, on
             </span>
           )}
           <span className="text-sm font-bold text-white">{comment.userName ?? "Anonymous"}</span>
+          {comment.userReputation != null && (() => {
+            const rank = getRankForScore(comment.userReputation);
+            return (
+              <span
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded inline-flex items-center gap-0.5"
+                style={{ backgroundColor: rank.colour + '20', color: rank.colour, border: `1px solid ${rank.colour}30` }}
+                title={rank.description}
+              >
+                {rank.icon} {rank.name}
+              </span>
+            );
+          })()}
           <span className="text-[10px] text-[oklch(0.40_0_0)]">
             {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
           </span>
