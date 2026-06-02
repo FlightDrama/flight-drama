@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -31,6 +31,18 @@ export default function Navigation() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [, navigate] = useLocation();
+
+  // Live saved article count from localStorage
+  const [savedCount, setSavedCount] = useState(0);
+  useEffect(() => {
+    const count = () => Object.keys(localStorage).filter(k => k.startsWith('fd_saved_')).length;
+    setSavedCount(count());
+    const onStorage = () => setSavedCount(count());
+    window.addEventListener('storage', onStorage);
+    // Also poll every 2s to catch same-tab changes
+    const interval = setInterval(() => setSavedCount(count()), 2000);
+    return () => { window.removeEventListener('storage', onStorage); clearInterval(interval); };
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,6 +102,23 @@ export default function Navigation() {
                 </Link>
               ))}
             </div>
+
+            {/* Departure Lounge icon with badge */}
+            <Link
+              href="/departure-lounge"
+              className={`relative hidden md:flex items-center gap-1.5 px-3 py-2 text-sm font-semibold uppercase tracking-wide rounded transition-colors ${
+                location === '/departure-lounge' ? 'text-[oklch(0.85_0.18_95)]' : 'text-[oklch(0.75_0_0)] hover:text-white'
+              }`}
+              title="Departure Lounge — Saved Articles"
+            >
+              <span className="text-base leading-none">🛫</span>
+              <span className="hidden lg:inline">Lounge</span>
+              {savedCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-[oklch(0.85_0.18_95)] text-black text-[9px] font-black rounded-full flex items-center justify-center px-1 leading-none">
+                  {savedCount > 9 ? '9+' : savedCount}
+                </span>
+              )}
+            </Link>
 
             {/* Right side */}
             <div className="flex items-center gap-2">
