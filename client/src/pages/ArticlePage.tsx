@@ -22,6 +22,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useEffect, useState, useMemo } from "react";
 import { AVIATION_EVENTS, CATEGORY_COLOURS, CATEGORY_LABELS } from "@/components/OnThisDayWidget";
 import TikTokWidget from "@/components/TikTokWidget";
+import ArticleAudioPlayer from "@/components/ArticleAudioPlayer";
 
 // Bookmark button for saving to Departure Lounge
 function BookmarkButton({ slug, title, image }: { slug: string; title: string; image: string | null }) {
@@ -260,6 +261,12 @@ export default function ArticlePage() {
                 {!isPro && <Link href="/pro" className="ml-auto text-xs text-black bg-[oklch(0.85_0.18_95)] px-3 py-1 font-black hover:bg-[oklch(0.78_0.18_95)] transition-colors">Upgrade to Read →</Link>}
               </div>
             )}
+            {/* Audio Player */}
+            <ArticleAudioPlayer
+              articleId={article.id}
+              articleTitle={article.title}
+              cachedAudioUrl={(article as any).audioUrl ?? null}
+            />
             {/* Table of Contents */}
             {!isProGated && <TableOfContents content={article.content} />}
             {/* Content — show gate for Pro articles */}

@@ -69,6 +69,7 @@ export const articles = mysqlTable("articles", {
   categoryId: int("categoryId"),
   authorId: int("authorId"),
   tags: text("tags"),
+  audioUrl: text("audioUrl"),
   views: int("views").default(0).notNull(),
   isFeatured: boolean("isFeatured").default(false).notNull(),
   isBreaking: boolean("isBreaking").default(false).notNull(),

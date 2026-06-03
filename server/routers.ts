@@ -322,6 +322,61 @@ export const appRouter = router({
           .map(([tag, count]) => ({ tag, count, slug: tag.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') }))
           .sort((a, b) => b.count - a.count);
       }),
+    generateAudio: publicProcedure
+      .input(z.object({ articleId: z.number() }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const { ENV } = await import('./_core/env');
+        const { storagePut } = await import('./storage');
+
+        // Check if audio already exists
+        const existing = await rawQuery<{ audioUrl: string | null }>(
+          'SELECT audioUrl FROM articles WHERE id = ? LIMIT 1', [input.articleId]
+        );
+        if (existing[0]?.audioUrl) return { audioUrl: existing[0].audioUrl, cached: true };
+
+        // Get article content
+        const article = await rawQuery<{ title: string; content: string; excerpt: string | null }>(
+          'SELECT title, content, excerpt FROM articles WHERE id = ? LIMIT 1', [input.articleId]
+        );
+        if (!article[0]) throw new Error('Article not found');
+
+        // Strip HTML and prepare text for TTS
+        const rawText = article[0].content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        // Limit to ~4500 chars to stay within Creator plan budget per article
+        const ttsText = `${article[0].title}. ${rawText}`.slice(0, 5000);
+
+        if (!ENV.elevenLabsApiKey) throw new Error('ElevenLabs API key not configured');
+
+        // Call ElevenLabs TTS API with George's voice
+        const GEORGE_VOICE_ID = 'JBFqnCBsd6RMkjVDRZzb';
+        const ttsResponse = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${GEORGE_VOICE_ID}`, {
+          method: 'POST',
+          headers: {
+            'xi-api-key': ENV.elevenLabsApiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text: ttsText,
+            model_id: 'eleven_turbo_v2_5',
+            voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.3, use_speaker_boost: true },
+          }),
+        });
+
+        if (!ttsResponse.ok) {
+          const err = await ttsResponse.text();
+          throw new Error(`ElevenLabs error: ${ttsResponse.status} ${err.slice(0, 200)}`);
+        }
+
+        // Upload MP3 to S3
+        const audioBuffer = Buffer.from(await ttsResponse.arrayBuffer());
+        const { url } = await storagePut(`audio/article-${input.articleId}.mp3`, audioBuffer, 'audio/mpeg');
+
+        // Save URL to database
+        await rawQuery('UPDATE articles SET audioUrl = ? WHERE id = ?', [url, input.articleId]);
+
+        return { audioUrl: url, cached: false };
+      }),
     create: adminGuard
       .input(z.object({ title: z.string(), slug: z.string(), excerpt: z.string().optional(), content: z.string(), featuredImage: z.string().optional(), videoUrl: z.string().optional(), postType: z.enum(["article","video","social","breaking"]).default("article"), categoryId: z.number().optional(), authorId: z.number().optional(), tags: z.string().optional(), isFeatured: z.boolean().default(false), isBreaking: z.boolean().default(false), isPro: z.boolean().default(false) }))
       .mutation(({ input }) => createArticle({ ...input, publishedAt: new Date() })),
