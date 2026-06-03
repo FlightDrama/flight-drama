@@ -3,21 +3,43 @@ import { Link } from "wouter";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { trpc } from "@/lib/trpc";
-import { Tag, Search } from "lucide-react";
+import { Tag, Search, ArrowUpDown } from "lucide-react";
+
+type SortMode = "popular" | "az" | "recent";
+
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+  { value: "popular", label: "Most Articles" },
+  { value: "az", label: "A–Z" },
+  { value: "recent", label: "Most Recent" },
+];
 
 export default function TagsIndexPage() {
   const { data: tags, isLoading } = trpc.articles.allTags.useQuery();
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SortMode>("popular");
+
+  const sorted = useMemo(() => {
+    if (!tags) return [];
+    const copy = [...tags];
+    if (sort === "az") {
+      copy.sort((a, b) => a.tag.localeCompare(b.tag));
+    } else if (sort === "recent") {
+      // "recent" = reverse of popular (least articles first = newest/niche tags)
+      copy.sort((a, b) => a.count - b.count);
+    }
+    // default "popular" is already sorted by count desc from the server
+    return copy;
+  }, [tags, sort]);
 
   const filtered = useMemo(() => {
-    if (!tags) return [];
     const q = search.toLowerCase().trim();
-    if (!q) return tags;
-    return tags.filter((t) => t.tag.toLowerCase().includes(q));
-  }, [tags, search]);
+    if (!q) return sorted;
+    return sorted.filter((t) => t.tag.toLowerCase().includes(q));
+  }, [sorted, search]);
 
-  // Group by first letter
+  // Group by first letter (only when A-Z sort and not searching)
   const grouped = useMemo(() => {
+    if (sort !== "az" || search) return null;
     const groups: Record<string, typeof filtered> = {};
     filtered.forEach((t) => {
       const letter = t.tag.charAt(0).toUpperCase();
@@ -25,7 +47,7 @@ export default function TagsIndexPage() {
       groups[letter].push(t);
     });
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
-  }, [filtered]);
+  }, [filtered, sort, search]);
 
   const totalArticles = useMemo(() => tags?.reduce((sum, t) => sum + t.count, 0) ?? 0, [tags]);
   const indexableTags = useMemo(() => tags?.filter((t) => t.count >= 3).length ?? 0, [tags]);
@@ -35,7 +57,7 @@ export default function TagsIndexPage() {
       <Navigation />
       <main className="container py-8 max-w-5xl">
         {/* Page header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex items-center gap-2 mb-2">
             <Tag className="w-4 h-4 text-[oklch(0.85_0.18_95)]" />
             <span className="text-[10px] font-black uppercase tracking-widest text-[oklch(0.45_0_0)]">Flight Drama</span>
@@ -46,21 +68,46 @@ export default function TagsIndexPage() {
           </p>
         </div>
 
-        {/* Search */}
-        <div className="flex items-center gap-2 bg-[oklch(0.15_0_0)] border border-[oklch(0.22_0_0)] rounded-lg px-4 py-2.5 mb-8 focus-within:border-[oklch(0.85_0.18_95)] transition-colors">
-          <Search className="w-4 h-4 text-[oklch(0.45_0_0)] shrink-0" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filter tags…"
-            className="flex-1 bg-transparent text-sm text-white placeholder-[oklch(0.40_0_0)] outline-none"
-          />
-          {search && (
-            <button onClick={() => setSearch("")} className="text-[oklch(0.40_0_0)] hover:text-white text-xs">✕</button>
-          )}
+        {/* Search + Sort bar */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-8">
+          {/* Search */}
+          <div className="flex-1 flex items-center gap-2 bg-[oklch(0.15_0_0)] border border-[oklch(0.22_0_0)] rounded-lg px-4 py-2.5 focus-within:border-[oklch(0.85_0.18_95)] transition-colors">
+            <Search className="w-4 h-4 text-[oklch(0.45_0_0)] shrink-0" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Filter tags…"
+              className="flex-1 bg-transparent text-sm text-white placeholder-[oklch(0.40_0_0)] outline-none"
+            />
+            {search && (
+              <button onClick={() => setSearch("")} className="text-[oklch(0.40_0_0)] hover:text-white text-xs">✕</button>
+            )}
+          </div>
+
+          {/* Sort options */}
+          <div className="flex items-center gap-1.5 bg-[oklch(0.15_0_0)] border border-[oklch(0.22_0_0)] rounded-lg px-3 py-1.5">
+            <ArrowUpDown className="w-3.5 h-3.5 text-[oklch(0.45_0_0)] shrink-0" />
+            <span className="text-[10px] text-[oklch(0.45_0_0)] font-bold uppercase tracking-wide mr-1 hidden sm:block">Sort:</span>
+            <div className="flex gap-1">
+              {SORT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setSort(opt.value)}
+                  className="px-2.5 py-1 rounded text-xs font-bold transition-colors"
+                  style={{
+                    backgroundColor: sort === opt.value ? "oklch(0.85 0.18 95)" : "transparent",
+                    color: sort === opt.value ? "black" : "oklch(0.55 0 0)",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
+        {/* Results */}
         {isLoading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {Array.from({ length: 24 }).map((_, i) => (
@@ -73,15 +120,8 @@ export default function TagsIndexPage() {
             <p className="font-bold text-white">No tags found</p>
             <p className="text-sm mt-1">No tags match "{search}"</p>
           </div>
-        ) : search ? (
-          // Flat list when searching
-          <div className="flex flex-wrap gap-2">
-            {filtered.map((t) => (
-              <TagChip key={t.slug} tag={t.tag} count={t.count} slug={t.slug} />
-            ))}
-          </div>
-        ) : (
-          // Grouped by letter when browsing
+        ) : grouped ? (
+          // A-Z grouped view
           <div className="space-y-8">
             {grouped.map(([letter, letterTags]) => (
               <div key={letter}>
@@ -103,9 +143,40 @@ export default function TagsIndexPage() {
               </div>
             ))}
           </div>
+        ) : sort === "popular" && !search ? (
+          // Popular: show top tags larger, rest smaller
+          <div>
+            {/* Top 10 most popular */}
+            <div className="mb-6">
+              <p className="text-[10px] font-black uppercase tracking-widest text-[oklch(0.40_0_0)] mb-3">Top Tags</p>
+              <div className="flex flex-wrap gap-2">
+                {filtered.slice(0, 10).map((t, i) => (
+                  <TagChip key={t.slug} tag={t.tag} count={t.count} slug={t.slug} large={i < 5} />
+                ))}
+              </div>
+            </div>
+            {filtered.length > 10 && (
+              <div>
+                <div className="h-px bg-[oklch(0.18_0_0)] mb-6" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-[oklch(0.40_0_0)] mb-3">All Tags</p>
+                <div className="flex flex-wrap gap-2">
+                  {filtered.slice(10).map((t) => (
+                    <TagChip key={t.slug} tag={t.tag} count={t.count} slug={t.slug} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          // Flat list for other sorts / search results
+          <div className="flex flex-wrap gap-2">
+            {filtered.map((t) => (
+              <TagChip key={t.slug} tag={t.tag} count={t.count} slug={t.slug} />
+            ))}
+          </div>
         )}
 
-        {/* SEO note for thin tags */}
+        {/* SEO note */}
         {!search && tags && tags.filter((t) => t.count < 3).length > 0 && (
           <div className="mt-10 p-4 rounded-lg border text-sm" style={{ backgroundColor: "oklch(0.13 0 0)", borderColor: "oklch(0.20 0 0)" }}>
             <p className="text-[oklch(0.45_0_0)]">
@@ -120,13 +191,15 @@ export default function TagsIndexPage() {
   );
 }
 
-function TagChip({ tag, count, slug }: { tag: string; count: number; slug: string }) {
+function TagChip({ tag, count, slug, large }: { tag: string; count: number; slug: string; large?: boolean }) {
   const isThin = count < 3;
   return (
     <Link
       href={`/tag/${slug}`}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded border transition-colors hover:text-white"
+      className="inline-flex items-center gap-1.5 font-bold rounded border transition-colors hover:text-white"
       style={{
+        padding: large ? "6px 12px" : "4px 10px",
+        fontSize: large ? "13px" : "11px",
         borderColor: isThin ? "oklch(0.22 0 0)" : "oklch(0.28 0 0)",
         color: isThin ? "oklch(0.40 0 0)" : "oklch(0.60 0 0)",
         backgroundColor: "transparent",

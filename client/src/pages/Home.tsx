@@ -153,12 +153,13 @@ export default function Home() {
     const cat = categories.find((c) => c.slug === activeFilter);
     return cat?.id;
   }, [activeFilter, categories]);
-  const { data: heroArticles } = trpc.articles.list.useQuery({ limit: 1, featured: true, breaking: true });
+  // Hero: always the most recently published article
+  const { data: latestHeroArticles } = trpc.articles.list.useQuery({ limit: 1, sortBy: 'recent' });
   const { data: featuredArticles } = trpc.articles.list.useQuery({ limit: 4, featured: true });
   const { data: articles, isLoading } = trpc.articles.list.useQuery({ limit: LIMIT, offset: page * LIMIT, categoryId, search: urlSearch, sortBy });
   const { data: trendingArticles } = trpc.articles.list.useQuery({ limit: 6, offset: 0 });
   const { data: subscriberCount } = trpc.newsletter.count.useQuery();
-  const hero = heroArticles?.[0] ?? featuredArticles?.[0];
+  const hero = latestHeroArticles?.[0];
 
   return (
     <div className="min-h-screen bg-[oklch(0.10_0_0)]">
