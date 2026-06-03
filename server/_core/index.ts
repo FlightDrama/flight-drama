@@ -154,10 +154,36 @@ async function startServer() {
         `SELECT slug, publishedAt, updatedAt FROM articles WHERE status = 'published' ORDER BY publishedAt DESC`
       );
       const categories = await rawQuery<any>(`SELECT slug FROM categories`);
+
+      // Build tag list from article tags
+      const tagRows = await rawQuery<{ tags: string }>(`SELECT tags FROM articles WHERE tags IS NOT NULL AND tags != '[]'`);
+      const tagCount: Record<string, number> = {};
+      for (const row of tagRows) {
+        try {
+          const parsed = JSON.parse(row.tags);
+          if (Array.isArray(parsed)) {
+            parsed.forEach((t: string) => {
+              if (t && typeof t === 'string') {
+                const clean = t.trim();
+                tagCount[clean] = (tagCount[clean] || 0) + 1;
+              }
+            });
+          }
+        } catch { /* skip malformed */ }
+      }
+      // Only include tags with 3+ articles in sitemap (avoid thin content)
+      const indexableTags = Object.entries(tagCount)
+        .filter(([, count]) => count >= 3)
+        .map(([tag]) => tag.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
+
       const siteUrl = 'https://flightdrama.com';
+      const today = new Date().toISOString().split('T')[0];
 
       const staticPages = [
         { url: siteUrl, priority: '1.0', changefreq: 'daily' },
+        { url: `${siteUrl}/news`, priority: '0.9', changefreq: 'daily' },
+        { url: `${siteUrl}/on-this-day`, priority: '0.8', changefreq: 'daily', lastmod: today },
+        { url: `${siteUrl}/tags`, priority: '0.7', changefreq: 'weekly', lastmod: today },
         { url: `${siteUrl}/videos`, priority: '0.8', changefreq: 'weekly' },
         { url: `${siteUrl}/forum`, priority: '0.7', changefreq: 'daily' },
         { url: `${siteUrl}/newsletter`, priority: '0.6', changefreq: 'monthly' },
@@ -167,12 +193,21 @@ async function startServer() {
         { url: `${siteUrl}/podcast`, priority: '0.5', changefreq: 'weekly' },
         { url: `${siteUrl}/shop`, priority: '0.5', changefreq: 'monthly' },
         { url: `${siteUrl}/flight-lookup`, priority: '0.8', changefreq: 'daily' },
+        { url: `${siteUrl}/crew-ranks`, priority: '0.6', changefreq: 'weekly' },
+        { url: `${siteUrl}/leaderboard`, priority: '0.6', changefreq: 'daily' },
       ];
 
       const categoryUrls = categories.map((c: any) => ({
         url: `${siteUrl}/category/${c.slug}`,
         priority: '0.7',
         changefreq: 'daily'
+      }));
+
+      const tagUrls = indexableTags.map((slug: string) => ({
+        url: `${siteUrl}/tag/${slug}`,
+        priority: '0.6',
+        changefreq: 'weekly',
+        lastmod: today
       }));
 
       const articleUrls = articles.map((a: any) => ({
@@ -182,7 +217,7 @@ async function startServer() {
         changefreq: 'weekly'
       }));
 
-      const allUrls = [...staticPages, ...categoryUrls, ...articleUrls];
+      const allUrls = [...staticPages, ...categoryUrls, ...tagUrls, ...articleUrls];
 
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
