@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import BreakingTicker from "@/components/BreakingTicker";
-import { Menu, X, Search, Plane, ChevronDown, User, LogOut, Settings, Crown } from "lucide-react";
+import { Menu, X, Search, Plane, ChevronDown, User, LogOut, Settings, Crown, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import NotificationBell from "@/components/NotificationBell";
+import { LOCALE_CONFIG } from "@shared/i18n";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -127,6 +128,38 @@ export default function Navigation() {
             <div className="flex items-center gap-2">
               {/* Notification Bell */}
               <NotificationBell />
+
+              {/* Language Switcher */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded text-sm transition-colors hover:bg-[oklch(0.18_0_0)]"
+                    style={{ color: "oklch(0.55 0 0)" }}
+                    title="Read in another language"
+                  >
+                    <Globe className="w-4 h-4" />
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-[oklch(0.15_0_0)] border-[oklch(0.25_0_0)] min-w-[160px]">
+                  <div className="px-2 py-1.5">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-[oklch(0.40_0_0)] mb-1">Read in</p>
+                  </div>
+                  <DropdownMenuItem asChild>
+                    <Link href="/news" className="flex items-center gap-2 text-[oklch(0.65_0_0)] hover:text-white">
+                      <span>🇬🇧</span> English
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-[oklch(0.22_0_0)]" />
+                  {Object.entries(LOCALE_CONFIG).map(([locale, cfg]) => (
+                    <DropdownMenuItem key={locale} asChild>
+                      <Link href={`/${locale}/news`} className="flex items-center gap-2 text-[oklch(0.65_0_0)] hover:text-white">
+                        <span>{cfg.flag}</span> {cfg.nativeName}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* Search */}
               {searchOpen ? (

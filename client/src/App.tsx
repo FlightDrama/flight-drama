@@ -46,6 +46,8 @@ import NewsArchivePage from "./pages/NewsArchivePage";
 import OnThisDayPage from "./pages/OnThisDayPage";
 import TagPage from "./pages/TagPage";
 import TagsIndexPage from "./pages/TagsIndexPage";
+import TranslatedArticlePage from "./pages/TranslatedArticlePage";
+import TranslatedNewsPage from "./pages/TranslatedNewsPage";
 import FloatingNewsletter from "./components/FloatingNewsletter";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
@@ -102,6 +104,9 @@ function Router() {
         <Route path="/on-this-day" component={OnThisDayPage} />
         <Route path="/tags" component={TagsIndexPage} />
         <Route path="/tag/:slug" component={TagPage} />
+        {/* Internationalisation routes — /[locale]/news and /[locale]/article/:slug */}
+        <Route path="/:locale/news" component={TranslatedNewsPage} />
+        <Route path="/:locale/article/:slug" component={TranslatedArticlePage} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

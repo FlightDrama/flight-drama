@@ -83,6 +83,26 @@ export const articles = mysqlTable("articles", {
 export type Article = typeof articles.$inferSelect;
 export type InsertArticle = typeof articles.$inferInsert;
 
+// ─── Article Translations ─────────────────────────────────────────────────────
+export const articleTranslations = mysqlTable("article_translations", {
+  id: int("id").autoincrement().primaryKey(),
+  articleId: int("articleId").notNull(),
+  locale: varchar("locale", { length: 10 }).notNull(),
+  title: text("title").notNull(),
+  slug: varchar("slug", { length: 500 }).notNull(),
+  excerpt: text("excerpt"),
+  content: text("content").notNull(),
+  metaTitle: varchar("metaTitle", { length: 255 }),
+  metaDescription: text("metaDescription"),
+  audioUrl: text("audioUrl"),
+  status: mysqlEnum("status", ["draft", "published"]).default("draft").notNull(),
+  translatedAt: timestamp("translatedAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ArticleTranslation = typeof articleTranslations.$inferSelect;
+export type InsertArticleTranslation = typeof articleTranslations.$inferInsert;
+
 // ─── Forum Boards ─────────────────────────────────────────────────────────────
 export const forumBoards = mysqlTable("forum_boards", {
   id: int("id").autoincrement().primaryKey(),

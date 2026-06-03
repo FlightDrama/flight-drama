@@ -387,6 +387,54 @@ export const appRouter = router({
 
         return { audioUrl: url, cached: false };
       }),
+    // Translation procedures
+    translationBySlug: publicProcedure
+      .input(z.object({ locale: z.string(), slug: z.string() }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const SUPPORTED_LOCALES = ['de', 'es', 'fr', 'pt', 'ar'];
+        if (!SUPPORTED_LOCALES.includes(input.locale)) return null;
+        const rows = await rawQuery<any>(
+          `SELECT t.*, a.featuredImage, a.videoUrl, a.publishedAt, a.views, a.tags, a.isFeatured, a.isBreaking, a.isPro,
+           c.name AS categoryName, c.slug AS categorySlug, c.colour AS categoryColour,
+           au.name AS authorName, au.slug AS authorSlug, au.avatar AS authorAvatar
+           FROM article_translations t
+           JOIN articles a ON a.id = t.articleId
+           LEFT JOIN categories c ON a.categoryId = c.id
+           LEFT JOIN authors au ON a.authorId = au.id
+           WHERE t.locale = ? AND t.slug = ? AND t.status = 'published' LIMIT 1`,
+          [input.locale, input.slug]
+        );
+        return rows[0] ?? null;
+      }),
+    translationsByLocale: publicProcedure
+      .input(z.object({ locale: z.string(), limit: z.number().min(1).max(50).default(20), offset: z.number().min(0).default(0) }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const rows = await rawQuery<any>(
+          `SELECT t.id, t.articleId, t.locale, t.title, t.slug, t.excerpt, t.metaTitle, t.metaDescription,
+           a.featuredImage, a.publishedAt, a.views,
+           c.name AS categoryName, c.slug AS categorySlug, c.colour AS categoryColour
+           FROM article_translations t
+           JOIN articles a ON a.id = t.articleId
+           LEFT JOIN categories c ON a.categoryId = c.id
+           WHERE t.locale = ? AND t.status = 'published'
+           ORDER BY a.publishedAt DESC
+           LIMIT ? OFFSET ?`,
+          [input.locale, input.limit, input.offset]
+        );
+        return rows;
+      }),
+    availableLocales: publicProcedure
+      .input(z.object({ articleId: z.number() }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const rows = await rawQuery<{ locale: string; slug: string }>(
+          `SELECT locale, slug FROM article_translations WHERE articleId = ? AND status = 'published'`,
+          [input.articleId]
+        );
+        return rows;
+      }),
     create: adminGuard
       .input(z.object({ title: z.string(), slug: z.string(), excerpt: z.string().optional(), content: z.string(), featuredImage: z.string().optional(), videoUrl: z.string().optional(), postType: z.enum(["article","video","social","breaking"]).default("article"), categoryId: z.number().optional(), authorId: z.number().optional(), tags: z.string().optional(), isFeatured: z.boolean().default(false), isBreaking: z.boolean().default(false), isPro: z.boolean().default(false) }))
       .mutation(({ input }) => createArticle({ ...input, publishedAt: new Date() })),
