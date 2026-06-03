@@ -5,40 +5,47 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ArticleCard from "@/components/ArticleCard";
 import NewsletterSignup from "@/components/NewsletterSignup";
-import { TrendingUp, Flame, Users, Crown, ExternalLink, Eye, Clock } from "lucide-react";
+import { TrendingUp, Flame, Users, Crown, ExternalLink, Eye, Clock, MessageCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
+type StoryTab = 'latest' | 'top' | 'commented';
+
 function HeroStoriesPanel({ latestArticles, topArticles }: { latestArticles: any[]; topArticles: any[] }) {
-  const [tab, setTab] = useState<'latest' | 'top'>('latest');
+  const [tab, setTab] = useState<StoryTab>('latest');
   const { data: mostRead } = trpc.articles.mostRead.useQuery({ limit: 5 });
+  const { data: mostCommented } = trpc.articles.mostCommented.useQuery({ limit: 5 });
+
   const latest = latestArticles.slice(0, 5);
   const top = mostRead ?? topArticles.slice(0, 5);
-  const items = tab === 'latest' ? latest : top;
+  const commented = mostCommented ?? [];
+
+  const items = tab === 'latest' ? latest : tab === 'top' ? top : commented;
+
+  const viewAllHref = tab === 'latest' ? '/news' : tab === 'top' ? '/news?sort=popular' : '/news';
+
+  const tabs: { key: StoryTab; label: string }[] = [
+    { key: 'latest', label: 'Latest' },
+    { key: 'top', label: 'Top' },
+    { key: 'commented', label: 'Hot' },
+  ];
 
   return (
     <div className="flex flex-col bg-[oklch(0.12_0_0)] border border-[oklch(0.22_0_0)] rounded-lg overflow-hidden">
       {/* Tab header */}
       <div className="flex border-b border-[oklch(0.22_0_0)]">
-        <button
-          onClick={() => setTab('latest')}
-          className={`flex-1 py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors ${
-            tab === 'latest'
-              ? 'bg-[oklch(0.85_0.18_95)] text-black'
-              : 'bg-[oklch(0.18_0_0)] text-[oklch(0.50_0_0)] hover:text-white hover:bg-[oklch(0.20_0_0)]'
-          }`}
-        >
-          Latest Stories
-        </button>
-        <button
-          onClick={() => setTab('top')}
-          className={`flex-1 py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors ${
-            tab === 'top'
-              ? 'bg-[oklch(0.85_0.18_95)] text-black'
-              : 'bg-[oklch(0.18_0_0)] text-[oklch(0.50_0_0)] hover:text-white hover:bg-[oklch(0.20_0_0)]'
-          }`}
-        >
-          Top Stories
-        </button>
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`flex-1 py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors ${
+              tab === t.key
+                ? 'bg-[oklch(0.85_0.18_95)] text-black'
+                : 'bg-[oklch(0.18_0_0)] text-[oklch(0.50_0_0)] hover:text-white hover:bg-[oklch(0.20_0_0)]'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
       {/* Story list */}
       <div className="divide-y divide-[oklch(0.18_0_0)] flex-1">
@@ -46,40 +53,69 @@ function HeroStoriesPanel({ latestArticles, topArticles }: { latestArticles: any
           <Link
             key={a.id}
             href={`/article/${a.slug}`}
-            className="flex items-start gap-3 px-3 py-3 hover:bg-[oklch(0.16_0_0)] transition-colors group"
+            className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-[oklch(0.16_0_0)] transition-colors group"
           >
-            <div
-              className={`shrink-0 w-5 h-5 flex items-center justify-center text-[10px] font-black mt-0.5 ${
-                i === 0 && tab === 'top'
-                  ? 'bg-[oklch(0.85_0.18_95)] text-black'
-                  : 'bg-[oklch(0.20_0_0)] text-[oklch(0.45_0_0)]'
-              }`}
-            >
-              {i + 1}
+            {/* Thumbnail */}
+            <div className="shrink-0 w-14 h-14 rounded overflow-hidden bg-[oklch(0.20_0_0)] relative">
+              {a.featuredImage ? (
+                <img
+                  src={a.featuredImage}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[oklch(0.35_0_0)] text-lg">✈</div>
+              )}
+              {/* Rank badge overlay */}
+              <div
+                className={`absolute bottom-0 left-0 w-4 h-4 flex items-center justify-center text-[9px] font-black ${
+                  i === 0 ? 'bg-[oklch(0.85_0.18_95)] text-black' : 'bg-[oklch(0.10_0_0)/80] text-[oklch(0.55_0_0)]'
+                }`}
+              >
+                {i + 1}
+              </div>
             </div>
+            {/* Text */}
             <div className="flex-1 min-w-0">
               {a.categoryName && (
-                <p className="text-[9px] font-black uppercase tracking-widest text-[oklch(0.85_0.18_95)] mb-0.5">{a.categoryName}</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-[oklch(0.85_0.18_95)] mb-0.5 truncate">{a.categoryName}</p>
               )}
-              <p className="text-xs font-bold text-[oklch(0.82_0_0)] group-hover:text-white transition-colors line-clamp-2 leading-snug">
+              <p className="text-[11px] font-bold text-[oklch(0.82_0_0)] group-hover:text-white transition-colors line-clamp-2 leading-snug">
                 {a.title}
               </p>
-              <div className="flex items-center gap-2 mt-1 text-[10px] text-[oklch(0.40_0_0)]">
-                {tab === 'latest' ? (
+              <div className="flex items-center gap-1.5 mt-1 text-[10px] text-[oklch(0.40_0_0)]">
+                {tab === 'latest' && (
                   <span className="flex items-center gap-0.5">
                     <Clock className="w-2.5 h-2.5" />
                     {a.publishedAt ? formatDistanceToNow(new Date(a.publishedAt), { addSuffix: true }) : ''}
                   </span>
-                ) : (
+                )}
+                {tab === 'top' && (
                   <span className="flex items-center gap-0.5">
                     <Eye className="w-2.5 h-2.5" />
-                    {(a.views ?? 0).toLocaleString()} views
+                    {(a.views ?? 0).toLocaleString()}
+                  </span>
+                )}
+                {tab === 'commented' && (
+                  <span className="flex items-center gap-0.5">
+                    <MessageCircle className="w-2.5 h-2.5" />
+                    {(a.commentCount ?? 0).toLocaleString()} comments
                   </span>
                 )}
               </div>
             </div>
           </Link>
         ))}
+      </div>
+      {/* View All footer */}
+      <div className="border-t border-[oklch(0.22_0_0)] px-3 py-2.5">
+        <Link
+          href={viewAllHref}
+          className="text-[10px] font-black uppercase tracking-widest text-[oklch(0.85_0.18_95)] hover:underline flex items-center gap-1"
+        >
+          View all stories →
+        </Link>
       </div>
     </div>
   );

@@ -250,6 +250,26 @@ export const appRouter = router({
     mostRead: publicProcedure
       .input(z.object({ limit: z.number().min(1).max(10).default(5) }))
       .query(({ input }) => getMostReadArticles(input.limit)),
+    mostCommented: publicProcedure
+      .input(z.object({ limit: z.number().min(1).max(10).default(5) }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const limit = Math.max(1, Math.min(10, Math.floor(Number(input.limit))));
+        const rows = await rawQuery<{ id: number; title: string; slug: string; featuredImage: string | null; views: number | null; publishedAt: Date | null; categoryName: string | null; categorySlug: string | null; commentCount: number }>(
+          `SELECT a.id, a.title, a.slug, a.featuredImage, a.views, a.publishedAt,
+           c.name AS categoryName, c.slug AS categorySlug,
+           COUNT(ac.id) AS commentCount
+           FROM articles a
+           LEFT JOIN categories c ON a.categoryId = c.id
+           LEFT JOIN article_comments ac ON ac.articleId = a.id AND ac.status = 'approved'
+           WHERE a.status = 'published'
+           GROUP BY a.id
+           ORDER BY commentCount DESC
+           LIMIT ${limit}`,
+          []
+        );
+        return rows;
+      }),
     bySlug: publicProcedure
       .input(z.object({ slug: z.string() }))
       .query(async ({ input }) => {
