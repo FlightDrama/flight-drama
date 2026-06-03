@@ -5,7 +5,85 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ArticleCard from "@/components/ArticleCard";
 import NewsletterSignup from "@/components/NewsletterSignup";
-import { TrendingUp, Flame, Users, Crown, ExternalLink } from "lucide-react";
+import { TrendingUp, Flame, Users, Crown, ExternalLink, Eye, Clock } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+
+function HeroStoriesPanel({ latestArticles, topArticles }: { latestArticles: any[]; topArticles: any[] }) {
+  const [tab, setTab] = useState<'latest' | 'top'>('latest');
+  const { data: mostRead } = trpc.articles.mostRead.useQuery({ limit: 5 });
+  const latest = latestArticles.slice(0, 5);
+  const top = mostRead ?? topArticles.slice(0, 5);
+  const items = tab === 'latest' ? latest : top;
+
+  return (
+    <div className="flex flex-col bg-[oklch(0.12_0_0)] border border-[oklch(0.22_0_0)] rounded-lg overflow-hidden">
+      {/* Tab header */}
+      <div className="flex border-b border-[oklch(0.22_0_0)]">
+        <button
+          onClick={() => setTab('latest')}
+          className={`flex-1 py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors ${
+            tab === 'latest'
+              ? 'bg-[oklch(0.85_0.18_95)] text-black'
+              : 'bg-[oklch(0.18_0_0)] text-[oklch(0.50_0_0)] hover:text-white hover:bg-[oklch(0.20_0_0)]'
+          }`}
+        >
+          Latest Stories
+        </button>
+        <button
+          onClick={() => setTab('top')}
+          className={`flex-1 py-2.5 text-[11px] font-black uppercase tracking-widest transition-colors ${
+            tab === 'top'
+              ? 'bg-[oklch(0.85_0.18_95)] text-black'
+              : 'bg-[oklch(0.18_0_0)] text-[oklch(0.50_0_0)] hover:text-white hover:bg-[oklch(0.20_0_0)]'
+          }`}
+        >
+          Top Stories
+        </button>
+      </div>
+      {/* Story list */}
+      <div className="divide-y divide-[oklch(0.18_0_0)] flex-1">
+        {items.map((a, i) => (
+          <Link
+            key={a.id}
+            href={`/article/${a.slug}`}
+            className="flex items-start gap-3 px-3 py-3 hover:bg-[oklch(0.16_0_0)] transition-colors group"
+          >
+            <div
+              className={`shrink-0 w-5 h-5 flex items-center justify-center text-[10px] font-black mt-0.5 ${
+                i === 0 && tab === 'top'
+                  ? 'bg-[oklch(0.85_0.18_95)] text-black'
+                  : 'bg-[oklch(0.20_0_0)] text-[oklch(0.45_0_0)]'
+              }`}
+            >
+              {i + 1}
+            </div>
+            <div className="flex-1 min-w-0">
+              {a.categoryName && (
+                <p className="text-[9px] font-black uppercase tracking-widest text-[oklch(0.85_0.18_95)] mb-0.5">{a.categoryName}</p>
+              )}
+              <p className="text-xs font-bold text-[oklch(0.82_0_0)] group-hover:text-white transition-colors line-clamp-2 leading-snug">
+                {a.title}
+              </p>
+              <div className="flex items-center gap-2 mt-1 text-[10px] text-[oklch(0.40_0_0)]">
+                {tab === 'latest' ? (
+                  <span className="flex items-center gap-0.5">
+                    <Clock className="w-2.5 h-2.5" />
+                    {a.publishedAt ? formatDistanceToNow(new Date(a.publishedAt), { addSuffix: true }) : ''}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-0.5">
+                    <Eye className="w-2.5 h-2.5" />
+                    {(a.views ?? 0).toLocaleString()} views
+                  </span>
+                )}
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
 import FlightStats from "@/components/FlightStats";
 import LiveFlightsWidget from "@/components/LiveFlightsWidget";
 import AdSlot from "@/components/AdSlot";
@@ -55,15 +133,7 @@ export default function Home() {
               <div className="lg:col-span-2">
                 {hero && <ArticleCard {...hero} publishedAt={hero.publishedAt} size="hero" />}
               </div>
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <Flame className="w-4 h-4 text-[oklch(0.85_0.18_95)]" />
-                  <h2 className="text-xs font-black uppercase tracking-widest text-[oklch(0.85_0.18_95)]">Top Stories</h2>
-                </div>
-                {featuredArticles?.slice(1, 4).map((a) => (
-                  <ArticleCard key={a.id} {...a} publishedAt={a.publishedAt} size="small" />
-                ))}
-              </div>
+              <HeroStoriesPanel latestArticles={articles ?? []} topArticles={featuredArticles ?? []} />
             </div>
           </section>
         )}
