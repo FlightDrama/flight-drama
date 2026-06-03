@@ -48,6 +48,7 @@ import TagPage from "./pages/TagPage";
 import TagsIndexPage from "./pages/TagsIndexPage";
 import TranslatedArticlePage from "./pages/TranslatedArticlePage";
 import TranslatedNewsPage from "./pages/TranslatedNewsPage";
+import HreflangTags from "./components/HreflangTags";
 import FloatingNewsletter from "./components/FloatingNewsletter";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
@@ -62,6 +63,7 @@ function Router() {
   return (
     <>
       <ScrollReset />
+      <HreflangTags />
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/news" component={NewsArchivePage} />
@@ -104,9 +106,16 @@ function Router() {
         <Route path="/on-this-day" component={OnThisDayPage} />
         <Route path="/tags" component={TagsIndexPage} />
         <Route path="/tag/:slug" component={TagPage} />
-        {/* Internationalisation routes — /[locale]/news and /[locale]/article/:slug */}
+        {/* Internationalisation routes */}
+        <Route path="/:locale" component={TranslatedNewsPage} />
         <Route path="/:locale/news" component={TranslatedNewsPage} />
         <Route path="/:locale/article/:slug" component={TranslatedArticlePage} />
+        <Route path="/:locale/category/:slug" component={TranslatedNewsPage} />
+        <Route path="/:locale/tags" component={TagsIndexPage} />
+        <Route path="/:locale/tag/:slug" component={TagPage} />
+        <Route path="/:locale/on-this-day" component={OnThisDayPage} />
+        <Route path="/:locale/videos" component={VideoPage} />
+        <Route path="/:locale/newsletter" component={NewsletterPage} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

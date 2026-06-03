@@ -111,6 +111,10 @@ export default function ArticlePage() {
   const { data, isLoading } = trpc.articles.bySlug.useQuery({ slug: slug! }, { enabled: !!slug });
   const { data: related } = trpc.articles.list.useQuery({ limit: 4, categoryId: data?.articles?.categoryId ?? undefined }, { enabled: !!data?.articles?.categoryId });
   const { data: membership } = trpc.profile.me.useQuery(undefined, { enabled: isAuthenticated });
+  const { data: availableLocales } = trpc.articles.availableLocales.useQuery(
+    { articleId: data?.articles?.id ?? 0 },
+    { enabled: !!data?.articles?.id }
+  );
 
   const article = data?.articles;
   const author = data?.authors;
@@ -242,6 +246,29 @@ export default function ArticlePage() {
             </div>
             <h1 className="text-3xl md:text-4xl font-black text-white leading-tight mb-4">{article.title}</h1>
             {article.excerpt && <p className="text-lg text-[oklch(0.65_0_0)] mb-5 leading-relaxed border-l-4 border-[oklch(0.85_0.18_95)] pl-4">{article.excerpt}</p>}
+            {/* Language selector — show if translations exist */}
+            {availableLocales && availableLocales.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 mb-5 p-3 rounded-lg border" style={{ backgroundColor: 'oklch(0.13 0 0)', borderColor: 'oklch(0.20 0 0)' }}>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[oklch(0.40_0_0)] mr-1">Read in:</span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded border" style={{ borderColor: 'oklch(0.85 0.18 95)', color: 'oklch(0.85 0.18 95)', backgroundColor: 'oklch(0.85 0.18 95 / 0.10)' }}>
+                  🇬🇧 English
+                </span>
+                {availableLocales.map((loc: { locale: string; slug: string }) => {
+                  const cfg = { de: { flag: '🇩🇪', name: 'Deutsch' }, es: { flag: '🇪🇸', name: 'Español' }, fr: { flag: '🇫🇷', name: 'Français' }, pt: { flag: '🇧🇷', name: 'Português' }, ar: { flag: '🇦🇪', name: 'العربية' } }[loc.locale];
+                  if (!cfg) return null;
+                  return (
+                    <Link
+                      key={loc.locale}
+                      href={`/${loc.locale}/article/${loc.slug}`}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded border transition-colors hover:bg-[oklch(0.20_0_0)] hover:text-white"
+                      style={{ borderColor: 'oklch(0.28 0 0)', color: 'oklch(0.60 0 0)' }}
+                    >
+                      {cfg.flag} {cfg.name}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
             {/* Meta */}
             <div className="flex flex-wrap items-center gap-4 mb-6 pb-6 border-b border-[oklch(0.22_0_0)]">
               {author && (
