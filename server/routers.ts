@@ -276,6 +276,52 @@ export const appRouter = router({
         if (article) await incrementArticleViews(article.articles.id);
         return article;
       }),
+    byTag: publicProcedure
+      .input(z.object({ tag: z.string(), limit: z.number().min(1).max(50).default(20), offset: z.number().min(0).default(0) }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const rows = await rawQuery<any>(
+          `SELECT a.id, a.title, a.slug, a.excerpt, a.featuredImage, a.views, a.publishedAt,
+           a.tags, c.name AS categoryName, c.slug AS categorySlug
+           FROM articles a
+           LEFT JOIN categories c ON a.categoryId = c.id
+           WHERE a.tags IS NOT NULL AND (
+             JSON_CONTAINS(a.tags, JSON_QUOTE(?)) = 1
+             OR a.tags LIKE CONCAT('%', ?, '%')
+           )
+           ORDER BY a.publishedAt DESC
+           LIMIT ? OFFSET ?`,
+          [input.tag, input.tag, input.limit, input.offset]
+        );
+        return rows;
+      }),
+    allTags: publicProcedure
+      .query(async () => {
+        const { rawQuery } = await import('./db');
+        const rows = await rawQuery<{ tags: string }>('SELECT tags FROM articles WHERE tags IS NOT NULL AND tags != \'[]\'');
+        const tagCount: Record<string, number> = {};
+        for (const row of rows) {
+          try {
+            const parsed = JSON.parse(row.tags);
+            if (Array.isArray(parsed)) {
+              parsed.forEach((t: string) => {
+                if (t && typeof t === 'string') {
+                  const clean = t.trim();
+                  tagCount[clean] = (tagCount[clean] || 0) + 1;
+                }
+              });
+            }
+          } catch {
+            row.tags.split(',').forEach((t: string) => {
+              const clean = t.trim();
+              if (clean) tagCount[clean] = (tagCount[clean] || 0) + 1;
+            });
+          }
+        }
+        return Object.entries(tagCount)
+          .map(([tag, count]) => ({ tag, count, slug: tag.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') }))
+          .sort((a, b) => b.count - a.count);
+      }),
     create: adminGuard
       .input(z.object({ title: z.string(), slug: z.string(), excerpt: z.string().optional(), content: z.string(), featuredImage: z.string().optional(), videoUrl: z.string().optional(), postType: z.enum(["article","video","social","breaking"]).default("article"), categoryId: z.number().optional(), authorId: z.number().optional(), tags: z.string().optional(), isFeatured: z.boolean().default(false), isBreaking: z.boolean().default(false), isPro: z.boolean().default(false) }))
       .mutation(({ input }) => createArticle({ ...input, publishedAt: new Date() })),

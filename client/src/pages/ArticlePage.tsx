@@ -273,9 +273,18 @@ export default function ArticlePage() {
               <div className="mt-8 pt-6 border-t border-[oklch(0.22_0_0)]">
                 <p className="text-xs font-bold uppercase tracking-widest text-[oklch(0.45_0_0)] mb-2">Tags</p>
                 <div className="flex flex-wrap gap-2">
-                  {JSON.parse(article.tags).map((tag: string) => (
-                    <span key={tag} className="px-2 py-1 bg-[oklch(0.18_0_0)] rounded text-xs text-[oklch(0.60_0_0)]">#{tag}</span>
-                  ))}
+                  {JSON.parse(article.tags).map((tag: string) => {
+                    const tagSlug = tag.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                    return (
+                      <Link
+                        key={tag}
+                        href={`/tag/${tagSlug}`}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-[oklch(0.18_0_0)] hover:bg-[oklch(0.22_0_0)] rounded text-xs text-[oklch(0.60_0_0)] hover:text-white transition-colors border border-[oklch(0.22_0_0)] hover:border-[oklch(0.85_0.18_95)/0.3]"
+                      >
+                        <span className="text-[oklch(0.85_0.18_95)] text-[10px]">#</span>{tag}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             )}
