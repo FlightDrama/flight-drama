@@ -126,6 +126,7 @@ import AdSlot from "@/components/AdSlot";
 import MostReadWidget from "@/components/MostReadWidget";
 import FlightSearchBar from "@/components/FlightSearchBar";
 import TrendingCommentsWidget from "@/components/TrendingCommentsWidget";
+import OnThisDayWidget from "@/components/OnThisDayWidget";
 
 const CATEGORY_FILTERS = [
   { label: "All", value: undefined },
@@ -243,6 +244,7 @@ export default function Home() {
           </div>
           <aside className="space-y-6">
             <NewsletterSignup source="homepage-sidebar" />
+            <OnThisDayWidget />
             <MostReadWidget />
             <TrendingCommentsWidget />
             <LiveFlightsWidget />
