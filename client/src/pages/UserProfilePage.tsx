@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { trpc } from "@/lib/trpc";
@@ -5,7 +6,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Link, useParams } from "wouter";
 import { RANKS, getRankProgress, formatScore } from "../../../shared/reputation";
 import { formatDistanceToNow } from "date-fns";
-import { ArrowLeft, MessageSquare } from "lucide-react";
+import { ArrowLeft, MessageSquare, Share2, Check, Lock } from "lucide-react";
+import { toast } from "sonner";
 
 function EpauletteBars({ count, colour }: { count: number; colour: string }) {
   return (
@@ -21,8 +23,23 @@ export default function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>();
   const { user: me } = useAuth();
   const numericId = parseInt(userId ?? "0", 10);
+  const [copied, setCopied] = useState(false);
+  const [hoveredRank, setHoveredRank] = useState<number | null>(null);
 
   const { data: profile, isLoading } = trpc.reputation.getProfile.useQuery({ userId: numericId });
+
+  const handleShare = () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      navigator.share({ title: `${profile?.user?.name ?? "Crew member"}'s Flight Drama Profile`, url });
+    } else {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopied(true);
+        toast.success("✈ Profile link copied to clipboard!");
+        setTimeout(() => setCopied(false), 2500);
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -60,9 +77,24 @@ export default function UserProfilePage() {
     <div className="min-h-screen bg-[oklch(0.10_0_0)]">
       <Navigation />
       <main className="container py-8 max-w-4xl">
-        <Link href="/crew-ranks" className="inline-flex items-center gap-2 text-sm text-[oklch(0.55_0_0)] hover:text-white mb-6 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to Leaderboard
-        </Link>
+        <div className="flex items-center justify-between mb-6">
+          <Link href="/crew-ranks" className="inline-flex items-center gap-2 text-sm text-[oklch(0.55_0_0)] hover:text-white transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Back to Leaderboard
+          </Link>
+          {/* Share Profile button */}
+          <button
+            onClick={handleShare}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded border transition-colors"
+            style={{
+              borderColor: copied ? progress.current.colour : "oklch(0.28 0 0)",
+              color: copied ? progress.current.colour : "oklch(0.55 0 0)",
+              backgroundColor: copied ? progress.current.colour + "10" : "transparent",
+            }}
+          >
+            {copied ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
+            {copied ? "Copied!" : "Share Profile"}
+          </button>
+        </div>
 
         {/* Profile header */}
         <div className="bg-[oklch(0.13_0_0)] border border-[oklch(0.20_0_0)] rounded-xl overflow-hidden mb-6">
@@ -138,18 +170,46 @@ export default function UserProfilePage() {
             <span className="text-xs font-black uppercase tracking-widest text-[oklch(0.45_0_0)]">Rank Progression</span>
           </div>
           <div className="p-4">
-            <div className="flex gap-1 flex-wrap">
+            <div className="flex gap-1.5 flex-wrap">
               {RANKS.map((rank) => {
                 const achieved = score >= rank.minScore;
                 const isCurrent = progress.current.id === rank.id;
+                    const isHovered = hoveredRank === rank.id;
+                const ptsNeeded = rank.minScore - score;
                 return (
-                  <div
-                    key={rank.id}
-                    title={`${rank.name} — ${formatScore(rank.minScore)}+ pts`}
-                    className={`w-8 h-8 rounded flex items-center justify-center text-base transition-all ${isCurrent ? "ring-2 scale-110" : ""} ${achieved ? "" : "opacity-25 grayscale"}`}
-                    style={{ backgroundColor: achieved ? rank.colour + "20" : "#1f2937", outline: isCurrent ? `2px solid ${rank.colour}` : undefined }}
-                  >
-                    {rank.icon}
+                  <div key={rank.id} className="relative">
+                    <div
+                      onMouseEnter={() => setHoveredRank(rank.id)}
+                      onMouseLeave={() => setHoveredRank(null)}
+                      className={`w-9 h-9 rounded flex items-center justify-center text-base transition-all cursor-default ${isCurrent ? "scale-110" : ""} ${achieved ? "" : "opacity-30 grayscale"}`}
+                      style={{
+                        backgroundColor: achieved ? rank.colour + "20" : "#1f2937",
+                        outline: isCurrent ? `2px solid ${rank.colour}` : undefined,
+                      }}
+                    >
+                      {achieved ? rank.icon : <Lock className="w-3.5 h-3.5 text-[oklch(0.35_0_0)]" />}
+                    </div>
+                    {/* Tooltip */}
+                    {isHovered && (
+                      <div
+                        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none"
+                        style={{ minWidth: "140px" }}
+                      >
+                        <div className="bg-[oklch(0.08_0_0)] border border-[oklch(0.25_0_0)] rounded-lg px-3 py-2 text-center shadow-xl">
+                          <div className="text-base mb-0.5">{rank.icon}</div>
+                          <div className="text-[11px] font-black text-white whitespace-nowrap">{rank.name}</div>
+                          {achieved ? (
+                            <div className="text-[10px] mt-0.5" style={{ color: rank.colour }}>✓ Achieved</div>
+                          ) : (
+                            <div className="text-[10px] text-[oklch(0.50_0_0)] mt-0.5">
+                              {formatScore(ptsNeeded)} pts needed
+                            </div>
+                          )}
+                        </div>
+                        {/* Arrow */}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0" style={{ borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid oklch(0.25 0 0)" }} />
+                      </div>
+                    )}
                   </div>
                 );
               })}

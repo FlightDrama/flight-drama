@@ -262,8 +262,7 @@ export const appRouter = router({
            FROM articles a
            LEFT JOIN categories c ON a.categoryId = c.id
            LEFT JOIN article_comments ac ON ac.articleId = a.id AND ac.status = 'approved'
-           WHERE a.status = 'published'
-           GROUP BY a.id
+           GROUP BY a.id, a.title, a.slug, a.featuredImage, a.views, a.publishedAt, c.name, c.slug
            ORDER BY commentCount DESC
            LIMIT ${limit}`,
           []

@@ -42,6 +42,7 @@ import LeaderboardPage from "./pages/LeaderboardPage";
 import RankChartPage from "./pages/RankChartPage";
 import RanksHubPage from "./pages/RanksHubPage";
 import UserProfilePage from "./pages/UserProfilePage";
+import NewsArchivePage from "./pages/NewsArchivePage";
 import FloatingNewsletter from "./components/FloatingNewsletter";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
@@ -58,6 +59,7 @@ function Router() {
       <ScrollReset />
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/news" component={NewsArchivePage} />
         <Route path="/article/:slug" component={ArticlePage} />
         <Route path="/category/:slug" component={CategoryPage} />
         <Route path="/videos" component={VideoPage} />

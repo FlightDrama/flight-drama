@@ -21,7 +21,7 @@ function HeroStoriesPanel({ latestArticles, topArticles }: { latestArticles: any
 
   const items = tab === 'latest' ? latest : tab === 'top' ? top : commented;
 
-  const viewAllHref = tab === 'latest' ? '/news' : tab === 'top' ? '/news?sort=popular' : '/news';
+  const viewAllHref = tab === 'top' ? '/news?sort=popular' : '/news';
 
   const tabs: { key: StoryTab; label: string }[] = [
     { key: 'latest', label: 'Latest' },
