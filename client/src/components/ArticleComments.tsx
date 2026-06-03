@@ -4,6 +4,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { useReputation } from "@/hooks/useReputation";
 import { getRankForScore } from "../../../shared/reputation";
+import { useLocation } from "wouter";
 import { MessageSquare, Send, User, Lock, ThumbsUp, Reply, ChevronDown, ChevronUp, Pin, ArrowUpDown, ShieldCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -54,16 +55,18 @@ function CommentItem({ comment, replies, sessionId, isAuthenticated, isAdmin, on
             </span>
           )}
           <span className="text-sm font-bold text-white">{comment.userName ?? "Anonymous"}</span>
-          {comment.userReputation != null && (() => {
+          {comment.userReputation != null && comment.userId && (() => {
             const rank = getRankForScore(comment.userReputation);
             return (
-              <span
-                className="text-[9px] font-bold px-1.5 py-0.5 rounded inline-flex items-center gap-0.5"
+              <a
+                href={`/user/${comment.userId}`}
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded inline-flex items-center gap-0.5 hover:opacity-80 transition-opacity cursor-pointer"
                 style={{ backgroundColor: rank.colour + '20', color: rank.colour, border: `1px solid ${rank.colour}30` }}
-                title={rank.description}
+                title={`View ${comment.userName}'s profile — ${rank.name}`}
+                onClick={e => e.stopPropagation()}
               >
                 {rank.icon} {rank.name}
-              </span>
+              </a>
             );
           })()}
           <span className="text-[10px] text-[oklch(0.40_0_0)]">
@@ -183,7 +186,7 @@ function CommentItem({ comment, replies, sessionId, isAuthenticated, isAdmin, on
 
 export default function ArticleComments({ articleId }: { articleId: number }) {
   const { user, isAuthenticated } = useAuth();
-  const { awardPoints } = useReputation();
+  const { awardPoints, CelebrationModal } = useReputation();
   const [content, setContent] = useState("");
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -317,6 +320,8 @@ export default function ArticleComments({ articleId }: { articleId: number }) {
   const totalCount = comments?.length ?? 0;
 
   return (
+    <>
+      {CelebrationModal}
     <section className="mt-10 pt-8 border-t border-[oklch(0.22_0_0)]">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 mb-6">
@@ -484,5 +489,6 @@ export default function ArticleComments({ articleId }: { articleId: number }) {
         </div>
       )}
     </section>
+    </>
   );
 }

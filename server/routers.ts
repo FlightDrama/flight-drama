@@ -1186,7 +1186,19 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
           [userId]
         );
 
-        return { user, progress, recentEvents: events };
+        const recentThreads = await rawQuery<any>(
+          'SELECT id, title, createdAt FROM forum_threads WHERE userId = ? ORDER BY createdAt DESC LIMIT 5',
+          [userId]
+        );
+
+        const recentComments = await rawQuery<any>(
+          `SELECT c.id, c.content, c.createdAt, a.title as articleTitle, a.slug as articleSlug
+           FROM article_comments c JOIN articles a ON c.articleId = a.id
+           WHERE c.userId = ? AND c.status = 'approved' ORDER BY c.createdAt DESC LIMIT 5`,
+          [userId]
+        );
+
+        return { user, progress, recentEvents: events, recentThreads, recentComments };
       }),
 
     // Leaderboard

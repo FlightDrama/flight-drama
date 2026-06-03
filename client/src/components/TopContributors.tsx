@@ -1,17 +1,36 @@
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import { getRankForScore, formatScore } from "../../../shared/reputation";
 
+type Period = 'all' | 'month' | 'week';
+
 export default function TopContributors() {
+  const [period, setPeriod] = useState<Period>('all');
   const { data: leaderboard } = trpc.reputation.leaderboard.useQuery({ limit: 5 });
 
   if (!leaderboard?.length) return null;
 
   return (
     <div className="bg-[oklch(0.13_0_0)] border border-[oklch(0.20_0_0)] rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-[oklch(0.18_0_0)] flex items-center justify-between">
-        <span className="text-xs font-black uppercase tracking-widest text-[oklch(0.45_0_0)]">🏆 Top Contributors</span>
-        <Link href="/crew-ranks" className="text-[10px] text-[oklch(0.85_0.18_95)] hover:underline">View all →</Link>
+      <div className="px-4 py-3 border-b border-[oklch(0.18_0_0)]">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-black uppercase tracking-widest text-[oklch(0.45_0_0)]">🏆 Top Contributors</span>
+          <Link href="/crew-ranks" className="text-[10px] text-[oklch(0.85_0.18_95)] hover:underline">View all →</Link>
+        </div>
+        <div className="flex gap-1">
+          {(['all', 'month', 'week'] as Period[]).map(p => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`text-[9px] font-bold px-2 py-0.5 rounded transition-colors ${
+                period === p ? 'bg-[oklch(0.85_0.18_95)] text-black' : 'bg-[oklch(0.18_0_0)] text-[oklch(0.45_0_0)] hover:text-white'
+              }`}
+            >
+              {p === 'all' ? 'All Time' : p === 'month' ? 'This Month' : 'This Week'}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="divide-y divide-[oklch(0.16_0_0)]">
         {leaderboard.map((member: any, index: number) => {
@@ -29,7 +48,7 @@ export default function TopContributors() {
                   : (member.name ?? "U").charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold text-white truncate">{member.name ?? "Anonymous"}</div>
+                <a href={`/user/${member.id}`} className="text-xs font-bold text-white truncate hover:text-[oklch(0.85_0.18_95)] transition-colors block">{member.name ?? "Anonymous"}</a>
                 <span
                   className={`inline-flex items-center gap-0.5 text-[9px] font-bold px-1 py-0.5 rounded ${isTop3 && [22, 23, 24].includes(rank.id) ? "rank-badge-glow" : ""}`}
                   style={{ backgroundColor: rank.colour + "20", color: rank.colour, border: `1px solid ${rank.colour}30` }}
