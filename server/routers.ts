@@ -342,13 +342,23 @@ export const appRouter = router({
         if (!article[0]) throw new Error('Article not found');
 
         // Strip HTML and prepare text for TTS
-        const rawText = article[0].content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-        // Limit to ~4500 chars to stay within Creator plan budget per article
-        const ttsText = `${article[0].title}. ${rawText}`.slice(0, 5000);
+        // 1. Remove ad slot containers entirely (data-ad-slot, class containing 'ad-slot', 'AdSlot', 'advertisement')
+        let cleanContent = article[0].content
+          .replace(/<[^>]*data-ad[^>]*>[\s\S]*?<\/[^>]+>/gi, ' ')
+          .replace(/<[^>]*(class|id)=["'][^"']*(ad-slot|adslot|advertisement|sponsor|promo)[^"']*["'][^>]*>[\s\S]*?<\/[^>]+>/gi, ' ');
+        // 2. Strip remaining HTML tags
+        const rawText = cleanContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        // 3. Limit to ~4800 chars (well within Creator plan per article)
+        const ttsText = `${article[0].title}. ${rawText}`.slice(0, 4800);
 
         if (!ENV.elevenLabsApiKey) throw new Error('ElevenLabs API key not configured');
 
         // Call ElevenLabs TTS API with George's voice
+        // Voice settings tuned for natural, engaging news reading:
+        //   stability: 0.45 — slight variation for natural delivery (not robotic)
+        //   similarity_boost: 0.80 — strong voice consistency
+        //   style: 0.45 — expressive but professional news reader tone
+        //   use_speaker_boost: true — enhanced clarity
         const GEORGE_VOICE_ID = 'JBFqnCBsd6RMkjVDRZzb';
         const ttsResponse = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${GEORGE_VOICE_ID}`, {
           method: 'POST',
@@ -359,7 +369,7 @@ export const appRouter = router({
           body: JSON.stringify({
             text: ttsText,
             model_id: 'eleven_turbo_v2_5',
-            voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.3, use_speaker_boost: true },
+            voice_settings: { stability: 0.45, similarity_boost: 0.80, style: 0.45, use_speaker_boost: true },
           }),
         });
 

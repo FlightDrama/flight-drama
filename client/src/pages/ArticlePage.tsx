@@ -153,11 +153,31 @@ export default function ArticlePage() {
     if (image) setMeta('twitter:image', image, true);
     setMeta('twitter:site', '@FlightDrama', true);
 
+    // BreadcrumbList JSON-LD for SEO
+    const existingBreadcrumb = document.getElementById('breadcrumb-jsonld');
+    if (existingBreadcrumb) existingBreadcrumb.remove();
+    const breadcrumbItems: any[] = [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: window.location.origin },
+      { '@type': 'ListItem', position: 2, name: 'News', item: `${window.location.origin}/news` },
+    ];
+    if (category) {
+      breadcrumbItems.push({ '@type': 'ListItem', position: 3, name: category.name, item: `${window.location.origin}/category/${category.slug}` });
+      breadcrumbItems.push({ '@type': 'ListItem', position: 4, name: title, item: url });
+    } else {
+      breadcrumbItems.push({ '@type': 'ListItem', position: 3, name: title, item: url });
+    }
+    const breadcrumbScript = document.createElement('script');
+    breadcrumbScript.id = 'breadcrumb-jsonld';
+    breadcrumbScript.type = 'application/ld+json';
+    breadcrumbScript.text = JSON.stringify({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: breadcrumbItems });
+    document.head.appendChild(breadcrumbScript);
+
     // Cleanup on unmount
     return () => {
       document.title = siteTitle;
+      document.getElementById('breadcrumb-jsonld')?.remove();
     };
-  }, [article]);
+  }, [article, category]);
 
   const handleShare = (platform: string) => {
     const url = window.location.href;
@@ -190,9 +210,22 @@ export default function ArticlePage() {
       <ReadingProgressBar />
       <Navigation />
       <main className="container py-6">
-        <Link href="/" className="inline-flex items-center gap-2 text-sm text-[oklch(0.55_0_0)] hover:text-white mb-6 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to News
-        </Link>
+        {/* Breadcrumb navigation */}
+        <nav className="flex items-center gap-1.5 text-xs text-[oklch(0.45_0_0)] mb-5 flex-wrap" aria-label="Breadcrumb">
+          <Link href="/" className="hover:text-white transition-colors">Home</Link>
+          <span className="text-[oklch(0.30_0_0)]">/</span>
+          <Link href="/news" className="hover:text-white transition-colors">News</Link>
+          {category && (
+            <>
+              <span className="text-[oklch(0.30_0_0)]">/</span>
+              <Link href={`/category/${category.slug}`} className="hover:text-white transition-colors" style={{ color: (category as any).colour ?? 'oklch(0.85 0.18 95)' }}>
+                {category.name}
+              </Link>
+            </>
+          )}
+          <span className="text-[oklch(0.30_0_0)]">/</span>
+          <span className="text-[oklch(0.65_0_0)] truncate max-w-[200px] sm:max-w-xs">{article.title}</span>
+        </nav>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           <article className="lg:col-span-3">
             {/* Category + Breaking */}
