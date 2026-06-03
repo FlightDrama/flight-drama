@@ -285,7 +285,7 @@ export default function Home() {
               <div className="space-y-2">
                 <a href="https://www.facebook.com/groups/2881397465357025" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 rounded bg-[oklch(0.20_0_0)] hover:bg-[oklch(0.25_0_0)] transition-colors text-sm font-semibold text-white"><span className="text-blue-500 font-black">f</span> Facebook · 7K members</a>
                 <a href="#" className="flex items-center gap-3 p-2 rounded bg-[oklch(0.20_0_0)] hover:bg-[oklch(0.25_0_0)] transition-colors text-sm font-semibold text-white"><span className="text-sky-400 font-black">𝕏</span> Twitter / X</a>
-                <a href="#" className="flex items-center gap-3 p-2 rounded bg-[oklch(0.20_0_0)] hover:bg-[oklch(0.25_0_0)] transition-colors text-sm font-semibold text-white"><span className="text-pink-400 font-black">▶</span> TikTok · Millions of views</a>
+                <a href="https://www.tiktok.com/@flightdrama" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 rounded bg-[oklch(0.20_0_0)] hover:bg-[oklch(0.25_0_0)] transition-colors text-sm font-semibold text-white"><span className="text-white font-black">♪</span> TikTok · 99K followers · 2M likes</a>
               </div>
             </div>
           </aside>

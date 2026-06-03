@@ -1,9 +1,38 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Instagram } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import RunwayDivider from "@/components/RunwayDivider";
-import { Play, Youtube, ExternalLink, Search, X } from "lucide-react";
+import { Play, Youtube, ExternalLink, Search, X, Music2 } from "lucide-react";
+
+// Real @flightdrama TikTok videos — scraped June 2026
+// 99K followers · 2M likes
+const TIKTOK_VIDEOS = [
+  { id: "7645962212921593110", views: "106.2K", title: "American Airlines pilot draws attention on ATC frequencies at Charlotte Douglas" },
+  { id: "7643724364344593686", views: "225.6K", title: "Air traffic control snaps at pilot" },
+  { id: "7643729978374376726", views: "197.1K", title: "Pilots approaching Washington Dulles found themselves in a rough situation — severe turbulence" },
+  { id: "7643720621129731330", views: "183.5K", title: "A pilot at Charlotte Douglas ended up asking air traffic control a question most pilots never ask" },
+  { id: "7640361206892580118", views: "239.4K", title: "Most F-16 pilots say the G800 are the same jet — a pilot says they're not" },
+  { id: "7644488956976909590", views: "50.4K", title: "Difference between a G700 and a G800 from the mouth of a pilot" },
+  { id: "7643721009371041046", views: "47K", title: "ATC exchange that left everyone speechless" },
+  { id: "7640361352107805974", views: "28.5K", title: "Captain Sullivan cracks a joke after his retirement landing" },
+  { id: "7640441728809569538", views: "28.1K", title: "Delta A320 carrying 163 people declared an emergency after hydraulic problem" },
+  { id: "7643720780248911127", views: "22.1K", title: "United Flight 1921 was already number one for departure at Chicago O'Hare when this happened" },
+  { id: "7644648722260823318", views: "18.2K", title: "Pilot jokes about flying under a spirit callsign — ATC fires back" },
+  { id: "7641654578206788886", views: "17.3K", title: "American Airlines Flight AAL2952 declared a MAYDAY after reporting an engine failure" },
+  { id: "7641209908502957335", views: "13K", title: "A United Airlines Boeing 737-900 declared an emergency after the crew reported a problem" },
+  { id: "7643721158344330518", views: "7.2K", title: "Quite concerning — cockpit audio from a tense approach" },
+  { id: "7644736598726298902", views: "6.6K", title: "ATC audio that had everyone laughing" },
+  { id: "7645982644890537238", views: "3.4K", title: "A United Airlines flight was delayed after a family of eight suddenly realised one of them was missing" },
+  { id: "7641217279627136278", views: "2.6K", title: "A United Airlines pilot gave one of the most unforgettable turbulence reports heard on frequency" },
+  { id: "7641222052346596630", views: "3K", title: "Funny ATC exchange" },
+  { id: "7644981501368618262", views: "2K", title: "A funny exchange between a pilot and Tampa Tower is getting attention online" },
+  { id: "7646439248194800918", views: "662", title: "A Cessna aircraft returned safely to Denton Airport after the pilot reported engine troubles" },
+  { id: "7646429408764480790", views: "1.2K", title: "A Delta Air Lines flight was forced to return to Boston Logan after the crew reported an issue" },
+  { id: "7646424450899905814", views: "1.5K", title: "A heartwarming moment on the radio recently caught the attention of aviation fans" },
+  { id: "7646419824955985175", views: "1.1K", title: "A Frontier Airlines pilot approaching Phoenix delivered one of the more unusual ATC calls" },
+  { id: "7644774885255892246", views: "1.4K", title: "An air traffic controller asking an American Airlines pilot a question" },
+];
 
 // All 48 real Flight Drama YouTube Shorts with manually assigned categories
 // v2 — Instagram Reels section added, sort/filter, skeleton loading
@@ -350,6 +379,104 @@ export default function VideoPage() {
                 </div>
               </a>
             ))}
+          </div>
+        </div>
+
+        <RunwayDivider />
+
+        {/* TikTok Section */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-1">
+            <Music2 className="w-5 h-5 text-[oklch(0.85_0.18_95)]" />
+            <span className="text-xs font-black uppercase tracking-widest text-[oklch(0.85_0.18_95)]">
+              @flightdrama · TikTok
+            </span>
+          </div>
+          <h2 className="text-2xl font-black text-white mb-1">TikTok Videos</h2>
+          <p className="text-[oklch(0.55_0_0)] text-sm mb-4">ATC audio, cockpit drama, and aviation moments from our TikTok — 99K followers · 2M likes</p>
+
+          {/* TikTok CTA */}
+          <div className="mb-5 bg-gradient-to-r from-[oklch(0.18_0_0)] to-[oklch(0.15_0_0)] border border-[oklch(0.22_0_0)] rounded-lg p-4 flex flex-col sm:flex-row items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center shrink-0 border border-[oklch(0.30_0_0)]">
+              <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none">
+                <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z" fill="white"/>
+              </svg>
+            </div>
+            <div className="flex-1 text-center sm:text-left">
+              <p className="font-black text-white">Flight Drama on TikTok</p>
+              <p className="text-sm text-[oklch(0.55_0_0)]">99K followers · 2M likes · ATC audio, cockpit drama, and aviation moments daily</p>
+            </div>
+            <a
+              href="https://www.tiktok.com/@flightdrama"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 flex items-center gap-2 bg-black hover:bg-[oklch(0.15_0_0)] border border-[oklch(0.30_0_0)] text-white px-5 py-2.5 rounded-lg font-black text-sm transition-all"
+            >
+              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="white">
+                <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
+              </svg>
+              Follow
+            </a>
+          </div>
+
+          {/* TikTok Videos Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {TIKTOK_VIDEOS.map((video) => (
+              <a
+                key={video.id}
+                href={`https://www.tiktok.com/@flightdrama/video/${video.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative rounded-lg overflow-hidden group bg-[oklch(0.12_0_0)] border border-[oklch(0.22_0_0)] hover:border-[oklch(0.85_0.18_95)]/40 transition-colors block"
+              >
+                <div className="aspect-[9/16] relative flex items-center justify-center bg-black">
+                  {/* TikTok thumbnail via embed */}
+                  <img
+                    src={`https://www.tiktok.com/api/img/?itemId=${video.id}&location=1`}
+                    alt={video.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                    onError={(e) => {
+                      // Fallback to black background with TikTok logo
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black/50 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full bg-black/70 border border-white/20 flex items-center justify-center opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all">
+                      <Play className="w-5 h-5 text-white ml-0.5" fill="white" />
+                    </div>
+                  </div>
+                  {/* TikTok badge */}
+                  <div className="absolute top-2 left-2">
+                    <span className="bg-black/80 text-white text-[9px] font-black px-1.5 py-0.5 rounded flex items-center gap-1">
+                      <svg viewBox="0 0 24 24" className="w-2.5 h-2.5" fill="white">
+                        <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
+                      </svg>
+                      TIKTOK
+                    </span>
+                  </div>
+                  {/* View count */}
+                  <div className="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                    ▶ {video.views}
+                  </div>
+                </div>
+                <div className="p-2">
+                  <p className="text-[11px] text-[oklch(0.65_0_0)] leading-tight line-clamp-2">{video.title}</p>
+                </div>
+              </a>
+            ))}
+          </div>
+
+          {/* View all on TikTok */}
+          <div className="mt-4 text-center">
+            <a
+              href="https://www.tiktok.com/@flightdrama"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm font-bold text-[oklch(0.85_0.18_95)] hover:underline"
+            >
+              View all videos on TikTok →
+            </a>
           </div>
         </div>
       </main>
