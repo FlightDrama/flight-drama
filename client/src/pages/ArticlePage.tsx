@@ -19,7 +19,8 @@ import TableOfContents from "@/components/TableOfContents";
 import AuthorBioCard from "@/components/AuthorBioCard";
 import ProContentGate from "@/components/ProContentGate";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { AVIATION_EVENTS, CATEGORY_COLOURS, CATEGORY_LABELS } from "@/components/OnThisDayWidget";
 
 // Bookmark button for saving to Departure Lounge
 function BookmarkButton({ slug, title, image }: { slug: string; title: string; image: string | null }) {
@@ -57,6 +58,40 @@ function BookmarkButton({ slug, title, image }: { slug: string; title: string; i
       </svg>
       {saved ? 'Saved' : 'Save'}
     </button>
+  );
+}
+
+// Related On This Day sidebar widget
+function RelatedOnThisDay() {
+  const today = useMemo(() => new Date(), []);
+  const month = today.getMonth() + 1;
+  const day = today.getDate();
+  const events = AVIATION_EVENTS[`${month}-${day}`] ?? [];
+  const dateLabel = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+  if (events.length === 0) return null;
+  return (
+    <div className="bg-[oklch(0.12_0_0)] border border-[oklch(0.22_0_0)] rounded-lg overflow-hidden">
+      <div className="bg-[oklch(0.18_0_0)] px-4 py-2.5 flex items-center gap-2 border-b border-[oklch(0.22_0_0)]">
+        <span className="text-[oklch(0.85_0.18_95)] text-sm">📅</span>
+        <div>
+          <span className="text-xs font-black uppercase tracking-widest text-[oklch(0.65_0_0)]">On This Day</span>
+          <span className="text-xs text-[oklch(0.45_0_0)] ml-2">{dateLabel}</span>
+        </div>
+      </div>
+      <div className="divide-y divide-[oklch(0.18_0_0)]">
+        {events.map((ev, i) => (
+          <div key={i} className="px-4 py-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ backgroundColor: CATEGORY_COLOURS[ev.category] + '20', color: CATEGORY_COLOURS[ev.category] }}>
+                {CATEGORY_LABELS[ev.category]}
+              </span>
+              <span className="text-[10px] font-black text-[oklch(0.85_0.18_95)]">{ev.year}</span>
+            </div>
+            <p className="text-xs text-[oklch(0.72_0_0)] leading-relaxed">{ev.event}</p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -258,6 +293,7 @@ export default function ArticlePage() {
           </article>
           <aside className="space-y-6">
             <MostReadWidget />
+            <RelatedOnThisDay />
             <FlightDramaRecommends />
             <AdSlot slot="sidebar" />
             <NewsletterSignup source="article-sidebar" />

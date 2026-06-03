@@ -233,19 +233,48 @@ export default function NewsArchivePage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 text-[oklch(0.45_0_0)]">
-            <p className="text-4xl mb-3">✈</p>
-            <p className="font-bold text-white mb-1">No articles found</p>
-            {searchQuery ? (
-              <p className="text-sm mb-3">No results for "{searchQuery}"</p>
-            ) : (
-              <p className="text-sm mb-3">Try a different category or sort order</p>
+          <div className="text-center py-16">
+            {/* Flight-themed no-results illustration */}
+            <div className="relative inline-block mb-6">
+              <div className="text-7xl opacity-20 select-none">✈</div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-16 h-0.5 bg-[oklch(0.85_0.18_95)] opacity-60" style={{ transform: 'rotate(-30deg)' }} />
+              </div>
+            </div>
+            <div className="inline-block mb-4 px-3 py-1 rounded font-mono text-[10px] border" style={{ backgroundColor: 'oklch(0.13 0 0)', borderColor: 'oklch(0.85 0.18 95 / 0.3)', color: 'oklch(0.85 0.18 95)' }}>
+              SQUAWK 7600 · COMMS LOST · NO SIGNAL
+            </div>
+            <p className="font-black text-white text-xl mb-2">
+              {searchQuery ? `No results for "${searchQuery}"` : 'No articles found'}
+            </p>
+            <p className="text-sm text-[oklch(0.45_0_0)] mb-6 max-w-sm mx-auto">
+              {searchQuery
+                ? 'ATC couldn\'t locate that flight. Try a different search term or browse by category.'
+                : 'This airspace is clear. Try a different category or sort order.'}
+            </p>
+            {/* Suggested keywords */}
+            {searchQuery && (
+              <div className="mb-6">
+                <p className="text-xs text-[oklch(0.40_0_0)] mb-3 uppercase tracking-widest font-bold">Try searching for</p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {['Boeing 737', 'Ryanair', 'Emirates', 'Turbulence', 'Emergency landing', 'Pilot shortage', 'Air France', 'Delta Airlines'].map(kw => (
+                    <button
+                      key={kw}
+                      onClick={() => { setSearchInput(kw); setSearchQuery(kw); triggerTransition(); setPage(0); }}
+                      className="px-3 py-1.5 text-xs font-bold rounded border transition-colors hover:bg-[oklch(0.18_0_0)] hover:text-white"
+                      style={{ borderColor: 'oklch(0.25 0 0)', color: 'oklch(0.55 0 0)' }}
+                    >
+                      {kw}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
             <button
               onClick={() => { handleFilterChange(undefined); clearSearch(); }}
-              className="text-sm text-[oklch(0.85_0.18_95)] hover:underline"
+              className="text-sm font-bold text-[oklch(0.85_0.18_95)] hover:underline"
             >
-              Clear all filters
+              ← Clear all filters
             </button>
           </div>
         )}
