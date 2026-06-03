@@ -21,6 +21,7 @@ import ProContentGate from "@/components/ProContentGate";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useEffect, useState, useMemo } from "react";
 import { AVIATION_EVENTS, CATEGORY_COLOURS, CATEGORY_LABELS } from "@/components/OnThisDayWidget";
+import TikTokWidget from "@/components/TikTokWidget";
 
 // Bookmark button for saving to Departure Lounge
 function BookmarkButton({ slug, title, image }: { slug: string; title: string; image: string | null }) {
@@ -303,6 +304,7 @@ export default function ArticlePage() {
           <aside className="space-y-6">
             <MostReadWidget />
             <RelatedOnThisDay />
+            <TikTokWidget />
             <FlightDramaRecommends />
             <AdSlot slot="sidebar" />
             <NewsletterSignup source="article-sidebar" />

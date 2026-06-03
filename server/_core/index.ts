@@ -146,6 +146,31 @@ async function startServer() {
     }
   });
 
+  // TikTok thumbnail proxy — fetches oEmbed thumbnail and caches for 12 hours
+  const tiktokThumbCache = new Map<string, { url: string; expires: number }>();
+  app.get('/api/tiktok-thumb/:videoId', async (req, res) => {
+    const { videoId } = req.params;
+    if (!/^\d{15,20}$/.test(videoId)) return res.status(400).json({ error: 'Invalid video ID' });
+    const cached = tiktokThumbCache.get(videoId);
+    if (cached && cached.expires > Date.now()) {
+      res.set('Cache-Control', 'public, max-age=43200');
+      return res.redirect(302, cached.url);
+    }
+    try {
+      const oembed = await fetch(`https://www.tiktok.com/oembed?url=https://www.tiktok.com/@flightdrama/video/${videoId}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' }
+      });
+      const data = await oembed.json() as any;
+      const thumbUrl = data.thumbnail_url || '';
+      if (!thumbUrl) return res.status(404).json({ error: 'No thumbnail' });
+      tiktokThumbCache.set(videoId, { url: thumbUrl, expires: Date.now() + 12 * 60 * 60 * 1000 });
+      res.set('Cache-Control', 'public, max-age=43200');
+      return res.redirect(302, thumbUrl);
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
   // Sitemap.xml — dynamically generated from all published articles
   app.get('/sitemap.xml', async (req, res) => {
     try {

@@ -432,12 +432,11 @@ export default function VideoPage() {
                 <div className="aspect-[9/16] relative flex items-center justify-center bg-black">
                   {/* TikTok thumbnail via embed */}
                   <img
-                    src={`https://www.tiktok.com/api/img/?itemId=${video.id}&location=1`}
+                    src={`/api/tiktok-thumb/${video.id}`}
                     alt={video.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     loading="lazy"
                     onError={(e) => {
-                      // Fallback to black background with TikTok logo
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
                   />
