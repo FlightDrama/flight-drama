@@ -209,23 +209,30 @@ export default function ArticlePage() {
     <div className="min-h-screen bg-[oklch(0.10_0_0)]">
       <ReadingProgressBar />
       <Navigation />
+      {/* Sticky breadcrumb bar */}
+      <div
+        className="sticky top-0 z-30 border-b"
+        style={{ backgroundColor: "oklch(0.10 0 0 / 0.95)", borderColor: "oklch(0.18 0 0)", backdropFilter: "blur(8px)" }}
+      >
+        <div className="container">
+          <nav className="flex items-center gap-1.5 text-xs text-[oklch(0.45_0_0)] py-2.5 flex-wrap" aria-label="Breadcrumb">
+            <Link href="/" className="hover:text-white transition-colors">Home</Link>
+            <span className="text-[oklch(0.30_0_0)]">/</span>
+            <Link href="/news" className="hover:text-white transition-colors">News</Link>
+            {category && (
+              <>
+                <span className="text-[oklch(0.30_0_0)]">/</span>
+                <Link href={`/category/${category.slug}`} className="hover:text-white transition-colors" style={{ color: (category as any).colour ?? 'oklch(0.85 0.18 95)' }}>
+                  {category.name}
+                </Link>
+              </>
+            )}
+            <span className="text-[oklch(0.30_0_0)]">/</span>
+            <span className="text-[oklch(0.65_0_0)] truncate max-w-[200px] sm:max-w-xs">{article.title}</span>
+          </nav>
+        </div>
+      </div>
       <main className="container py-6">
-        {/* Breadcrumb navigation */}
-        <nav className="flex items-center gap-1.5 text-xs text-[oklch(0.45_0_0)] mb-5 flex-wrap" aria-label="Breadcrumb">
-          <Link href="/" className="hover:text-white transition-colors">Home</Link>
-          <span className="text-[oklch(0.30_0_0)]">/</span>
-          <Link href="/news" className="hover:text-white transition-colors">News</Link>
-          {category && (
-            <>
-              <span className="text-[oklch(0.30_0_0)]">/</span>
-              <Link href={`/category/${category.slug}`} className="hover:text-white transition-colors" style={{ color: (category as any).colour ?? 'oklch(0.85 0.18 95)' }}>
-                {category.name}
-              </Link>
-            </>
-          )}
-          <span className="text-[oklch(0.30_0_0)]">/</span>
-          <span className="text-[oklch(0.65_0_0)] truncate max-w-[200px] sm:max-w-xs">{article.title}</span>
-        </nav>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           <article className="lg:col-span-3">
             {/* Category + Breaking */}

@@ -136,6 +136,31 @@ export default function ArticleAudioPlayer({ articleId, articleTitle, cachedAudi
         )}
       </div>
 
+      {/* Loading banner */}
+      {isLoading && (
+        <div
+          className="px-4 py-2 flex items-center gap-2 border-b"
+          style={{ backgroundColor: "oklch(0.85 0.18 95 / 0.08)", borderColor: "oklch(0.85 0.18 95 / 0.20)" }}
+        >
+          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" style={{ color: "oklch(0.85 0.18 95)" }} />
+          <div className="flex-1">
+            <p className="text-[11px] font-bold" style={{ color: "oklch(0.85 0.18 95)" }}>Generating audio with George…</p>
+            <p className="text-[10px] text-[oklch(0.45_0_0)]">This takes about 5–10 seconds. Audio is cached after first generation.</p>
+          </div>
+          {/* Animated loading bar */}
+          <div className="w-16 h-1 rounded-full overflow-hidden" style={{ backgroundColor: "oklch(0.22 0 0)" }}>
+            <div
+              className="h-full rounded-full"
+              style={{
+                backgroundColor: "oklch(0.85 0.18 95)",
+                animation: "loadingBar 1.5s ease-in-out infinite",
+                width: "40%",
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Controls */}
       <div className="px-4 py-3 flex items-center gap-3">
         {/* Play/Pause button */}
@@ -143,7 +168,7 @@ export default function ArticleAudioPlayer({ articleId, articleTitle, cachedAudi
           onClick={handlePlayPause}
           disabled={isLoading}
           className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95"
-          style={{ backgroundColor: "oklch(0.85 0.18 95)", color: "black" }}
+          style={{ backgroundColor: isLoading ? "oklch(0.85 0.18 95 / 0.4)" : "oklch(0.85 0.18 95)", color: "black" }}
           title={isPlaying ? "Pause" : "Play"}
         >
           {isLoading ? (
@@ -202,4 +227,12 @@ export default function ArticleAudioPlayer({ articleId, articleTitle, cachedAudi
       </div>
     </div>
   );
+}
+
+// Inject loadingBar animation once
+if (typeof document !== 'undefined' && !document.getElementById('audio-player-styles')) {
+  const style = document.createElement('style');
+  style.id = 'audio-player-styles';
+  style.textContent = `@keyframes loadingBar { 0% { transform: translateX(-100%); } 50% { transform: translateX(150%); } 100% { transform: translateX(-100%); } }`;
+  document.head.appendChild(style);
 }
