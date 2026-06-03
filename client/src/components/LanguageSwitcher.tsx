@@ -98,3 +98,4 @@ export default function LanguageSwitcher({ compact = false }: Props) {
     </div>
   );
 }
+// force publish Wed Jun  3 23:52:43 UTC 2026
