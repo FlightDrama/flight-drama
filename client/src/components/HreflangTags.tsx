@@ -117,3 +117,4 @@ export default function HreflangTags({ canonicalPath, pageTitle, pageDescription
 
   return null;
 }
+// i18n system checkpoint Wed Jun  3 22:51:45 UTC 2026
