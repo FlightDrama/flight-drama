@@ -411,6 +411,8 @@ export const appRouter = router({
       .input(z.object({ locale: z.string(), limit: z.number().min(1).max(50).default(20), offset: z.number().min(0).default(0) }))
       .query(async ({ input }) => {
         const { rawQuery } = await import('./db');
+        const limit = Math.min(Math.max(parseInt(String(input.limit), 10) || 20, 1), 50);
+        const offset = Math.max(parseInt(String(input.offset), 10) || 0, 0);
         const rows = await rawQuery<any>(
           `SELECT t.id, t.articleId, t.locale, t.title, t.slug, t.excerpt, t.metaTitle, t.metaDescription,
            a.featuredImage, a.publishedAt, a.views,
@@ -420,8 +422,8 @@ export const appRouter = router({
            LEFT JOIN categories c ON a.categoryId = c.id
            WHERE t.locale = ? AND t.status = 'published'
            ORDER BY a.publishedAt DESC
-           LIMIT ? OFFSET ?`,
-          [input.locale, Number(input.limit), Number(input.offset)]
+           LIMIT ${limit} OFFSET ${offset}`,
+          [input.locale]
         );
         return rows;
       }),
