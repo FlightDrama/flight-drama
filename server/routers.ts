@@ -421,7 +421,7 @@ export const appRouter = router({
            WHERE t.locale = ? AND t.status = 'published'
            ORDER BY a.publishedAt DESC
            LIMIT ? OFFSET ?`,
-          [input.locale, input.limit, input.offset]
+          [input.locale, Number(input.limit), Number(input.offset)]
         );
         return rows;
       }),
