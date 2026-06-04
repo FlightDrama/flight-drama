@@ -3,14 +3,16 @@ import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import Navigation from "@/components/Navigation";
-import { ArrowLeft, Trash2, Edit, Eye, Search, Plus } from "lucide-react";
+import { ArrowLeft, Trash2, Eye, Search, BarChart2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import ArticleStatsModal from "@/components/ArticleStatsModal";
 
 export default function AdminArticles() {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
+  const [statsArticle, setStatsArticle] = useState<any | null>(null);
   const LIMIT = 25;
   const utils = trpc.useUtils();
   const { data: articles, isLoading } = trpc.articles.list.useQuery({ limit: LIMIT, offset: page * LIMIT, search: search || undefined });
@@ -41,24 +43,43 @@ export default function AdminArticles() {
         {/* Table */}
         <div className="bg-[oklch(0.13_0_0)] border border-[oklch(0.20_0_0)] rounded-lg overflow-hidden">
           <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-[oklch(0.17_0_0)] text-xs font-black uppercase tracking-wider text-[oklch(0.45_0_0)]">
-            <span className="col-span-6">Title</span>
+            <span className="col-span-5">Title</span>
             <span className="col-span-2">Category</span>
             <span className="col-span-2">Views</span>
-            <span className="col-span-2">Actions</span>
+            <span className="col-span-3">Actions</span>
           </div>
           {isLoading ? (
             Array.from({length:8}).map((_,i) => <div key={i} className="h-12 border-t border-[oklch(0.18_0_0)] animate-pulse bg-[oklch(0.14_0_0)]" />)
           ) : articles?.map(a => (
             <div key={a.id} className="grid grid-cols-12 gap-2 px-4 py-3 border-t border-[oklch(0.18_0_0)] items-center hover:bg-[oklch(0.15_0_0)] transition-colors">
-              <div className="col-span-6">
+              <div className="col-span-5">
                 <p className="text-sm font-semibold text-white line-clamp-1">{a.title}</p>
                 <p className="text-xs text-[oklch(0.40_0_0)]">{a.publishedAt ? formatDistanceToNow(new Date(a.publishedAt), { addSuffix: true }) : ""}</p>
               </div>
-              <div className="col-span-2"><span className="text-xs bg-[oklch(0.22_0_0)] px-2 py-0.5 rounded text-[oklch(0.65_0_0)]">{a.categoryName ?? "—"}</span></div>
+              <div className="col-span-2"><span className="text-xs bg-[oklch(0.22_0_0)] px-2 py-0.5 rounded text-[oklch(0.65_0_0)]">{(a as any).categoryName ?? "—"}</span></div>
               <div className="col-span-2 text-sm text-[oklch(0.55_0_0)]">{a.views?.toLocaleString()}</div>
-              <div className="col-span-2 flex items-center gap-2">
-                <Link href={`/article/${a.slug}`} className="p-1.5 rounded bg-[oklch(0.20_0_0)] hover:bg-[oklch(0.25_0_0)] text-[oklch(0.55_0_0)] hover:text-white transition-colors"><Eye className="w-3.5 h-3.5" /></Link>
-                <button onClick={() => { if (confirm("Delete this article?")) deleteArticle.mutate({ id: a.id }); }} className="p-1.5 rounded bg-[oklch(0.20_0_0)] hover:bg-red-500/20 text-[oklch(0.55_0_0)] hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+              <div className="col-span-3 flex items-center gap-1.5">
+                {/* View Stats */}
+                <button
+                  onClick={() => setStatsArticle(a)}
+                  className="p-1.5 rounded transition-colors hover:text-white"
+                  style={{ backgroundColor: "oklch(0.20 0 0)", color: "oklch(0.85 0.18 95)" }}
+                  title="View stats"
+                >
+                  <BarChart2 className="w-3.5 h-3.5" />
+                </button>
+                {/* View article */}
+                <Link href={`/article/${a.slug}`} className="p-1.5 rounded bg-[oklch(0.20_0_0)] hover:bg-[oklch(0.25_0_0)] text-[oklch(0.55_0_0)] hover:text-white transition-colors" title="View article">
+                  <Eye className="w-3.5 h-3.5" />
+                </Link>
+                {/* Delete */}
+                <button
+                  onClick={() => { if (confirm("Delete this article?")) deleteArticle.mutate({ id: a.id }); }}
+                  className="p-1.5 rounded bg-[oklch(0.20_0_0)] hover:bg-red-500/20 text-[oklch(0.55_0_0)] hover:text-red-400 transition-colors"
+                  title="Delete article"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
           ))}
@@ -69,6 +90,22 @@ export default function AdminArticles() {
           <button onClick={() => setPage(p=>p+1)} disabled={(articles?.length??0)<LIMIT} className="px-4 py-2 bg-[oklch(0.18_0_0)] text-sm font-bold rounded disabled:opacity-30 hover:bg-[oklch(0.22_0_0)]">Next →</button>
         </div>
       </main>
+
+      {/* Stats Modal */}
+      {statsArticle && (
+        <ArticleStatsModal
+          article={{
+            id: statsArticle.id,
+            title: statsArticle.title,
+            slug: statsArticle.slug,
+            views: statsArticle.views ?? 0,
+            publishedAt: statsArticle.publishedAt,
+            categoryName: (statsArticle as any).categoryName,
+            categoryColour: (statsArticle as any).categoryColour,
+          }}
+          onClose={() => setStatsArticle(null)}
+        />
+      )}
     </div>
   );
 }

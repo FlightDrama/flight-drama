@@ -1498,6 +1498,55 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
         WHERE status = 'published' GROUP BY locale ORDER BY count DESC
       `);
     }),
+    articleStats: adminGuard
+      .input(z.object({ articleId: z.number() }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        // Comment count
+        const [commentRow] = await rawQuery<{ count: number }>(
+          `SELECT COUNT(*) AS count FROM article_comments WHERE articleId = ? AND status = 'approved'`,
+          [input.articleId]
+        );
+        // Translation count + list
+        const translations = await rawQuery<{ locale: string; slug: string }>(
+          `SELECT locale, slug FROM article_translations WHERE articleId = ? AND status = 'published'`,
+          [input.articleId]
+        );
+        // Reading time (based on word count)
+        const [contentRow] = await rawQuery<{ content: string }>(
+          `SELECT content FROM articles WHERE id = ? LIMIT 1`,
+          [input.articleId]
+        );
+        const wordCount = contentRow?.content?.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length ?? 0;
+        const readingTime = Math.max(1, Math.round(wordCount / 200));
+        // View rank
+        const [rankRow] = await rawQuery<{ rank_pos: number }>(
+          `SELECT COUNT(*) + 1 AS rank_pos FROM articles WHERE views > (SELECT views FROM articles WHERE id = ?)`,
+          [input.articleId]
+        );
+        const [totalRow] = await rawQuery<{ total: number }>('SELECT COUNT(*) AS total FROM articles');
+        // Category peers for comparison chart
+        const [articleRow] = await rawQuery<{ categoryId: number | null }>(
+          `SELECT categoryId FROM articles WHERE id = ? LIMIT 1`,
+          [input.articleId]
+        );
+        let categoryPeers: any[] = [];
+        if (articleRow?.categoryId) {
+          categoryPeers = await rawQuery<any>(
+            `SELECT id, title, views FROM articles WHERE categoryId = ? ORDER BY views DESC LIMIT 8`,
+            [articleRow.categoryId]
+          );
+        }
+        return {
+          commentCount: commentRow?.count ?? 0,
+          translationCount: translations.length,
+          translations,
+          readingTime,
+          viewRank: rankRow?.rank_pos ?? 0,
+          totalArticles: totalRow?.total ?? 0,
+          categoryPeers,
+        };
+      }),
   }),
 });
 export type AppRouter = typeof appRouter;
