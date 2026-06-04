@@ -75,6 +75,7 @@ export const articles = mysqlTable("articles", {
   isBreaking: boolean("isBreaking").default(false).notNull(),
   isPro: boolean("isPro").default(false).notNull(),
   wpSlug: varchar("wpSlug", { length: 500 }),
+  status: mysqlEnum("status", ["draft", "published", "rejected"]).default("published").notNull(),
   publishedAt: timestamp("publishedAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

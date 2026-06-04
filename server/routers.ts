@@ -1548,5 +1548,85 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
         };
       }),
   }),
+  autopilot: router({
+    // Get all draft articles awaiting review
+    drafts: adminGuard.query(async () => {
+      const { rawQuery } = await import('./db');
+      return rawQuery<any>(`
+        SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.featuredImage,
+          a.isBreaking, a.isPro, a.status, a.createdAt, a.publishedAt,
+          c.name AS categoryName, c.colour AS categoryColour, c.slug AS categorySlug,
+          au.name AS authorName
+        FROM articles a
+        LEFT JOIN categories c ON a.categoryId = c.id
+        LEFT JOIN authors au ON a.authorId = au.id
+        WHERE a.status = 'draft'
+        ORDER BY a.createdAt DESC
+        LIMIT 50
+      `);
+    }),
+    // Approve a draft article (set status to published)
+    approve: adminGuard
+      .input(z.object({ id: z.number(), isBreaking: z.boolean().optional() }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        await rawQuery(
+          `UPDATE articles SET status = 'published', isBreaking = ?, publishedAt = NOW(), updatedAt = NOW() WHERE id = ? AND status = 'draft'`,
+          [input.isBreaking ? 1 : 0, input.id]
+        );
+        return { success: true };
+      }),
+    // Reject a draft article
+    reject: adminGuard
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        await rawQuery(
+          `UPDATE articles SET status = 'rejected', updatedAt = NOW() WHERE id = ? AND status = 'draft'`,
+          [input.id]
+        );
+        return { success: true };
+      }),
+    // Bulk approve all drafts
+    approveAll: adminGuard.mutation(async () => {
+      const { rawQuery } = await import('./db');
+      const [result] = await rawQuery<any>(
+        `UPDATE articles SET status = 'published', publishedAt = NOW(), updatedAt = NOW() WHERE status = 'draft'`
+      );
+      return { count: result.affectedRows ?? 0 };
+    }),
+    // Bulk reject all drafts
+    rejectAll: adminGuard.mutation(async () => {
+      const { rawQuery } = await import('./db');
+      const [result] = await rawQuery<any>(
+        `UPDATE articles SET status = 'rejected', updatedAt = NOW() WHERE status = 'draft'`
+      );
+      return { count: result.affectedRows ?? 0 };
+    }),
+    // Update draft article content before approving
+    updateDraft: adminGuard
+      .input(z.object({ id: z.number(), title: z.string().optional(), excerpt: z.string().optional(), content: z.string().optional(), isBreaking: z.boolean().optional(), categoryId: z.number().optional() }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const { id, ...fields } = input;
+        const updates = Object.entries(fields)
+          .filter(([_, v]) => v !== undefined)
+          .map(([k, _]) => `${k} = ?`)
+          .join(', ');
+        const values = Object.entries(fields)
+          .filter(([_, v]) => v !== undefined)
+          .map(([_, v]) => v);
+        if (updates) {
+          await rawQuery(`UPDATE articles SET ${updates}, updatedAt = NOW() WHERE id = ? AND status = 'draft'`, [...values, id]);
+        }
+        return { success: true };
+      }),
+    // Get draft count for badge
+    draftCount: adminGuard.query(async () => {
+      const { rawQuery } = await import('./db');
+      const [row] = await rawQuery<{ count: number }>(`SELECT COUNT(*) AS count FROM articles WHERE status = 'draft'`);
+      return { count: row?.count ?? 0 };
+    }),
+  }),
 });
 export type AppRouter = typeof appRouter;
