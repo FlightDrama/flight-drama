@@ -113,6 +113,26 @@ async function startServer() {
     }
   });
 
+  // Autopilot image upload endpoint — called by cloud computer cron to upload branded PNG images
+  const autopilotUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+  app.post('/api/autopilot/upload-image', autopilotUpload.single('image'), async (req, res) => {
+    try {
+      // Authenticate with cron secret
+      const cronSecret = req.headers['x-cron-secret'];
+      if (cronSecret !== 'fd-cron-2026' && cronSecret !== process.env.CRON_SECRET_KEY) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+      if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+      const { storagePut } = await import('../storage');
+      const slug = (req.body.slug || `autopilot-${Date.now()}`).replace(/[^a-z0-9-]/g, '-').slice(0, 100);
+      const key = `autopilot-images/${slug}-${Date.now()}.png`;
+      const { url } = await storagePut(key, req.file.buffer, 'image/png');
+      return res.json({ url, key });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message ?? 'Upload failed' });
+    }
+  });
+
   // Scheduled article publish handler — fires via Heartbeat cron every minute
   app.post("/api/scheduled/publish-articles", async (req, res) => {
     try {
