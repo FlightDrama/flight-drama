@@ -19,6 +19,7 @@ function ArticleCard({ article, onApprove, onReject, isApproving, isRejecting }:
 }) {
   const [expanded, setExpanded] = useState(false);
   const [isBreaking, setIsBreaking] = useState(article.isBreaking === 1);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   return (
     <div
@@ -28,13 +29,46 @@ function ArticleCard({ article, onApprove, onReject, isApproving, isRejecting }:
       {/* Header */}
       <div className="p-4">
         <div className="flex items-start gap-3">
-          {/* Featured image */}
+          {/* Featured image — click to zoom */}
           {article.featuredImage && (
-            <img
-              src={article.featuredImage}
-              alt={article.title}
-              className="w-20 h-14 object-cover rounded-lg shrink-0"
-            />
+            <button
+              onClick={() => setLightboxOpen(true)}
+              className="relative shrink-0 group"
+              title="Click to zoom"
+            >
+              <img
+                src={article.featuredImage}
+                alt={article.title}
+                className="w-20 h-20 object-cover rounded-lg"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 rounded-lg transition-colors flex items-center justify-center">
+                <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </button>
+          )}
+
+          {/* Lightbox */}
+          {lightboxOpen && article.featuredImage && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              style={{ backgroundColor: "rgba(0,0,0,0.92)" }}
+              onClick={() => setLightboxOpen(false)}
+            >
+              <div className="relative max-w-2xl w-full" onClick={e => e.stopPropagation()}>
+                <button
+                  onClick={() => setLightboxOpen(false)}
+                  className="absolute -top-10 right-0 text-white/70 hover:text-white transition-colors flex items-center gap-1.5 text-sm"
+                >
+                  <X className="w-4 h-4" /> Close
+                </button>
+                <img
+                  src={article.featuredImage}
+                  alt={article.title}
+                  className="w-full rounded-xl"
+                />
+                <p className="text-center text-white/60 text-xs mt-3 px-2">{article.title}</p>
+              </div>
+            </div>
           )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
