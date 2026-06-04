@@ -1409,11 +1409,95 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
     users: adminGuard
       .input(z.object({ limit: z.number().default(50), offset: z.number().default(0) }))
       .query(({ input }) => getAllUsers(input.limit, input.offset)),
-    adSlots: adminGuard.query(() => getAllAdSlots()),
+        adSlots: adminGuard.query(() => getAllAdSlots()),
     updateAdSlot: adminGuard
       .input(z.object({ id: z.number(), label: z.string().optional(), content: z.string().optional(), linkUrl: z.string().optional(), isActive: z.boolean().optional(), advertiser: z.string().optional() }))
       .mutation(({ input }) => { const { id, ...data } = input; return updateAdSlot(id, data); }),
   }),
+  analytics: router({
+    overview: adminGuard.query(async () => {
+      const { rawQuery } = await import('./db');
+      const [articleCount, subscriberCount, memberCount, userCount] = await Promise.all([
+        getArticleCount(), getSubscriberCount(), getProMemberCount(), getUserCount()
+      ]);
+      const [totalViews] = await rawQuery<{ total: number }>('SELECT COALESCE(SUM(views), 0) AS total FROM articles');
+      const [todayViews] = await rawQuery<{ total: number }>('SELECT COALESCE(SUM(views), 0) AS total FROM articles WHERE DATE(updatedAt) = CURDATE()');
+      const [commentCount] = await rawQuery<{ total: number }>('SELECT COUNT(*) AS total FROM article_comments WHERE status = \'approved\'');
+      const [translationCount] = await rawQuery<{ total: number }>('SELECT COUNT(*) AS total FROM article_translations WHERE status = \'published\'');
+      return { articles: articleCount, subscribers: subscriberCount, members: memberCount, users: userCount, totalViews: totalViews?.total ?? 0, todayViews: todayViews?.total ?? 0, comments: commentCount?.total ?? 0, translations: translationCount?.total ?? 0 };
+    }),
+    topArticles: adminGuard
+      .input(z.object({ limit: z.number().default(20), period: z.enum(['all', '7d', '30d']).default('all') }))
+      .query(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const limit = Math.min(parseInt(String(input.limit), 10) || 20, 50);
+        const dateFilter = input.period === '7d' ? 'AND publishedAt >= DATE_SUB(NOW(), INTERVAL 7 DAY)'
+          : input.period === '30d' ? 'AND publishedAt >= DATE_SUB(NOW(), INTERVAL 30 DAY)' : '';
+        return rawQuery<any>(`
+          SELECT a.id, a.title, a.slug, a.views, a.publishedAt, a.featuredImage,
+            c.name AS categoryName, c.colour AS categoryColour,
+            (SELECT COUNT(*) FROM article_comments ac WHERE ac.articleId = a.id AND ac.status = 'approved') AS commentCount
+          FROM articles a
+          LEFT JOIN categories c ON a.categoryId = c.id
+          WHERE 1=1 ${dateFilter}
+          ORDER BY a.views DESC
+          LIMIT ${limit}
+        `);
+      }),
+    categoryBreakdown: adminGuard.query(async () => {
+      const { rawQuery } = await import('./db');
+      return rawQuery<any>(`
+        SELECT c.name, c.colour, COUNT(a.id) AS articleCount, COALESCE(SUM(a.views), 0) AS totalViews
+        FROM categories c
+        LEFT JOIN articles a ON a.categoryId = c.id
+        GROUP BY c.id, c.name, c.colour
+        ORDER BY totalViews DESC
+      `);
+    }),
+    subscriberGrowth: adminGuard.query(async () => {
+      const { rawQuery } = await import('./db');
+      return rawQuery<any>(`
+        SELECT DATE_FORMAT(subscribedAt, '%Y-%m-%d') AS date, COUNT(*) AS count
+        FROM newsletter_subscribers
+        WHERE subscribedAt >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        GROUP BY DATE_FORMAT(subscribedAt, '%Y-%m-%d')
+        ORDER BY date ASC
+      `);
+    }),
+    recentActivity: adminGuard.query(async () => {
+      const { rawQuery } = await import('./db');
+      const [recentArticles] = await Promise.all([
+        rawQuery<any>('SELECT id, title, slug, views, publishedAt FROM articles ORDER BY publishedAt DESC LIMIT 5'),
+      ]);
+      const recentComments = await rawQuery<any>(`
+        SELECT ac.content, ac.createdAt, ac.status, a.title AS articleTitle, a.slug AS articleSlug
+        FROM article_comments ac
+        JOIN articles a ON a.id = ac.articleId
+        ORDER BY ac.createdAt DESC LIMIT 5
+      `);
+      const recentSubscribers = await rawQuery<any>('SELECT email, subscribedAt FROM newsletter_subscribers ORDER BY subscribedAt DESC LIMIT 5');
+      return { recentArticles, recentComments, recentSubscribers };
+    }),
+    viewsTrend: adminGuard.query(async () => {
+      const { rawQuery } = await import('./db');
+      // Get articles published per day for the last 30 days
+      return rawQuery<any>(`
+        SELECT DATE_FORMAT(publishedAt, '%Y-%m-%d') AS date,
+          COUNT(*) AS articlesPublished,
+          COALESCE(SUM(views), 0) AS totalViews
+        FROM articles
+        WHERE publishedAt >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        GROUP BY DATE_FORMAT(publishedAt, '%Y-%m-%d')
+        ORDER BY date ASC
+      `);
+    }),
+    translationStats: adminGuard.query(async () => {
+      const { rawQuery } = await import('./db');
+      return rawQuery<any>(`
+        SELECT locale, COUNT(*) AS count FROM article_translations
+        WHERE status = 'published' GROUP BY locale ORDER BY count DESC
+      `);
+    }),
+  }),
 });
-
 export type AppRouter = typeof appRouter;

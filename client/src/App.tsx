@@ -48,6 +48,7 @@ import TagPage from "./pages/TagPage";
 import TagsIndexPage from "./pages/TagsIndexPage";
 import TranslatedArticlePage from "./pages/TranslatedArticlePage";
 import TranslatedNewsPage from "./pages/TranslatedNewsPage";
+import AdminAnalytics from "./pages/AdminAnalytics";
 import HreflangTags from "./components/HreflangTags";
 import FloatingNewsletter from "./components/FloatingNewsletter";
 import { useEffect } from "react";
@@ -86,6 +87,7 @@ function Router() {
         <Route path="/admin/comments" component={AdminComments} />
         <Route path="/admin/media-kit" component={AdminMediaKit} />
         <Route path="/admin/newsletter" component={AdminNewsletter} />
+        <Route path="/admin/analytics" component={AdminAnalytics} />
         <Route path="/unsubscribe" component={UnsubscribePage} />
         <Route path="/profile" component={ProfilePage} />
         <Route path="/flight-lookup" component={FlightLookupPage} />
