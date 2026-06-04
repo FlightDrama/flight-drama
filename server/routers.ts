@@ -75,14 +75,15 @@ export const appRouter = router({
         const orderBy = input.sort === 'top'
           ? 'c.isPinned DESC, c.upvotes DESC, c.createdAt DESC'
           : 'c.isPinned DESC, c.parentId ASC, c.createdAt ASC';
+        const limitVal = Number(input.limit);
         return rawQuery<any>(
           `SELECT c.id, c.content, c.createdAt, c.marketingOptIn, c.parentId, c.upvotes, c.isPinned,
                   u.name as userName, u.id as userId, u.avatar as userAvatar,
                   COALESCE(u.reputationScore, 0) as userReputation
            FROM article_comments c JOIN users u ON c.userId = u.id
            WHERE c.articleId = ? AND c.status = 'approved'
-           ORDER BY ${orderBy} LIMIT ?`,
-          [input.articleId, input.limit]
+           ORDER BY ${orderBy} LIMIT ${limitVal}`,
+          [input.articleId]
         );
       }),
     pin: adminGuard
