@@ -168,9 +168,30 @@ export default function ArticleCard({
             </div>
           )}
           {isPro && (
-            <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded" style={{ background: 'rgba(167,139,250,0.85)', backdropFilter: 'blur(4px)' }}>
-              <Lock className="w-3 h-3 text-white" />
-              <span className="text-white text-[9px] font-black uppercase tracking-widest">Pro</span>
+            <div className="absolute top-3 right-3 group/pro z-10">
+              {/* Badge */}
+              <div className="flex items-center gap-1 px-2 py-1 rounded cursor-default" style={{ background: 'rgba(167,139,250,0.85)', backdropFilter: 'blur(4px)' }}>
+                <Lock className="w-3 h-3 text-white" />
+                <span className="text-white text-[9px] font-black uppercase tracking-widest">Pro</span>
+              </div>
+              {/* Tooltip — appears on hover */}
+              <div className="absolute right-0 top-full mt-1.5 w-52 opacity-0 pointer-events-none group-hover/pro:opacity-100 group-hover/pro:pointer-events-auto transition-opacity duration-150 z-20">
+                <div className="bg-[oklch(0.12_0_0)] border border-[#a78bfa]/40 rounded-lg p-3 shadow-xl">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#a78bfa] mb-2">🏆 Exclusive Content</p>
+                  <p className="text-xs text-[oklch(0.65_0_0)] mb-2">This article is only available to Pro subscribers.</p>
+                  <ul className="space-y-1 mb-3">
+                    {['Ad-free reading', 'Exclusive deep-dives', 'Breaking news alerts', 'VIP forum badge'].map((b) => (
+                      <li key={b} className="flex items-center gap-1.5 text-[10px] text-[oklch(0.60_0_0)]">
+                        <span className="text-[#a78bfa]">✓</span> {b}
+                      </li>
+                    ))}
+                  </ul>
+                  <a href="/pro" className="block text-center text-[10px] font-black uppercase tracking-widest py-1.5 rounded" style={{ background: '#a78bfa', color: '#000' }}
+                    onClick={e => e.stopPropagation()}>
+                    From £0.99/month →
+                  </a>
+                </div>
+              </div>
             </div>
           )}
           <div className="absolute bottom-3 left-3 flex gap-2 flex-wrap">
