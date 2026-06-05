@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Eye, Clock, Play } from "lucide-react";
+import { Eye, Clock, Play, Lock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 type ArticleCardProps = {
@@ -165,6 +165,12 @@ export default function ArticleCard({
             <div className="absolute top-3 right-3 bg-[oklch(0.85_0.18_95)] rounded px-2 py-0.5 flex items-center gap-1">
               <Play className="w-3 h-3 text-black" fill="black" />
               <span className="text-black text-xs font-bold">VIDEO</span>
+            </div>
+          )}
+          {isPro && (
+            <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded" style={{ background: 'rgba(167,139,250,0.85)', backdropFilter: 'blur(4px)' }}>
+              <Lock className="w-3 h-3 text-white" />
+              <span className="text-white text-[9px] font-black uppercase tracking-widest">Pro</span>
             </div>
           )}
           <div className="absolute bottom-3 left-3 flex gap-2 flex-wrap">
