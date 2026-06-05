@@ -5,8 +5,9 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ArticleCard from "@/components/ArticleCard";
 import NewsletterSignup from "@/components/NewsletterSignup";
-import { TrendingUp, Flame, Users, Crown, ExternalLink, Eye, Clock, MessageCircle } from "lucide-react";
+import { TrendingUp, Flame, Users, Crown, ExternalLink, Eye, Clock, MessageCircle, X, Zap } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 type StoryTab = 'latest' | 'top' | 'commented';
 
@@ -161,6 +162,10 @@ const AIRCRAFT_FILTERS = [
 ];
 
 export default function Home() {
+  const { isAuthenticated } = useAuth();
+  const [bannerDismissed, setBannerDismissed] = useState(() => sessionStorage.getItem('upgradeBannerDismissed') === '1');
+  const { data: membership } = trpc.membership.getMyMembership.useQuery(undefined, { enabled: isAuthenticated });
+  const showUpgradeBanner = !bannerDismissed && (!isAuthenticated || !membership || membership.status !== 'active');
   const searchStr = useSearch();
   const searchParams = new URLSearchParams(searchStr);
   const urlSearch = searchParams.get("search") || undefined;
@@ -189,6 +194,35 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[oklch(0.10_0_0)]">
       <Navigation />
+
+      {/* Sticky upgrade banner — shown to non-Pro users */}
+      {showUpgradeBanner && (
+        <div className="sticky top-0 z-40 bg-[oklch(0.85_0.18_95)] text-black py-2 px-4">
+          <div className="container flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm font-bold">
+              <Zap className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">Start at just <strong>£1/month</strong> — ad-free reading, push notifications &amp; more.</span>
+              <span className="sm:hidden">Go Pro from <strong>£1/month</strong></span>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <Link
+                href="/pro"
+                className="bg-black text-[oklch(0.85_0.18_95)] text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded hover:bg-[oklch(0.15_0_0)] transition-colors"
+              >
+                See Plans →
+              </Link>
+              <button
+                onClick={() => { setBannerDismissed(true); sessionStorage.setItem('upgradeBannerDismissed', '1'); }}
+                className="text-black/60 hover:text-black transition-colors"
+                aria-label="Dismiss"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="container py-6">
         {!urlSearch && !activeFilter && (
           <section className="mb-8">
