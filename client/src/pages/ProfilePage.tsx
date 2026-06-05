@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import RunwayDivider from "@/components/RunwayDivider";
 import { getPilotRank, PILOT_RANKS, getStripeDisplay } from "@/lib/pilotRank";
 import { formatDistanceToNow, format } from "date-fns";
-import { Crown, MessageSquare, Eye, Calendar, ArrowRight, Shield, Camera, Loader2 } from "lucide-react";
+import { Crown, MessageSquare, Eye, Calendar, ArrowRight, Shield, Camera, Loader2, Zap, CreditCard, ChevronRight } from "lucide-react";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
 import AvatarCropModal from "@/components/AvatarCropModal";
@@ -52,6 +52,147 @@ function RankProgressBar({ postCount }: { postCount: number }) {
       <div className="flex items-center justify-between text-[10px] text-[oklch(0.45_0_0)]">
         <span>{postsInCurrentTier} / {postsNeededForTier} posts in this tier</span>
         <span className="text-[oklch(0.85_0.18_95)] font-bold">{postsToNext} more to {nextRank.title}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tier config (mirrors ProPage) ──────────────────────────────────────────
+const TIER_INFO = {
+  crew:       { name: 'Crew',        emoji: '✈️',  color: '#6b7280', monthlyPrice: 0.99, annualPrice: 9.99 },
+  captain:    { name: 'Captain',     emoji: '🛫', color: '#f5c518', monthlyPrice: 2.99, annualPrice: 24.99 },
+  firstclass: { name: 'First Class', emoji: '🏆', color: '#a78bfa', monthlyPrice: 4.99, annualPrice: 39.99 },
+} as const;
+
+function SubscriptionSection({ membership, isLoading }: { membership: any; isLoading: boolean }) {
+  const createCheckout = trpc.membership.createCheckout.useMutation({
+    onSuccess: (data) => { if (data.url) window.open(data.url, '_blank'); },
+    onError: (e) => toast.error(e.message || 'Failed to start checkout'),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="bg-[oklch(0.13_0_0)] border border-[oklch(0.22_0_0)] rounded-xl p-6 animate-pulse">
+        <div className="h-4 bg-[oklch(0.20_0_0)] rounded w-1/3 mb-3" />
+        <div className="h-3 bg-[oklch(0.18_0_0)] rounded w-2/3" />
+      </div>
+    );
+  }
+
+  const isActive = membership?.status === 'active';
+  const tier = membership?.tier as keyof typeof TIER_INFO | undefined;
+  const tierInfo = tier ? TIER_INFO[tier] : null;
+  const billing = membership?.plan?.includes('annual') ? 'annual' : 'monthly';
+
+  // Active subscription
+  if (isActive && tierInfo) {
+    const price = billing === 'annual' ? tierInfo.annualPrice : tierInfo.monthlyPrice;
+    const billingLabel = billing === 'annual' ? `£${tierInfo.annualPrice}/year` : `£${tierInfo.monthlyPrice}/month`;
+    const otherTiers = (Object.entries(TIER_INFO) as [keyof typeof TIER_INFO, typeof TIER_INFO[keyof typeof TIER_INFO]][]).filter(([k]) => k !== tier);
+
+    return (
+      <div className="bg-[oklch(0.13_0_0)] border rounded-xl overflow-hidden" style={{ borderColor: tierInfo.color + '40' }}>
+        {/* Header */}
+        <div className="px-5 py-4 border-b" style={{ borderColor: tierInfo.color + '30', background: tierInfo.color + '10' }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{tierInfo.emoji}</span>
+              <div>
+                <p className="font-black text-white text-base">{tierInfo.name} Member</p>
+                <p className="text-xs" style={{ color: tierInfo.color }}>{billingLabel} · Active</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-[oklch(0.45_0_0)] uppercase tracking-widest font-bold">Subscription</p>
+              <p className="text-xs text-[oklch(0.55_0_0)] mt-0.5">
+                {membership?.expiresAt ? `Renews ${format(new Date(membership.expiresAt), 'dd MMM yyyy')}` : 'Active'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Upgrade options */}
+        <div className="p-5">
+          <p className="text-xs font-black uppercase tracking-widest text-[oklch(0.45_0_0)] mb-3">Change Plan</p>
+          <div className="space-y-2 mb-5">
+            {otherTiers.map(([key, info]) => {
+              const isUpgrade = Object.keys(TIER_INFO).indexOf(key) > Object.keys(TIER_INFO).indexOf(tier!);
+              return (
+                <button
+                  key={key}
+                  onClick={() => {
+                    createCheckout.mutate({ tier: key, billing, origin: window.location.origin });
+                    toast.info('Redirecting to secure checkout...');
+                  }}
+                  disabled={createCheckout.isPending}
+                  className="w-full flex items-center justify-between p-3 rounded-lg border transition-colors hover:border-opacity-60 text-left"
+                  style={{ borderColor: info.color + '30', background: info.color + '08' }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{info.emoji}</span>
+                    <div>
+                      <p className="text-sm font-bold text-white">{info.name}</p>
+                      <p className="text-xs" style={{ color: info.color }}>
+                        £{billing === 'annual' ? info.annualPrice : info.monthlyPrice}/{billing === 'annual' ? 'year' : 'month'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded" style={{ background: info.color + '20', color: info.color }}>
+                      {isUpgrade ? 'Upgrade' : 'Downgrade'}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-[oklch(0.40_0_0)]" />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Cancel */}
+          <div className="border-t border-[oklch(0.18_0_0)] pt-4">
+            <p className="text-xs text-[oklch(0.40_0_0)] mb-2">To cancel your subscription, manage it directly via Stripe.</p>
+            <a
+              href="https://billing.stripe.com/p/login/test_00g00000000000000000"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-[oklch(0.55_0_0)] hover:text-white transition-colors"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              Manage billing &amp; cancel →
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No active subscription — show upgrade CTA
+  return (
+    <div className="bg-gradient-to-br from-[oklch(0.85_0.18_95)] to-[oklch(0.75_0.18_95)] rounded-xl p-6 text-black">
+      <div className="flex items-start gap-4">
+        <Crown className="w-8 h-8 shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <h3 className="font-black text-xl mb-1">Upgrade to Flight Drama Pro</h3>
+          <p className="opacity-80 text-sm mb-4">Start at just £1/month. Ad-free reading, push notifications, exclusive articles and more.</p>
+          <div className="flex flex-wrap gap-2">
+            {(Object.entries(TIER_INFO) as [keyof typeof TIER_INFO, typeof TIER_INFO[keyof typeof TIER_INFO]][]).map(([key, info]) => (
+              <button
+                key={key}
+                onClick={() => {
+                  createCheckout.mutate({ tier: key, billing: 'monthly', origin: window.location.origin });
+                  toast.info('Redirecting to secure checkout...');
+                }}
+                disabled={createCheckout.isPending}
+                className="flex items-center gap-1.5 bg-black text-white px-3 py-2 rounded-lg text-xs font-black hover:bg-[oklch(0.15_0_0)] transition-colors"
+              >
+                {info.emoji} {info.name} — £{info.monthlyPrice}/mo
+              </button>
+            ))}
+            <Link href="/pro" className="flex items-center gap-1 text-xs font-bold opacity-70 hover:opacity-100 transition-opacity px-2 py-2">
+              Compare all plans →
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -428,24 +569,9 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Pro membership CTA if not Pro */}
-        {!isPro && !isLoading && (
-          <>
-            <RunwayDivider />
-            <div className="bg-gradient-to-br from-[oklch(0.85_0.18_95)] to-[oklch(0.75_0.18_95)] rounded-xl p-6 text-black">
-              <div className="flex items-start gap-4">
-                <Crown className="w-8 h-8 shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="font-black text-xl mb-1">Upgrade to Flight Drama Pro</h3>
-                  <p className="opacity-80 text-sm mb-4">Ad-free reading, exclusive Pro articles, VIP forum badge, and access to the Flight Lookup tool.</p>
-                  <Link href="/pro" className="inline-block bg-black text-[oklch(0.85_0.18_95)] px-5 py-2.5 rounded-lg font-black text-sm hover:bg-[oklch(0.10_0_0)] transition-colors">
-                    ✈ Get Flight Drama Pro
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
+        {/* Subscription Management Section */}
+        <RunwayDivider />
+        <SubscriptionSection membership={data?.membership} isLoading={isLoading} />
       </main>
       <Footer />
     </div>
