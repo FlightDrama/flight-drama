@@ -1082,18 +1082,37 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
   membership: router({
     getMyMembership: protectedProcedure.query(({ ctx }) => getProMembership(ctx.user.id)),
     createCheckout: protectedProcedure
-      .input(z.object({ plan: z.enum(["monthly","annual"]), origin: z.string() }))
+      .input(z.object({
+        tier: z.enum(["crew", "captain", "firstclass"]),
+        billing: z.enum(["monthly", "annual"]).default("monthly"),
+        origin: z.string(),
+        // Legacy support
+        plan: z.enum(["monthly", "annual"]).optional(),
+      }))
       .mutation(async ({ input, ctx }) => {
+        // Map tier + billing to Stripe price ID
+        const tierKey = input.tier;
+        const billingKey = input.billing;
+        const priceEnvMap: Record<string, string> = {
+          'crew_monthly': process.env.STRIPE_CREW_MONTHLY_PRICE_ID ?? process.env.STRIPE_MONTHLY_PRICE_ID ?? 'price_crew_monthly',
+          'crew_annual': process.env.STRIPE_CREW_ANNUAL_PRICE_ID ?? process.env.STRIPE_ANNUAL_PRICE_ID ?? 'price_crew_annual',
+          'captain_monthly': process.env.STRIPE_CAPTAIN_MONTHLY_PRICE_ID ?? process.env.STRIPE_MONTHLY_PRICE_ID ?? 'price_captain_monthly',
+          'captain_annual': process.env.STRIPE_CAPTAIN_ANNUAL_PRICE_ID ?? process.env.STRIPE_ANNUAL_PRICE_ID ?? 'price_captain_annual',
+          'firstclass_monthly': process.env.STRIPE_FIRSTCLASS_MONTHLY_PRICE_ID ?? process.env.STRIPE_MONTHLY_PRICE_ID ?? 'price_firstclass_monthly',
+          'firstclass_annual': process.env.STRIPE_FIRSTCLASS_ANNUAL_PRICE_ID ?? process.env.STRIPE_ANNUAL_PRICE_ID ?? 'price_firstclass_annual',
+        };
+        const priceId = priceEnvMap[`${tierKey}_${billingKey}`];
+        const planLabel = `${tierKey}_${billingKey}` as any;
         const session = await stripe.checkout.sessions.create({
           mode: "subscription",
           payment_method_types: ["card"],
           customer_email: ctx.user.email ?? undefined,
-          line_items: [{ price: input.plan === "annual" ? (process.env.STRIPE_ANNUAL_PRICE_ID ?? "price_annual") : (process.env.STRIPE_MONTHLY_PRICE_ID ?? "price_monthly"), quantity: 1 }],
+          line_items: [{ price: priceId, quantity: 1 }],
           allow_promotion_codes: true,
           success_url: `${input.origin}/pro/success?session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${input.origin}/pro`,
           client_reference_id: ctx.user.id.toString(),
-          metadata: { user_id: ctx.user.id.toString(), customer_email: ctx.user.email ?? "", customer_name: ctx.user.name ?? "", plan: input.plan },
+          metadata: { user_id: ctx.user.id.toString(), customer_email: ctx.user.email ?? "", customer_name: ctx.user.name ?? "", plan: planLabel, tier: tierKey },
         });
         return { url: session.url };
       }),
