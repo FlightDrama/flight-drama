@@ -13,6 +13,7 @@ type ArticleCardProps = {
   views: number;
   isFeatured?: boolean;
   isBreaking?: boolean;
+  isPro?: boolean;
   publishedAt: Date | string;
   authorName?: string | null;
   authorAvatar?: string | null;
@@ -54,6 +55,7 @@ export default function ArticleCard({
   postType,
   views,
   isBreaking,
+  isPro,
   publishedAt,
   authorName,
   categoryName,
@@ -104,6 +106,11 @@ export default function ArticleCard({
           <div className="absolute bottom-0 left-0 right-0 p-6">
             <div className="flex items-center gap-2 mb-3">
               {isBreaking && <span className="breaking-badge">Breaking</span>}
+              {isPro && (
+                <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ background: '#a78bfa20', color: '#a78bfa', border: '1px solid #a78bfa40' }}>
+                  🏆 First Class
+                </span>
+              )}
               {categoryName && (
                 <CategoryBadge name={categoryName} slug={categorySlug} onNavigate={goToCategory} />
               )}
@@ -160,8 +167,13 @@ export default function ArticleCard({
               <span className="text-black text-xs font-bold">VIDEO</span>
             </div>
           )}
-          <div className="absolute bottom-3 left-3 flex gap-2">
+          <div className="absolute bottom-3 left-3 flex gap-2 flex-wrap">
             {isBreaking && <span className="breaking-badge">Breaking</span>}
+            {isPro && (
+              <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ background: '#a78bfa20', color: '#a78bfa', border: '1px solid #a78bfa40' }}>
+                🏆 Exclusive
+              </span>
+            )}
             {categoryName && (
               <CategoryBadge name={categoryName} slug={categorySlug} onNavigate={goToCategory} />
             )}

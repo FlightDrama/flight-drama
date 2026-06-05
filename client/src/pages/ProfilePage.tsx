@@ -263,19 +263,35 @@ function SubscriptionSection({ membership, isLoading }: { membership: any; isLoa
                   {[1,2,3].map(i => <div key={i} className="h-10 bg-[oklch(0.18_0_0)] rounded animate-pulse" />)}
                 </div>
               ) : paymentHistory && paymentHistory.length > 0 ? (
-                <div className="space-y-1">
+                <div className="rounded-lg border border-[oklch(0.20_0_0)] overflow-hidden">
+                  {/* Table header */}
+                  <div className="grid grid-cols-[1fr_auto_auto] gap-3 px-3 py-2 bg-[oklch(0.17_0_0)] border-b border-[oklch(0.20_0_0)]">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[oklch(0.40_0_0)]">Description</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[oklch(0.40_0_0)] text-right">Amount</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[oklch(0.40_0_0)] text-right">Invoice</span>
+                  </div>
                   {paymentHistory.map((inv: any) => (
-                    <div key={inv.id} className="flex items-center justify-between py-2 border-b border-[oklch(0.18_0_0)] last:border-0">
+                    <div key={inv.id} className="grid grid-cols-[1fr_auto_auto] gap-3 items-center px-3 py-2.5 border-b border-[oklch(0.18_0_0)] last:border-0 hover:bg-[oklch(0.15_0_0)] transition-colors">
                       <div>
-                        <p className="text-sm text-white font-medium">{inv.description}</p>
-                        <p className="text-xs text-[oklch(0.45_0_0)]">{format(new Date(inv.date), 'dd MMM yyyy')}</p>
+                        <p className="text-sm text-white font-medium leading-tight">{inv.description}</p>
+                        <p className="text-[10px] text-[oklch(0.40_0_0)] mt-0.5">{format(new Date(inv.date), 'dd MMM yyyy')}</p>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="text-right">
                         <span className="text-sm font-black text-white">{inv.currency === 'GBP' ? '£' : '$'}{inv.amount.toFixed(2)}</span>
-                        {inv.receiptUrl && (
-                          <a href={inv.receiptUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[oklch(0.85_0.18_95)] hover:underline">
-                            Receipt →
+                        <span className="block text-[9px] font-black uppercase tracking-widest text-green-400 mt-0.5">Paid</span>
+                      </div>
+                      <div className="text-right">
+                        {inv.receiptUrl ? (
+                          <a
+                            href={inv.receiptUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-[oklch(0.85_0.18_95)] hover:underline px-2 py-1 rounded border border-[oklch(0.85_0.18_95)]/30 hover:border-[oklch(0.85_0.18_95)]/60 transition-colors"
+                          >
+                            ↓ PDF
                           </a>
+                        ) : (
+                          <span className="text-[10px] text-[oklch(0.35_0_0)]">N/A</span>
                         )}
                       </div>
                     </div>
