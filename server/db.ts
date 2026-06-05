@@ -151,9 +151,9 @@ export async function getSubscriberCount() {
 }
 
 export async function getProMembership(userId: number) {
-  const db = await getDb(); if (!db) return undefined;
+  const db = await getDb(); if (!db) return null;
   const r = await db.select().from(proMemberships).where(and(eq(proMemberships.userId, userId), eq(proMemberships.status, "active"))).limit(1);
-  return r[0];
+  return r[0] ?? null;
 }
 export async function upsertProMembership(data: { userId: number; stripeCustomerId?: string; stripeSubscriptionId?: string; status: "active" | "cancelled" | "past_due" | "trialing"; plan: "monthly" | "annual"; expiresAt?: Date; }) {
   const db = await getDb(); if (!db) throw new Error("DB unavailable");
