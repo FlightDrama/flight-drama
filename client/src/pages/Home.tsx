@@ -139,24 +139,49 @@ const CATEGORY_FILTERS = [
   { label: "Future", value: "space-future" },
 ];
 
+// Airline quick-filters for the homepage
+const AIRLINE_FILTERS = [
+  { label: "Ryanair", value: "ryanair" },
+  { label: "easyJet", value: "easyjet" },
+  { label: "British Airways", value: "british airways" },
+  { label: "Emirates", value: "emirates" },
+  { label: "Delta", value: "delta" },
+  { label: "United", value: "united airlines" },
+  { label: "Lufthansa", value: "lufthansa" },
+  { label: "Qatar", value: "qatar airways" },
+];
+
+// Aircraft type quick-filters
+const AIRCRAFT_FILTERS = [
+  { label: "Boeing 737", value: "737" },
+  { label: "Airbus A320", value: "a320" },
+  { label: "A380", value: "a380" },
+  { label: "787 Dreamliner", value: "787" },
+  { label: "Concorde", value: "concorde" },
+];
+
 export default function Home() {
   const searchStr = useSearch();
   const searchParams = new URLSearchParams(searchStr);
   const urlSearch = searchParams.get("search") || undefined;
   const [activeFilter, setActiveFilter] = useState<string | undefined>(undefined);
+  const [activeSearch, setActiveSearch] = useState<string | undefined>(undefined);
+  const [filterMode, setFilterMode] = useState<'category' | 'airline' | 'aircraft'>('category');
   const [sortBy, setSortBy] = useState<'recent' | 'popular'>('recent');
   const [page, setPage] = useState(0);
   const LIMIT = 24;
   const { data: categories } = trpc.categories.list.useQuery();
   const categoryId = useMemo(() => {
-    if (!activeFilter || !categories) return undefined;
+    if (filterMode !== 'category' || !activeFilter || !categories) return undefined;
     const cat = categories.find((c) => c.slug === activeFilter);
     return cat?.id;
-  }, [activeFilter, categories]);
+  }, [activeFilter, categories, filterMode]);
+  // For airline/aircraft filters, use search
+  const effectiveSearch = filterMode !== 'category' ? activeSearch : urlSearch;
   // Hero: always the most recently published article
   const { data: latestHeroArticles } = trpc.articles.list.useQuery({ limit: 1, sortBy: 'recent' });
   const { data: featuredArticles } = trpc.articles.list.useQuery({ limit: 4, featured: true });
-  const { data: articles, isLoading } = trpc.articles.list.useQuery({ limit: LIMIT, offset: page * LIMIT, categoryId, search: urlSearch, sortBy });
+  const { data: articles, isLoading } = trpc.articles.list.useQuery({ limit: LIMIT, offset: page * LIMIT, categoryId, search: effectiveSearch, sortBy });
   const { data: trendingArticles } = trpc.articles.list.useQuery({ limit: 6, offset: 0 });
   const { data: subscriberCount } = trpc.newsletter.count.useQuery();
   const hero = latestHeroArticles?.[0];
@@ -187,17 +212,61 @@ export default function Home() {
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3">
+            {/* Filter tab switcher */}
+            <div className="flex items-center gap-1 mb-3">
+              {(['category', 'airline', 'aircraft'] as const).map((mode) => (
+                <button key={mode} onClick={() => { setFilterMode(mode); setActiveFilter(undefined); setActiveSearch(undefined); setPage(0); }}
+                  className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest transition-colors border-b-2 ${
+                    filterMode === mode
+                      ? 'text-[oklch(0.85_0.18_95)] border-[oklch(0.85_0.18_95)]'
+                      : 'text-[oklch(0.45_0_0)] border-transparent hover:text-white'
+                  }`}>
+                  {mode === 'category' ? 'Categories' : mode === 'airline' ? 'Airlines' : 'Aircraft'}
+                </button>
+              ))}
+            </div>
+            {/* Filter pills */}
             <div className="flex items-center gap-2 mb-5 overflow-x-auto pb-2">
-              {CATEGORY_FILTERS.map((f) => (
-                <button key={f.label} onClick={() => { setActiveFilter(f.value); setPage(0); }}
-                  className={`shrink-0 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide transition-colors ${activeFilter === f.value ? "bg-[oklch(0.85_0.18_95)] text-black" : "bg-[oklch(0.18_0_0)] text-[oklch(0.60_0_0)] hover:text-white hover:bg-[oklch(0.22_0_0)]"}`}>
+              {filterMode === 'category' && CATEGORY_FILTERS.map((f) => (
+                <button key={f.label} onClick={() => { setActiveFilter(f.value); setFilterMode('category'); setActiveSearch(undefined); setPage(0); }}
+                  className={`shrink-0 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide transition-colors ${
+                    filterMode === 'category' && activeFilter === f.value
+                      ? 'bg-[oklch(0.85_0.18_95)] text-black'
+                      : 'bg-[oklch(0.18_0_0)] text-[oklch(0.60_0_0)] hover:text-white hover:bg-[oklch(0.22_0_0)]'
+                  }`}>
+                  {f.label}
+                </button>
+              ))}
+              {filterMode === 'airline' && AIRLINE_FILTERS.map((f) => (
+                <button key={f.label} onClick={() => { setActiveSearch(f.value); setActiveFilter(undefined); setPage(0); }}
+                  className={`shrink-0 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide transition-colors ${
+                    activeSearch === f.value
+                      ? 'bg-[oklch(0.85_0.18_95)] text-black'
+                      : 'bg-[oklch(0.18_0_0)] text-[oklch(0.60_0_0)] hover:text-white hover:bg-[oklch(0.22_0_0)]'
+                  }`}>
+                  {f.label}
+                </button>
+              ))}
+              {filterMode === 'aircraft' && AIRCRAFT_FILTERS.map((f) => (
+                <button key={f.label} onClick={() => { setActiveSearch(f.value); setActiveFilter(undefined); setPage(0); }}
+                  className={`shrink-0 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide transition-colors ${
+                    activeSearch === f.value
+                      ? 'bg-[oklch(0.85_0.18_95)] text-black'
+                      : 'bg-[oklch(0.18_0_0)] text-[oklch(0.60_0_0)] hover:text-white hover:bg-[oklch(0.22_0_0)]'
+                  }`}>
                   {f.label}
                 </button>
               ))}
             </div>
             <div className="flex items-center justify-between mb-4 gap-3">
               <h2 className="font-display text-xl text-white tracking-wider">
-                {activeFilter ? CATEGORY_FILTERS.find((f) => f.value === activeFilter)?.label + " News" : urlSearch ? "Search Results" : "Latest Aviation News"}
+                {filterMode === 'airline' && activeSearch
+                  ? `${AIRLINE_FILTERS.find(f => f.value === activeSearch)?.label} News`
+                  : filterMode === 'aircraft' && activeSearch
+                  ? `${AIRCRAFT_FILTERS.find(f => f.value === activeSearch)?.label} News`
+                  : activeFilter
+                  ? CATEGORY_FILTERS.find((f) => f.value === activeFilter)?.label + " News"
+                  : urlSearch ? "Search Results" : "Latest Aviation News"}
               </h2>
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-xs text-[oklch(0.45_0_0)] hidden sm:block">{articles?.length ?? 0} stories</span>

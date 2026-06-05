@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 
@@ -13,6 +13,7 @@ const FALLBACK_ITEMS = [
 ];
 
 export default function BreakingTicker() {
+  const [paused, setPaused] = useState(false);
   // Fetch breaking + featured articles to populate the ticker dynamically
   const { data: breakingArticles } = trpc.articles.list.useQuery({
     limit: 10,
@@ -69,12 +70,18 @@ export default function BreakingTicker() {
           BREAKING
         </span>
 
-        {/* Scrolling ticker — right to left (standard news ticker direction) */}
-        <div className="overflow-hidden flex-1 relative">
+        {/* Scrolling ticker — right to left, pauses on hover */}
+        <div
+          className="overflow-hidden flex-1 relative cursor-pointer"
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+          title="Hover to pause"
+        >
           <div
             className="flex whitespace-nowrap"
             style={{
-              animation: "ticker-rtl 60s linear infinite",
+              animation: `ticker-rtl 60s linear infinite`,
+              animationPlayState: paused ? 'paused' : 'running',
               willChange: "transform",
             }}
           >
