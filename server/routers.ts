@@ -1081,6 +1081,17 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
   }),
   membership: router({
     getMyMembership: protectedProcedure.query(({ ctx }) => getProMembership(ctx.user.id)),
+    createBillingPortal: protectedProcedure
+      .input(z.object({ origin: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const membership = await getProMembership(ctx.user.id);
+        if (!membership?.stripeCustomerId) throw new Error('No active subscription found');
+        const session = await stripe.billingPortal.sessions.create({
+          customer: membership.stripeCustomerId,
+          return_url: `${input.origin}/profile`,
+        });
+        return { url: session.url };
+      }),
     getPaymentHistory: protectedProcedure.query(async ({ ctx }) => {
       // Fetch payment history from Stripe using the customer ID stored in pro_memberships
       const membership = await getProMembership(ctx.user.id);

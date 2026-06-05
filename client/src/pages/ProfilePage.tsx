@@ -91,10 +91,20 @@ const TIER_BENEFITS: Record<keyof typeof TIER_INFO, string[]> = {
 
 function SubscriptionSection({ membership, isLoading }: { membership: any; isLoading: boolean }) {
   const [confirmTier, setConfirmTier] = useState<{ key: keyof typeof TIER_INFO; info: typeof TIER_INFO[keyof typeof TIER_INFO]; isUpgrade: boolean } | null>(null);
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const { data: paymentHistory, isLoading: historyLoading } = trpc.membership.getPaymentHistory.useQuery(undefined, { enabled: membership?.status === 'active' });
   const createCheckout = trpc.membership.createCheckout.useMutation({
-    onSuccess: (data) => { if (data.url) window.open(data.url, '_blank'); setConfirmTier(null); },
+    onSuccess: (data) => {
+      if (data.url) {
+        setCheckoutSuccess(true);
+        setTimeout(() => { window.open(data.url!, '_blank'); setConfirmTier(null); setCheckoutSuccess(false); }, 1200);
+      }
+    },
     onError: (e) => { toast.error(e.message || 'Failed to start checkout'); setConfirmTier(null); },
+  });
+  const createBillingPortal = trpc.membership.createBillingPortal.useMutation({
+    onSuccess: (data) => { if (data.url) window.open(data.url, '_blank'); },
+    onError: (e) => toast.error(e.message || 'Failed to open billing portal'),
   });
 
   if (isLoading) {
@@ -119,37 +129,60 @@ function SubscriptionSection({ membership, isLoading }: { membership: any; isLoa
 
     return (
       <>
-        {/* Confirmation Modal */}
+        {/* Enhanced Confirmation Modal */}
         {confirmTier && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.85)' }} onClick={() => setConfirmTier(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.88)' }} onClick={() => !createCheckout.isPending && setConfirmTier(null)}>
             <div className="bg-[oklch(0.15_0_0)] border border-[oklch(0.25_0_0)] rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
-              <div className="text-center mb-5">
-                <span className="text-4xl">{confirmTier.info.emoji}</span>
-                <h3 className="font-black text-white text-lg mt-2">
-                  {confirmTier.isUpgrade ? 'Upgrade to' : 'Downgrade to'} {confirmTier.info.name}?
-                </h3>
-                <p className="text-[oklch(0.55_0_0)] text-sm mt-1">
-                  You'll be redirected to Stripe to complete the {confirmTier.isUpgrade ? 'upgrade' : 'downgrade'}.
-                  New billing: £{billing === 'annual' ? confirmTier.info.annualPrice : confirmTier.info.monthlyPrice}/{billing === 'annual' ? 'year' : 'month'}.
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => setConfirmTier(null)} className="flex-1 py-2.5 rounded-lg border border-[oklch(0.28_0_0)] text-[oklch(0.55_0_0)] text-sm font-bold hover:text-white transition-colors">
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    createCheckout.mutate({ tier: confirmTier.key, billing, origin: window.location.origin });
-                    toast.info('Redirecting to secure checkout...');
-                  }}
-                  disabled={createCheckout.isPending}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-black transition-colors flex items-center justify-center gap-2"
-                  style={{ backgroundColor: confirmTier.info.color, color: '#000' }}
-                >
-                  {createCheckout.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  {confirmTier.isUpgrade ? 'Upgrade Now' : 'Downgrade'}
-                </button>
-              </div>
+              {checkoutSuccess ? (
+                /* Success state */
+                <div className="text-center py-4">
+                  <div className="text-5xl mb-3" style={{ animation: 'bounce 0.6s ease' }}>✅</div>
+                  <h3 className="font-black text-white text-lg">Opening Stripe checkout...</h3>
+                  <p className="text-[oklch(0.55_0_0)] text-sm mt-1">You'll be redirected in a moment.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Header */}
+                  <div className="text-center mb-4">
+                    <span className="text-4xl">{confirmTier.info.emoji}</span>
+                    <h3 className="font-black text-white text-lg mt-2">
+                      {confirmTier.isUpgrade ? 'Upgrade to' : 'Downgrade to'} {confirmTier.info.name}?
+                    </h3>
+                    <p className="text-[oklch(0.55_0_0)] text-sm mt-1">
+                      New billing: <strong className="text-white">£{billing === 'annual' ? confirmTier.info.annualPrice : confirmTier.info.monthlyPrice}/{billing === 'annual' ? 'year' : 'month'}</strong>
+                    </p>
+                  </div>
+
+                  {/* New benefits preview */}
+                  {confirmTier.isUpgrade && (
+                    <div className="rounded-lg p-3 mb-4" style={{ background: confirmTier.info.color + '12', border: `1px solid ${confirmTier.info.color}30` }}>
+                      <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: confirmTier.info.color }}>What you'll unlock</p>
+                      <ul className="space-y-1">
+                        {TIER_BENEFITS[confirmTier.key].slice(0, 4).map((b, i) => (
+                          <li key={i} className="flex items-start gap-1.5 text-xs text-[oklch(0.70_0_0)]">
+                            <span style={{ color: confirmTier.info.color }}>✓</span> {b}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button onClick={() => setConfirmTier(null)} className="flex-1 py-2.5 rounded-lg border border-[oklch(0.28_0_0)] text-[oklch(0.55_0_0)] text-sm font-bold hover:text-white transition-colors">
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => createCheckout.mutate({ tier: confirmTier.key, billing, origin: window.location.origin })}
+                      disabled={createCheckout.isPending}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-black transition-all active:scale-[0.97] flex items-center justify-center gap-2"
+                      style={{ backgroundColor: confirmTier.info.color, color: '#000' }}
+                    >
+                      {createCheckout.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                      {confirmTier.isUpgrade ? 'Upgrade Now →' : 'Downgrade'}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -253,18 +286,25 @@ function SubscriptionSection({ membership, isLoading }: { membership: any; isLoa
               )}
             </div>
 
-            {/* Cancel */}
-            <div className="border-t border-[oklch(0.18_0_0)] pt-4">
-              <p className="text-xs text-[oklch(0.40_0_0)] mb-2">To cancel your subscription, manage it directly via Stripe.</p>
-              <a
-                href="https://billing.stripe.com/p/login/test_00g00000000000000000"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-[oklch(0.55_0_0)] hover:text-white transition-colors"
-              >
-                <CreditCard className="w-3.5 h-3.5" />
-                Manage billing &amp; cancel →
-              </a>
+            {/* Billing management */}
+            <div className="border-t border-[oklch(0.18_0_0)] pt-4 space-y-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-[oklch(0.45_0_0)] mb-2">Billing & Payment</p>
+                <p className="text-xs text-[oklch(0.45_0_0)] mb-3">Update your payment method, billing address, or cancel your subscription via the Stripe billing portal.</p>
+                <button
+                  onClick={() => {
+                    createBillingPortal.mutate({ origin: window.location.origin });
+                    toast.info('Opening billing portal...');
+                  }}
+                  disabled={createBillingPortal.isPending}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[oklch(0.28_0_0)] text-sm font-bold text-[oklch(0.65_0_0)] hover:text-white hover:border-[oklch(0.40_0_0)] transition-colors active:scale-[0.97]"
+                >
+                  {createBillingPortal.isPending
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <CreditCard className="w-3.5 h-3.5" />}
+                  Manage Billing &amp; Payment Methods
+                </button>
+              </div>
             </div>
           </div>
         </div>
