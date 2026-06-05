@@ -58,7 +58,7 @@ export default function LiveFlightsWidget() {
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [expanded, setExpanded] = useState(false);
-  const [radius] = useState(150); // nm radius
+  const [radius] = useState(250); // nm radius
 
   const fetchFlights = useCallback(async (lat: number, lon: number) => {
     setLoading(true);
