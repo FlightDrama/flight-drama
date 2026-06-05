@@ -1081,6 +1081,29 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
   }),
   membership: router({
     getMyMembership: protectedProcedure.query(({ ctx }) => getProMembership(ctx.user.id)),
+    getPaymentHistory: protectedProcedure.query(async ({ ctx }) => {
+      // Fetch payment history from Stripe using the customer ID stored in pro_memberships
+      const membership = await getProMembership(ctx.user.id);
+      if (!membership?.stripeCustomerId) return [];
+      try {
+        const invoices = await stripe.invoices.list({
+          customer: membership.stripeCustomerId,
+          limit: 10,
+          status: 'paid',
+        });
+        return invoices.data.map(inv => ({
+          id: inv.id,
+          amount: inv.amount_paid / 100,
+          currency: inv.currency.toUpperCase(),
+          date: inv.created * 1000, // ms timestamp
+          description: inv.lines.data[0]?.description ?? 'Flight Drama Pro',
+          receiptUrl: inv.hosted_invoice_url ?? null,
+          status: inv.status,
+        }));
+      } catch {
+        return [];
+      }
+    }),
     createCheckout: protectedProcedure
       .input(z.object({
         tier: z.enum(["crew", "captain", "firstclass"]),

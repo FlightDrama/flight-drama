@@ -64,10 +64,37 @@ const TIER_INFO = {
   firstclass: { name: 'First Class', emoji: '🏆', color: '#a78bfa', monthlyPrice: 4.99, annualPrice: 39.99 },
 } as const;
 
+const TIER_BENEFITS: Record<keyof typeof TIER_INFO, string[]> = {
+  crew: [
+    'Ad-free reading experience',
+    'Breaking news push notifications',
+    'Newsletter subscription',
+    'Basic flight lookup (live position)',
+    'Crew rank progression',
+  ],
+  captain: [
+    'Everything in Crew',
+    'Exclusive Pro-only articles & deep dives',
+    'Early access to new stories',
+    'Live incident alerts (Squawk 7700)',
+    'VIP forum badge',
+    '2× XP boost for rank progression',
+  ],
+  firstclass: [
+    'Everything in Captain',
+    'Full flight data (delays, airline info)',
+    'Priority forum posting',
+    'Early access to new features',
+    'Direct support channel',
+  ],
+};
+
 function SubscriptionSection({ membership, isLoading }: { membership: any; isLoading: boolean }) {
+  const [confirmTier, setConfirmTier] = useState<{ key: keyof typeof TIER_INFO; info: typeof TIER_INFO[keyof typeof TIER_INFO]; isUpgrade: boolean } | null>(null);
+  const { data: paymentHistory, isLoading: historyLoading } = trpc.membership.getPaymentHistory.useQuery(undefined, { enabled: membership?.status === 'active' });
   const createCheckout = trpc.membership.createCheckout.useMutation({
-    onSuccess: (data) => { if (data.url) window.open(data.url, '_blank'); },
-    onError: (e) => toast.error(e.message || 'Failed to start checkout'),
+    onSuccess: (data) => { if (data.url) window.open(data.url, '_blank'); setConfirmTier(null); },
+    onError: (e) => { toast.error(e.message || 'Failed to start checkout'); setConfirmTier(null); },
   });
 
   if (isLoading) {
@@ -85,84 +112,163 @@ function SubscriptionSection({ membership, isLoading }: { membership: any; isLoa
   const billing = membership?.plan?.includes('annual') ? 'annual' : 'monthly';
 
   // Active subscription
-  if (isActive && tierInfo) {
-    const price = billing === 'annual' ? tierInfo.annualPrice : tierInfo.monthlyPrice;
+  if (isActive && tierInfo && tier) {
     const billingLabel = billing === 'annual' ? `£${tierInfo.annualPrice}/year` : `£${tierInfo.monthlyPrice}/month`;
     const otherTiers = (Object.entries(TIER_INFO) as [keyof typeof TIER_INFO, typeof TIER_INFO[keyof typeof TIER_INFO]][]).filter(([k]) => k !== tier);
+    const benefits = TIER_BENEFITS[tier];
 
     return (
-      <div className="bg-[oklch(0.13_0_0)] border rounded-xl overflow-hidden" style={{ borderColor: tierInfo.color + '40' }}>
-        {/* Header */}
-        <div className="px-5 py-4 border-b" style={{ borderColor: tierInfo.color + '30', background: tierInfo.color + '10' }}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{tierInfo.emoji}</span>
-              <div>
-                <p className="font-black text-white text-base">{tierInfo.name} Member</p>
-                <p className="text-xs" style={{ color: tierInfo.color }}>{billingLabel} · Active</p>
+      <>
+        {/* Confirmation Modal */}
+        {confirmTier && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.85)' }} onClick={() => setConfirmTier(null)}>
+            <div className="bg-[oklch(0.15_0_0)] border border-[oklch(0.25_0_0)] rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+              <div className="text-center mb-5">
+                <span className="text-4xl">{confirmTier.info.emoji}</span>
+                <h3 className="font-black text-white text-lg mt-2">
+                  {confirmTier.isUpgrade ? 'Upgrade to' : 'Downgrade to'} {confirmTier.info.name}?
+                </h3>
+                <p className="text-[oklch(0.55_0_0)] text-sm mt-1">
+                  You'll be redirected to Stripe to complete the {confirmTier.isUpgrade ? 'upgrade' : 'downgrade'}.
+                  New billing: £{billing === 'annual' ? confirmTier.info.annualPrice : confirmTier.info.monthlyPrice}/{billing === 'annual' ? 'year' : 'month'}.
+                </p>
               </div>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-[oklch(0.45_0_0)] uppercase tracking-widest font-bold">Subscription</p>
-              <p className="text-xs text-[oklch(0.55_0_0)] mt-0.5">
-                {membership?.expiresAt ? `Renews ${format(new Date(membership.expiresAt), 'dd MMM yyyy')}` : 'Active'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Upgrade options */}
-        <div className="p-5">
-          <p className="text-xs font-black uppercase tracking-widest text-[oklch(0.45_0_0)] mb-3">Change Plan</p>
-          <div className="space-y-2 mb-5">
-            {otherTiers.map(([key, info]) => {
-              const isUpgrade = Object.keys(TIER_INFO).indexOf(key) > Object.keys(TIER_INFO).indexOf(tier!);
-              return (
+              <div className="flex gap-3">
+                <button onClick={() => setConfirmTier(null)} className="flex-1 py-2.5 rounded-lg border border-[oklch(0.28_0_0)] text-[oklch(0.55_0_0)] text-sm font-bold hover:text-white transition-colors">
+                  Cancel
+                </button>
                 <button
-                  key={key}
                   onClick={() => {
-                    createCheckout.mutate({ tier: key, billing, origin: window.location.origin });
+                    createCheckout.mutate({ tier: confirmTier.key, billing, origin: window.location.origin });
                     toast.info('Redirecting to secure checkout...');
                   }}
                   disabled={createCheckout.isPending}
-                  className="w-full flex items-center justify-between p-3 rounded-lg border transition-colors hover:border-opacity-60 text-left"
-                  style={{ borderColor: info.color + '30', background: info.color + '08' }}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-black transition-colors flex items-center justify-center gap-2"
+                  style={{ backgroundColor: confirmTier.info.color, color: '#000' }}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{info.emoji}</span>
-                    <div>
-                      <p className="text-sm font-bold text-white">{info.name}</p>
-                      <p className="text-xs" style={{ color: info.color }}>
-                        £{billing === 'annual' ? info.annualPrice : info.monthlyPrice}/{billing === 'annual' ? 'year' : 'month'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded" style={{ background: info.color + '20', color: info.color }}>
-                      {isUpgrade ? 'Upgrade' : 'Downgrade'}
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-[oklch(0.40_0_0)]" />
-                  </div>
+                  {createCheckout.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {confirmTier.isUpgrade ? 'Upgrade Now' : 'Downgrade'}
                 </button>
-              );
-            })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-[oklch(0.13_0_0)] border rounded-xl overflow-hidden" style={{ borderColor: tierInfo.color + '40' }}>
+          {/* Header */}
+          <div className="px-5 py-4 border-b" style={{ borderColor: tierInfo.color + '30', background: tierInfo.color + '10' }}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{tierInfo.emoji}</span>
+                <div>
+                  <p className="font-black text-white text-base">{tierInfo.name} Member</p>
+                  <p className="text-xs" style={{ color: tierInfo.color }}>{billingLabel} · Active</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-[oklch(0.45_0_0)] uppercase tracking-widest font-bold">Subscription</p>
+                <p className="text-xs text-[oklch(0.55_0_0)] mt-0.5">
+                  {membership?.expiresAt ? `Renews ${format(new Date(membership.expiresAt), 'dd MMM yyyy')}` : 'Active'}
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Cancel */}
-          <div className="border-t border-[oklch(0.18_0_0)] pt-4">
-            <p className="text-xs text-[oklch(0.40_0_0)] mb-2">To cancel your subscription, manage it directly via Stripe.</p>
-            <a
-              href="https://billing.stripe.com/p/login/test_00g00000000000000000"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-[oklch(0.55_0_0)] hover:text-white transition-colors"
-            >
-              <CreditCard className="w-3.5 h-3.5" />
-              Manage billing &amp; cancel →
-            </a>
+          <div className="p-5 space-y-6">
+            {/* Unlocked benefits */}
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-[oklch(0.45_0_0)] mb-3">Your Benefits</p>
+              <ul className="space-y-1.5">
+                {benefits.map((b, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-[oklch(0.70_0_0)]">
+                    <span className="mt-0.5 text-xs" style={{ color: tierInfo.color }}>✓</span>
+                    {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Change plan */}
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-[oklch(0.45_0_0)] mb-3">Change Plan</p>
+              <div className="space-y-2">
+                {otherTiers.map(([key, info]) => {
+                  const isUpgrade = Object.keys(TIER_INFO).indexOf(key) > Object.keys(TIER_INFO).indexOf(tier!);
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setConfirmTier({ key, info, isUpgrade })}
+                      className="w-full flex items-center justify-between p-3 rounded-lg border transition-colors hover:border-opacity-60 text-left"
+                      style={{ borderColor: info.color + '30', background: info.color + '08' }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{info.emoji}</span>
+                        <div>
+                          <p className="text-sm font-bold text-white">{info.name}</p>
+                          <p className="text-xs" style={{ color: info.color }}>
+                            £{billing === 'annual' ? info.annualPrice : info.monthlyPrice}/{billing === 'annual' ? 'year' : 'month'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded" style={{ background: info.color + '20', color: info.color }}>
+                          {isUpgrade ? 'Upgrade' : 'Downgrade'}
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-[oklch(0.40_0_0)]" />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Transaction history */}
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-[oklch(0.45_0_0)] mb-3">Payment History</p>
+              {historyLoading ? (
+                <div className="space-y-2">
+                  {[1,2,3].map(i => <div key={i} className="h-10 bg-[oklch(0.18_0_0)] rounded animate-pulse" />)}
+                </div>
+              ) : paymentHistory && paymentHistory.length > 0 ? (
+                <div className="space-y-1">
+                  {paymentHistory.map((inv: any) => (
+                    <div key={inv.id} className="flex items-center justify-between py-2 border-b border-[oklch(0.18_0_0)] last:border-0">
+                      <div>
+                        <p className="text-sm text-white font-medium">{inv.description}</p>
+                        <p className="text-xs text-[oklch(0.45_0_0)]">{format(new Date(inv.date), 'dd MMM yyyy')}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-black text-white">{inv.currency === 'GBP' ? '£' : '$'}{inv.amount.toFixed(2)}</span>
+                        {inv.receiptUrl && (
+                          <a href={inv.receiptUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[oklch(0.85_0.18_95)] hover:underline">
+                            Receipt →
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-[oklch(0.40_0_0)]">No payments yet. Your first invoice will appear here after billing.</p>
+              )}
+            </div>
+
+            {/* Cancel */}
+            <div className="border-t border-[oklch(0.18_0_0)] pt-4">
+              <p className="text-xs text-[oklch(0.40_0_0)] mb-2">To cancel your subscription, manage it directly via Stripe.</p>
+              <a
+                href="https://billing.stripe.com/p/login/test_00g00000000000000000"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-[oklch(0.55_0_0)] hover:text-white transition-colors"
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                Manage billing &amp; cancel →
+              </a>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
