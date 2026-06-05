@@ -1302,6 +1302,55 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
         }
         return { ok: true };
       }),
+
+    // Get current user's notification preferences
+    getPreferences: protectedProcedure.query(async ({ ctx }) => {
+      const { rawQuery } = await import('./db');
+      const rows = await rawQuery<any>(
+        'SELECT * FROM notification_preferences WHERE userId = ? LIMIT 1',
+        [ctx.user.id]
+      );
+      return rows[0] ?? null;
+    }),
+
+    // Save notification preferences
+    savePreferences: protectedProcedure
+      .input(z.object({
+        emailEnabled: z.boolean().default(true),
+        emailAddress: z.string().email().optional().or(z.literal('')),
+        smsEnabled: z.boolean().default(false),
+        smsPhone: z.string().max(30).optional().or(z.literal('')),
+        whatsappEnabled: z.boolean().default(false),
+        whatsappPhone: z.string().max(30).optional().or(z.literal('')),
+        browserPushEnabled: z.boolean().default(false),
+        breakingOnly: z.boolean().default(false),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { rawQuery } = await import('./db');
+        const membership = await getProMembership(ctx.user.id);
+        if (!membership || membership.status !== 'active') {
+          throw new Error('PRO_REQUIRED');
+        }
+        await rawQuery(
+          `INSERT INTO notification_preferences 
+           (userId, emailEnabled, emailAddress, smsEnabled, smsPhone, whatsappEnabled, whatsappPhone, browserPushEnabled, breakingOnly, updatedAt)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+           ON DUPLICATE KEY UPDATE
+           emailEnabled = VALUES(emailEnabled), emailAddress = VALUES(emailAddress),
+           smsEnabled = VALUES(smsEnabled), smsPhone = VALUES(smsPhone),
+           whatsappEnabled = VALUES(whatsappEnabled), whatsappPhone = VALUES(whatsappPhone),
+           browserPushEnabled = VALUES(browserPushEnabled), breakingOnly = VALUES(breakingOnly),
+           updatedAt = NOW()`,
+          [
+            ctx.user.id,
+            input.emailEnabled ? 1 : 0, input.emailAddress || ctx.user.email || null,
+            input.smsEnabled ? 1 : 0, input.smsPhone || null,
+            input.whatsappEnabled ? 1 : 0, input.whatsappPhone || null,
+            input.browserPushEnabled ? 1 : 0, input.breakingOnly ? 1 : 0,
+          ]
+        );
+        return { success: true };
+      }),
   }),
 
   // ── Reputation System ──────────────────────────────────────────────────
@@ -1682,5 +1731,6 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
       return { count: row?.count ?? 0 };
     }),
   }),
+
 });
 export type AppRouter = typeof appRouter;

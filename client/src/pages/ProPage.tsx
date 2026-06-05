@@ -76,7 +76,7 @@ const FEATURES = [
     ],
   },
   {
-    category: "Notifications",
+    category: "Get The News First ⚡",
     items: [
       {
         label: "Newsletter",
@@ -84,13 +84,23 @@ const FEATURES = [
         free: true, crew: true, captain: true, firstclass: true,
       },
       {
-        label: "Breaking news push notifications",
-        description: "Your phone buzzes the moment something major happens in the skies. Before the news sites even know about it.",
+        label: "Priority email alerts",
+        description: "Instant email the second a breaking story drops — before the newsletter, before social media. You read it first.",
         free: false, crew: true, captain: true, firstclass: true,
       },
       {
-        label: "Live incident alerts",
-        description: "Squawk 7700 emergencies, diversions and runway incidents pinged directly to you in real time.",
+        label: "Browser push notifications",
+        description: "Your browser pings you the moment something major happens. Even when you're not on the site.",
+        free: false, crew: true, captain: true, firstclass: true,
+      },
+      {
+        label: "SMS text alerts",
+        description: "A text to your phone with the headline and link. No app needed. Just the news, instantly.",
+        free: false, crew: false, captain: true, firstclass: true,
+      },
+      {
+        label: "WhatsApp notifications",
+        description: "Breaking news sent directly to your WhatsApp — headline, excerpt and link. The most personal way to get the news first.",
         free: false, crew: false, captain: true, firstclass: true,
       },
     ],

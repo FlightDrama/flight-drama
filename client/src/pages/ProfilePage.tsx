@@ -11,6 +11,7 @@ import { Crown, MessageSquare, Eye, Calendar, ArrowRight, Shield, Camera, Loader
 import { useState, useRef } from "react";
 import { toast } from "sonner";
 import AvatarCropModal from "@/components/AvatarCropModal";
+import NotificationPreferences from "@/components/NotificationPreferences";
 
 function RankProgressBar({ postCount }: { postCount: number }) {
   const currentRank = getPilotRank(postCount);
@@ -839,6 +840,10 @@ export default function ProfilePage() {
             <AccountSecuritySection userId={myProfile.id} currentEmail={myProfile.email} />
           </>
         )}
+
+        {/* Notification Preferences */}
+        <RunwayDivider />
+        <NotificationPreferences membership={data?.membership} userEmail={user?.email ?? undefined} />
       </main>
       <Footer />
     </div>
