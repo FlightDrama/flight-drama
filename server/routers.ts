@@ -1351,6 +1351,57 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
         );
         return { success: true };
       }),
+
+    // Subscribe to browser push notifications
+    subscribePush: protectedProcedure
+      .input(z.object({ subscription: z.string() })) // JSON stringified PushSubscription
+      .mutation(async ({ input, ctx }) => {
+        const { rawQuery } = await import('./db');
+        const membership = await getProMembership(ctx.user.id);
+        if (!membership || membership.status !== 'active') throw new Error('PRO_REQUIRED');
+        await rawQuery(
+          `INSERT INTO notification_preferences (userId, browserPushEnabled, pushSubscription, updatedAt)
+           VALUES (?, 1, ?, NOW())
+           ON DUPLICATE KEY UPDATE browserPushEnabled = 1, pushSubscription = VALUES(pushSubscription), updatedAt = NOW()`,
+          [ctx.user.id, input.subscription]
+        );
+        return { success: true };
+      }),
+
+    // Unsubscribe from browser push notifications
+    unsubscribePush: protectedProcedure.mutation(async ({ ctx }) => {
+      const { rawQuery } = await import('./db');
+      await rawQuery(
+        'UPDATE notification_preferences SET browserPushEnabled = 0, pushSubscription = NULL, updatedAt = NOW() WHERE userId = ?',
+        [ctx.user.id]
+      );
+      return { success: true };
+    }),
+
+    // Send a test push notification to the current user
+    testPush: protectedProcedure.mutation(async ({ ctx }) => {
+      const { rawQuery } = await import('./db');
+      const { ENV } = await import('./_core/env');
+      const webpush = await import('web-push');
+      const rows = await rawQuery<any>(
+        'SELECT pushSubscription FROM notification_preferences WHERE userId = ? AND browserPushEnabled = 1 LIMIT 1',
+        [ctx.user.id]
+      );
+      if (!rows[0]?.pushSubscription) throw new Error('No push subscription found');
+      webpush.default.setVapidDetails(
+        'mailto:hello@flightdrama.com',
+        ENV.vapidPublicKey,
+        ENV.vapidPrivateKey
+      );
+      const sub = JSON.parse(rows[0].pushSubscription);
+      await webpush.default.sendNotification(sub, JSON.stringify({
+        title: '✈ Flight Drama Test',
+        body: 'Push notifications are working! You will be first to know about breaking aviation news.',
+        url: '/',
+        tag: 'fd-test',
+      }));
+      return { success: true };
+    }),
   }),
 
   // ── Reputation System ──────────────────────────────────────────────────
@@ -1677,6 +1728,63 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
           `UPDATE articles SET status = 'published', isBreaking = ?, publishedAt = NOW(), updatedAt = NOW() WHERE id = ? AND status = 'draft'`,
           [input.isBreaking ? 1 : 0, input.id]
         );
+
+        // Send push notifications to Pro subscribers who have browser push enabled
+        try {
+          const { ENV } = await import('./_core/env');
+          if (ENV.vapidPublicKey && ENV.vapidPrivateKey) {
+            const webpush = await import('web-push');
+            webpush.default.setVapidDetails('mailto:hello@flightdrama.com', ENV.vapidPublicKey, ENV.vapidPrivateKey);
+
+            // Get the article details
+            const [article] = await rawQuery<any>(
+              'SELECT title, slug, excerpt, featuredImage, isBreaking FROM articles WHERE id = ? LIMIT 1',
+              [input.id]
+            );
+
+            if (article) {
+              // Get all Pro subscribers with push enabled
+              // breakingOnly users only get notified for breaking articles
+              const subscribers = await rawQuery<any>(
+                `SELECT np.pushSubscription FROM notification_preferences np
+                 JOIN pro_memberships pm ON pm.userId = np.userId
+                 WHERE np.browserPushEnabled = 1 AND np.pushSubscription IS NOT NULL
+                 AND pm.status = 'active'
+                 AND (np.breakingOnly = 0 OR ? = 1)`,
+                [article.isBreaking ? 1 : 0]
+              );
+
+              const payload = JSON.stringify({
+                title: article.isBreaking ? `🚨 BREAKING: ${article.title}` : `✈ Flight Drama: ${article.title}`,
+                body: article.excerpt ?? 'New aviation story just published',
+                url: `/article/${article.slug}`,
+                image: article.featuredImage ?? undefined,
+                tag: `fd-article-${input.id}`,
+                breaking: !!article.isBreaking,
+              });
+
+              // Send to all subscribers (fire and forget, don't block the response)
+              const sends = subscribers.map(async (sub: any) => {
+                try {
+                  await webpush.default.sendNotification(JSON.parse(sub.pushSubscription), payload);
+                } catch (e: any) {
+                  // Remove stale subscriptions (410 Gone)
+                  if (e.statusCode === 410) {
+                    await rawQuery(
+                      'UPDATE notification_preferences SET browserPushEnabled = 0, pushSubscription = NULL WHERE pushSubscription = ?',
+                      [sub.pushSubscription]
+                    );
+                  }
+                }
+              });
+              Promise.allSettled(sends); // fire and forget
+              console.log(`[Push] Sent to ${subscribers.length} subscribers for article ${input.id}`);
+            }
+          }
+        } catch (e) {
+          console.error('[Push] Failed to send notifications:', e);
+        }
+
         return { success: true };
       }),
     // Reject a draft article

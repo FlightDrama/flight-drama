@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Bell, Mail, MessageSquare, Smartphone, Globe, Zap, Lock, Crown } from "lucide-react";
+import { Bell, Mail, MessageSquare, Smartphone, Globe, Zap, Lock, Crown, CheckCircle, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 
 type Prefs = {
@@ -26,6 +26,8 @@ const DEFAULT_PREFS: Prefs = {
   breakingOnly: false,
 };
 
+const TIER_ORDER: Record<string, number> = { crew: 0, captain: 1, firstclass: 2 };
+
 const CHANNELS = [
   {
     key: "email" as const,
@@ -34,10 +36,20 @@ const CHANNELS = [
     description: "Instant email the moment a breaking story drops — before the newsletter, before social media.",
     tier: "crew",
     hasField: true,
-    fieldKey: "emailAddress" as const,
-    fieldLabel: "Email address",
+    fieldKey: "emailAddress" as keyof Prefs,
     fieldType: "email",
     fieldPlaceholder: "your@email.com",
+  },
+  {
+    key: "browser" as const,
+    icon: Globe,
+    label: "Desktop & Mobile Push",
+    description: "A system notification on your phone, tablet or computer — even when the browser is closed.",
+    tier: "crew",
+    hasField: false,
+    fieldKey: null,
+    fieldType: "",
+    fieldPlaceholder: "",
   },
   {
     key: "sms" as const,
@@ -46,8 +58,7 @@ const CHANNELS = [
     description: "A text message to your phone with the headline and link. No app needed.",
     tier: "captain",
     hasField: true,
-    fieldKey: "smsPhone" as const,
-    fieldLabel: "Phone number (with country code)",
+    fieldKey: "smsPhone" as keyof Prefs,
     fieldType: "tel",
     fieldPlaceholder: "+44 7700 900000",
   },
@@ -55,29 +66,14 @@ const CHANNELS = [
     key: "whatsapp" as const,
     icon: MessageSquare,
     label: "WhatsApp",
-    description: "Breaking news sent directly to your WhatsApp — with the headline, excerpt and link.",
+    description: "Breaking news sent directly to your WhatsApp — headline, excerpt and link.",
     tier: "captain",
     hasField: true,
-    fieldKey: "whatsappPhone" as const,
-    fieldLabel: "WhatsApp number (with country code)",
+    fieldKey: "whatsappPhone" as keyof Prefs,
     fieldType: "tel",
     fieldPlaceholder: "+44 7700 900000",
   },
-  {
-    key: "browser" as const,
-    icon: Globe,
-    label: "Browser Push",
-    description: "A push notification in your browser — even when you're not on the site.",
-    tier: "crew",
-    hasField: false,
-    fieldKey: null,
-    fieldLabel: "",
-    fieldType: "",
-    fieldPlaceholder: "",
-  },
 ];
-
-const TIER_ORDER = { crew: 0, captain: 1, firstclass: 2 };
 
 export default function NotificationPreferences({
   membership,
@@ -87,15 +83,28 @@ export default function NotificationPreferences({
   userEmail?: string;
 }) {
   const isActive = membership?.status === "active";
-  const userTier = (membership?.tier ?? "crew") as keyof typeof TIER_ORDER;
+  const userTier = (membership?.tier ?? "crew") as string;
 
-  const { data: savedPrefs, isLoading } = trpc.notifications.getPreferences.useQuery(
+  const { data: savedPrefs } = trpc.notifications.getPreferences.useQuery(
     undefined,
     { enabled: isActive }
   );
 
   const [prefs, setPrefs] = useState<Prefs>({ ...DEFAULT_PREFS, emailAddress: userEmail ?? "" });
   const [dirty, setDirty] = useState(false);
+  const [pushStatus, setPushStatus] = useState<"idle" | "requesting" | "subscribed" | "denied">("idle");
+
+  // Check existing push subscription on mount
+  useEffect(() => {
+    if (!isActive) return;
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.pushManager.getSubscription().then(sub => {
+          if (sub) setPushStatus("subscribed");
+        });
+      });
+    }
+  }, [isActive]);
 
   useEffect(() => {
     if (savedPrefs) {
@@ -109,11 +118,28 @@ export default function NotificationPreferences({
         browserPushEnabled: !!savedPrefs.browserPushEnabled,
         breakingOnly: !!savedPrefs.breakingOnly,
       });
+      if (savedPrefs.browserPushEnabled && savedPrefs.pushSubscription) {
+        setPushStatus("subscribed");
+      }
     }
   }, [savedPrefs, userEmail]);
 
   const savePrefs = trpc.notifications.savePreferences.useMutation({
     onSuccess: () => { toast.success("Notification preferences saved ✈"); setDirty(false); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const subscribePush = trpc.notifications.subscribePush.useMutation({
+    onSuccess: () => { toast.success("Desktop notifications enabled! ✈"); setPushStatus("subscribed"); },
+    onError: (e) => { toast.error(e.message); setPushStatus("idle"); },
+  });
+
+  const unsubscribePush = trpc.notifications.unsubscribePush.useMutation({
+    onSuccess: () => { toast.info("Desktop notifications disabled"); setPushStatus("idle"); },
+  });
+
+  const testPush = trpc.notifications.testPush.useMutation({
+    onSuccess: () => toast.success("Test notification sent! Check your notifications."),
     onError: (e) => toast.error(e.message),
   });
 
@@ -123,7 +149,54 @@ export default function NotificationPreferences({
   };
 
   const canUseChannel = (tier: string) =>
-    isActive && TIER_ORDER[userTier] >= TIER_ORDER[tier as keyof typeof TIER_ORDER];
+    isActive && (TIER_ORDER[userTier] ?? 0) >= (TIER_ORDER[tier] ?? 0);
+
+  const handlePushToggle = async (enable: boolean) => {
+    if (!enable) {
+      // Unsubscribe
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) await sub.unsubscribe();
+      unsubscribePush.mutate();
+      update("browserPushEnabled", false);
+      return;
+    }
+
+    // Subscribe
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      toast.error("Your browser does not support push notifications");
+      return;
+    }
+
+    setPushStatus("requesting");
+    try {
+      // Register service worker
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+
+      // Request permission
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setPushStatus("denied");
+        toast.error("Notification permission denied. Please enable it in your browser settings.");
+        return;
+      }
+
+      // Subscribe to push
+      const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+
+      // Save to server
+      subscribePush.mutate({ subscription: JSON.stringify(sub) });
+      update("browserPushEnabled", true);
+    } catch (err: any) {
+      setPushStatus("idle");
+      toast.error("Failed to enable push notifications: " + err.message);
+    }
+  };
 
   if (!isActive) {
     return (
@@ -136,7 +209,7 @@ export default function NotificationPreferences({
           <div className="text-4xl mb-3">🔔</div>
           <h3 className="font-black text-white text-lg mb-2">Be First. Every Time.</h3>
           <p className="text-[oklch(0.55_0_0)] text-sm mb-4 max-w-sm mx-auto">
-            Pro subscribers get breaking aviation news via email, SMS and WhatsApp — before the newsletter, before social media.
+            Pro subscribers get breaking aviation news via email, SMS, WhatsApp and desktop push — before the newsletter, before social media.
           </p>
           <Link href="/pro" className="inline-flex items-center gap-2 bg-[oklch(0.85_0.18_95)] text-black px-5 py-2.5 rounded-lg font-black text-sm hover:bg-[oklch(0.78_0.18_95)] transition-colors">
             <Crown className="w-4 h-4" /> Upgrade to unlock — from £0.99/month
@@ -173,18 +246,20 @@ export default function NotificationPreferences({
         </div>
 
         {/* Notification channels */}
-        <div className="space-y-4 mb-5">
+        <div className="space-y-3 mb-5">
           {CHANNELS.map((channel) => {
             const Icon = channel.icon;
-            const enabled = prefs[`${channel.key}Enabled` as keyof Prefs] as boolean;
+            const isBrowser = channel.key === "browser";
+            const enabled = isBrowser
+              ? pushStatus === "subscribed"
+              : (prefs[`${channel.key}Enabled` as keyof Prefs] as boolean);
             const canUse = canUseChannel(channel.tier);
-            const needsUpgrade = !canUse;
 
             return (
               <div
                 key={channel.key}
                 className={`rounded-lg border p-4 transition-colors ${
-                  needsUpgrade
+                  !canUse
                     ? "border-[oklch(0.20_0_0)] opacity-60"
                     : enabled
                     ? "border-[oklch(0.85_0.18_95)]/40 bg-[oklch(0.85_0.18_95)]/05"
@@ -193,20 +268,40 @@ export default function NotificationPreferences({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1">
-                    <Icon className={`w-4 h-4 shrink-0 mt-0.5 ${enabled && !needsUpgrade ? "text-[oklch(0.85_0.18_95)]" : "text-[oklch(0.45_0_0)]"}`} />
+                    <Icon className={`w-4 h-4 shrink-0 mt-0.5 ${enabled && canUse ? "text-[oklch(0.85_0.18_95)]" : "text-[oklch(0.45_0_0)]"}`} />
                     <div className="flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-bold text-white">{channel.label}</p>
-                        {needsUpgrade && (
+                        {!canUse && (
                           <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-[#f5c518]/10 text-[#f5c518] border border-[#f5c518]/30">
                             Captain+
                           </span>
                         )}
+                        {isBrowser && pushStatus === "subscribed" && (
+                          <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-green-400">
+                            <CheckCircle className="w-3 h-3" /> Active
+                          </span>
+                        )}
+                        {isBrowser && pushStatus === "denied" && (
+                          <span className="text-[9px] text-red-400">Permission denied in browser</span>
+                        )}
                       </div>
                       <p className="text-xs text-[oklch(0.50_0_0)] mt-0.5">{channel.description}</p>
 
-                      {/* Phone/email field — shown when enabled */}
-                      {channel.hasField && channel.fieldKey && enabled && !needsUpgrade && (
+                      {/* Test button for browser push */}
+                      {isBrowser && pushStatus === "subscribed" && (
+                        <button
+                          onClick={() => testPush.mutate()}
+                          disabled={testPush.isPending}
+                          className="mt-2 text-[10px] font-bold text-[oklch(0.85_0.18_95)] hover:underline flex items-center gap-1"
+                        >
+                          {testPush.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                          Send test notification
+                        </button>
+                      )}
+
+                      {/* Phone/email field */}
+                      {channel.hasField && channel.fieldKey && enabled && canUse && (
                         <input
                           type={channel.fieldType}
                           value={prefs[channel.fieldKey] as string}
@@ -219,18 +314,28 @@ export default function NotificationPreferences({
                   </div>
 
                   {/* Toggle */}
-                  {needsUpgrade ? (
-                    <Link href="/pro" className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {!canUse ? (
+                    <Link href="/pro" onClick={(e) => e.stopPropagation()}>
                       <Lock className="w-4 h-4 text-[oklch(0.35_0_0)]" />
                     </Link>
+                  ) : isBrowser ? (
+                    <button
+                      onClick={() => handlePushToggle(pushStatus !== "subscribed")}
+                      disabled={pushStatus === "requesting" || subscribePush.isPending}
+                      className={`shrink-0 w-10 h-5 rounded-full transition-colors relative disabled:opacity-50 ${pushStatus === "subscribed" ? "bg-[oklch(0.85_0.18_95)]" : "bg-[oklch(0.25_0_0)]"}`}
+                    >
+                      {pushStatus === "requesting" ? (
+                        <Loader2 className="w-3 h-3 animate-spin absolute top-1 left-1 text-white" />
+                      ) : (
+                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${pushStatus === "subscribed" ? "translate-x-5" : "translate-x-0.5"}`} />
+                      )}
+                    </button>
                   ) : (
                     <button
                       onClick={() => update(`${channel.key}Enabled` as keyof Prefs, !enabled)}
                       className={`shrink-0 w-10 h-5 rounded-full transition-colors relative ${enabled ? "bg-[oklch(0.85_0.18_95)]" : "bg-[oklch(0.25_0_0)]"}`}
                     >
-                      <span
-                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${enabled ? "translate-x-5" : "translate-x-0.5"}`}
-                      />
+                      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${enabled ? "translate-x-5" : "translate-x-0.5"}`} />
                     </button>
                   )}
                 </div>
@@ -267,9 +372,21 @@ export default function NotificationPreferences({
         </button>
 
         <p className="text-[10px] text-[oklch(0.35_0_0)] text-center mt-3">
-          SMS and WhatsApp require a Twilio account to be configured. Email notifications use Resend.
+          SMS and WhatsApp require Twilio to be configured. Email uses Resend. Desktop push works in all modern browsers.
         </p>
       </div>
     </div>
   );
+}
+
+// Convert VAPID public key from base64 to Uint8Array
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
 }
