@@ -44,6 +44,7 @@ export default function NewsArchivePage() {
   const initialSort = (searchParams.get("sort") === "popular" ? "popular" : "recent") as "recent" | "popular";
 
   const [activeFilter, setActiveFilter] = useState<string | undefined>(undefined);
+  const [showProOnly, setShowProOnly] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "popular">(initialSort);
   const [page, setPage] = useState(0);
   const [searchInput, setSearchInput] = useState("");
@@ -66,6 +67,7 @@ export default function NewsArchivePage() {
     categoryId,
     sortBy,
     search: searchQuery,
+    isPro: showProOnly ? true : undefined,
   });
 
   // Show skeleton immediately on filter/sort change, clear once data arrives
@@ -124,6 +126,8 @@ export default function NewsArchivePage() {
 
   const pageTitle = searchQuery
     ? `Search: "${searchQuery}"`
+    : showProOnly
+    ? '🏆 Exclusive Pro Articles'
     : activeFilter
     ? `${activeCategoryLabel} News`
     : "All Aviation News";
@@ -186,9 +190,9 @@ export default function NewsArchivePage() {
             {CATEGORY_FILTERS.map((f) => (
               <button
                 key={f.label}
-                onClick={() => handleFilterChange(f.value)}
+                onClick={() => { handleFilterChange(f.value); setShowProOnly(false); }}
                 className={`shrink-0 px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors rounded ${
-                  activeFilter === f.value
+                  activeFilter === f.value && !showProOnly
                     ? "bg-[oklch(0.85_0.18_95)] text-black"
                     : "bg-[oklch(0.18_0_0)] text-[oklch(0.55_0_0)] hover:text-white hover:bg-[oklch(0.22_0_0)]"
                 }`}
@@ -196,6 +200,17 @@ export default function NewsArchivePage() {
                 {f.label}
               </button>
             ))}
+            {/* Pro Exclusive filter */}
+            <button
+              onClick={() => { triggerTransition(); setShowProOnly(p => !p); setActiveFilter(undefined); setPage(0); }}
+              className={`shrink-0 flex items-center gap-1 px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors rounded border ${
+                showProOnly
+                  ? "text-[#a78bfa] border-[#a78bfa] bg-[#a78bfa]/10"
+                  : "bg-[oklch(0.18_0_0)] text-[oklch(0.55_0_0)] border-transparent hover:text-[#a78bfa] hover:border-[#a78bfa]/40 hover:bg-[#a78bfa]/05"
+              }`}
+            >
+              🏆 Exclusive
+            </button>
           </div>
           {/* Sort buttons */}
           <div className="flex items-center gap-1 shrink-0">

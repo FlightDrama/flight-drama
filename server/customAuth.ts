@@ -13,6 +13,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { Resend } from "resend";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { sdk } from "./_core/sdk";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { rawQuery } from "./db";
@@ -267,5 +268,56 @@ export const customAuthRouter = router({
         [ctx.user.id]
       );
       return rows[0] ?? null;
+    }),
+
+  // Change email address (requires current password for security)
+  changeEmail: protectedProcedure
+    .input(z.object({
+      newEmail: z.string().email().toLowerCase(),
+      currentPassword: z.string().min(1),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      // Verify current password
+      const rows = await rawQuery<any>(
+        "SELECT passwordHash, loginMethod FROM users WHERE id = ? LIMIT 1",
+        [ctx.user.id]
+      );
+      const user = rows[0];
+      if (!user) throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      if (user.loginMethod !== 'email') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot change email for OAuth accounts' });
+      const valid = await bcrypt.compare(input.currentPassword, user.passwordHash);
+      if (!valid) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Incorrect password' });
+      // Check new email not already taken
+      const existing = await rawQuery<any>("SELECT id FROM users WHERE email = ? AND id != ? LIMIT 1", [input.newEmail, ctx.user.id]);
+      if (existing.length > 0) throw new TRPCError({ code: 'CONFLICT', message: 'This email is already in use' });
+      await rawQuery(
+        "UPDATE users SET email = ?, updatedAt = NOW() WHERE id = ?",
+        [input.newEmail, ctx.user.id]
+      );
+      return { success: true, newEmail: input.newEmail };
+    }),
+
+  // Change password (requires current password for security)
+  changePassword: protectedProcedure
+    .input(z.object({
+      currentPassword: z.string().min(1),
+      newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const rows = await rawQuery<any>(
+        "SELECT passwordHash, loginMethod FROM users WHERE id = ? LIMIT 1",
+        [ctx.user.id]
+      );
+      const user = rows[0];
+      if (!user) throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      if (user.loginMethod !== 'email') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot change password for OAuth accounts' });
+      const valid = await bcrypt.compare(input.currentPassword, user.passwordHash);
+      if (!valid) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Incorrect current password' });
+      const newHash = await bcrypt.hash(input.newPassword, 12);
+      await rawQuery(
+        "UPDATE users SET passwordHash = ?, updatedAt = NOW() WHERE id = ?",
+        [newHash, ctx.user.id]
+      );
+      return { success: true };
     }),
 });

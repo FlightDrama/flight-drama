@@ -360,6 +360,103 @@ function SubscriptionSection({ membership, isLoading }: { membership: any; isLoa
   );
 }
 
+function AccountSecuritySection({ userId, currentEmail }: { userId: number; currentEmail: string }) {
+  const [emailForm, setEmailForm] = useState({ newEmail: '', currentPassword: '' });
+  const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [activeTab, setActiveTab] = useState<'email' | 'password'>('email');
+
+  const changeEmail = trpc.customAuth.changeEmail.useMutation({
+    onSuccess: (d) => { toast.success(`Email updated to ${d.newEmail}`); setEmailForm({ newEmail: '', currentPassword: '' }); },
+    onError: (e) => toast.error(e.message),
+  });
+  const changePassword = trpc.customAuth.changePassword.useMutation({
+    onSuccess: () => { toast.success('Password updated successfully'); setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' }); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  return (
+    <div className="bg-[oklch(0.13_0_0)] border border-[oklch(0.22_0_0)] rounded-xl overflow-hidden">
+      <div className="bg-[oklch(0.18_0_0)] px-5 py-3 border-b border-[oklch(0.22_0_0)] flex items-center gap-2">
+        <Shield className="w-4 h-4 text-[oklch(0.85_0.18_95)]" />
+        <h2 className="font-black text-white text-sm uppercase tracking-wide">Account Security</h2>
+      </div>
+      <div className="p-5">
+        {/* Tab switcher */}
+        <div className="flex gap-1 mb-5 border-b border-[oklch(0.20_0_0)]">
+          {(['email', 'password'] as const).map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors border-b-2 -mb-px ${
+                activeTab === tab ? 'text-[oklch(0.85_0.18_95)] border-[oklch(0.85_0.18_95)]' : 'text-[oklch(0.45_0_0)] border-transparent hover:text-white'
+              }`}>
+              {tab === 'email' ? 'Change Email' : 'Change Password'}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'email' && (
+          <form onSubmit={e => { e.preventDefault(); changeEmail.mutate(emailForm); }} className="space-y-3">
+            <div>
+              <p className="text-xs text-[oklch(0.45_0_0)] mb-3">Current email: <span className="text-white font-bold">{currentEmail}</span></p>
+              <label className="block text-xs font-bold text-[oklch(0.55_0_0)] mb-1">New Email Address</label>
+              <input type="email" required value={emailForm.newEmail} onChange={e => setEmailForm(f => ({ ...f, newEmail: e.target.value }))}
+                className="w-full bg-[oklch(0.18_0_0)] border border-[oklch(0.28_0_0)] text-white text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-[oklch(0.85_0.18_95)] transition-colors"
+                placeholder="new@email.com" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[oklch(0.55_0_0)] mb-1">Current Password (to confirm)</label>
+              <input type="password" required value={emailForm.currentPassword} onChange={e => setEmailForm(f => ({ ...f, currentPassword: e.target.value }))}
+                className="w-full bg-[oklch(0.18_0_0)] border border-[oklch(0.28_0_0)] text-white text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-[oklch(0.85_0.18_95)] transition-colors"
+                placeholder="Your current password" />
+            </div>
+            <button type="submit" disabled={changeEmail.isPending}
+              className="flex items-center gap-2 px-4 py-2 bg-[oklch(0.85_0.18_95)] text-black text-sm font-black rounded-lg hover:bg-[oklch(0.78_0.18_95)] transition-colors active:scale-[0.97] disabled:opacity-50">
+              {changeEmail.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              Update Email
+            </button>
+          </form>
+        )}
+
+        {activeTab === 'password' && (
+          <form onSubmit={e => {
+            e.preventDefault();
+            if (pwForm.newPassword !== pwForm.confirmPassword) { toast.error('Passwords do not match'); return; }
+            changePassword.mutate({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword });
+          }} className="space-y-3">
+            <div>
+              <label className="block text-xs font-bold text-[oklch(0.55_0_0)] mb-1">Current Password</label>
+              <input type="password" required value={pwForm.currentPassword} onChange={e => setPwForm(f => ({ ...f, currentPassword: e.target.value }))}
+                className="w-full bg-[oklch(0.18_0_0)] border border-[oklch(0.28_0_0)] text-white text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-[oklch(0.85_0.18_95)] transition-colors"
+                placeholder="Your current password" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[oklch(0.55_0_0)] mb-1">New Password</label>
+              <input type="password" required minLength={8} value={pwForm.newPassword} onChange={e => setPwForm(f => ({ ...f, newPassword: e.target.value }))}
+                className="w-full bg-[oklch(0.18_0_0)] border border-[oklch(0.28_0_0)] text-white text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-[oklch(0.85_0.18_95)] transition-colors"
+                placeholder="Min. 8 characters" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[oklch(0.55_0_0)] mb-1">Confirm New Password</label>
+              <input type="password" required value={pwForm.confirmPassword} onChange={e => setPwForm(f => ({ ...f, confirmPassword: e.target.value }))}
+                className={`w-full bg-[oklch(0.18_0_0)] border text-white text-sm px-3 py-2 rounded-lg focus:outline-none transition-colors ${
+                  pwForm.confirmPassword && pwForm.newPassword !== pwForm.confirmPassword ? 'border-red-500' : 'border-[oklch(0.28_0_0)] focus:border-[oklch(0.85_0.18_95)]'
+                }`}
+                placeholder="Repeat new password" />
+              {pwForm.confirmPassword && pwForm.newPassword !== pwForm.confirmPassword && (
+                <p className="text-xs text-red-400 mt-1">Passwords do not match</p>
+              )}
+            </div>
+            <button type="submit" disabled={changePassword.isPending}
+              className="flex items-center gap-2 px-4 py-2 bg-[oklch(0.85_0.18_95)] text-black text-sm font-black rounded-lg hover:bg-[oklch(0.78_0.18_95)] transition-colors active:scale-[0.97] disabled:opacity-50">
+              {changePassword.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              Update Password
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const { data, isLoading } = trpc.profile.me.useQuery(undefined, { enabled: isAuthenticated });
@@ -734,6 +831,14 @@ export default function ProfilePage() {
         {/* Subscription Management Section */}
         <RunwayDivider />
         <SubscriptionSection membership={data?.membership} isLoading={isLoading} />
+
+        {/* Account Security — only for email/password accounts */}
+        {myProfile?.loginMethod === 'email' && (
+          <>
+            <RunwayDivider />
+            <AccountSecuritySection userId={myProfile.id} currentEmail={myProfile.email} />
+          </>
+        )}
       </main>
       <Footer />
     </div>
