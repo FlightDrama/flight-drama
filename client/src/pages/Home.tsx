@@ -56,8 +56,8 @@ function HeroStoriesPanel({ latestArticles, topArticles }: { latestArticles: any
             href={`/article/${a.slug}`}
             className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-[oklch(0.16_0_0)] transition-colors group"
           >
-            {/* Thumbnail */}
-            <div className="shrink-0 w-14 h-14 rounded overflow-hidden bg-[oklch(0.20_0_0)] relative">
+            {/* Thumbnail — bigger and bolder per Josh's feedback */}
+            <div className="shrink-0 w-20 h-20 rounded overflow-hidden bg-[oklch(0.20_0_0)] relative">
               {a.featuredImage ? (
                 <img
                   src={a.featuredImage}
@@ -66,11 +66,11 @@ function HeroStoriesPanel({ latestArticles, topArticles }: { latestArticles: any
                   loading="lazy"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-[oklch(0.35_0_0)] text-lg">✈</div>
+                <div className="w-full h-full flex items-center justify-center text-[oklch(0.35_0_0)] text-2xl">✈</div>
               )}
               {/* Rank badge overlay */}
               <div
-                className={`absolute bottom-0 left-0 w-4 h-4 flex items-center justify-center text-[9px] font-black ${
+                className={`absolute bottom-0 left-0 w-5 h-5 flex items-center justify-center text-[10px] font-black ${
                   i === 0 ? 'bg-[oklch(0.85_0.18_95)] text-black' : 'bg-[oklch(0.10_0_0)/80] text-[oklch(0.55_0_0)]'
                 }`}
               >
@@ -80,9 +80,9 @@ function HeroStoriesPanel({ latestArticles, topArticles }: { latestArticles: any
             {/* Text */}
             <div className="flex-1 min-w-0">
               {a.categoryName && (
-                <p className="text-[9px] font-black uppercase tracking-widest text-[oklch(0.85_0.18_95)] mb-0.5 truncate">{a.categoryName}</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-[oklch(0.85_0.18_95)] mb-0.5 truncate">{a.categoryName}</p>
               )}
-              <p className="text-[11px] font-bold text-[oklch(0.82_0_0)] group-hover:text-white transition-colors line-clamp-2 leading-snug">
+              <p className="text-[13px] font-bold text-[oklch(0.88_0_0)] group-hover:text-white transition-colors line-clamp-2 leading-snug">
                 {a.title}
               </p>
               <div className="flex items-center gap-1.5 mt-1 text-[10px] text-[oklch(0.40_0_0)]">
