@@ -103,8 +103,8 @@ export default function ArticleCard({
               </div>
             </div>
           )}
-          <div className="absolute bottom-0 left-0 right-0 p-6">
-            <div className="flex items-center gap-2 mb-3">
+          <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
+            <div className="flex items-center gap-2 mb-2 sm:mb-3 flex-wrap">
               {isBreaking && <span className="breaking-badge">Breaking</span>}
               {isPro && (
                 <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ background: '#a78bfa20', color: '#a78bfa', border: '1px solid #a78bfa40' }}>
@@ -115,15 +115,15 @@ export default function ArticleCard({
                 <CategoryBadge name={categoryName} slug={categorySlug} onNavigate={goToCategory} />
               )}
             </div>
-            <h2 className="text-2xl md:text-3xl font-black text-white leading-tight mb-2 group-hover:text-[oklch(0.85_0.18_95)] transition-colors">
+            <h2 className="text-lg sm:text-2xl md:text-3xl font-black text-white leading-tight mb-1.5 sm:mb-2 group-hover:text-[oklch(0.85_0.18_95)] transition-colors line-clamp-3 sm:line-clamp-none">
               {title}
             </h2>
             {excerpt && (
-              <p className="text-sm text-[oklch(0.75_0_0)] line-clamp-2 mb-3">{excerpt}</p>
+              <p className="hidden sm:block text-sm text-[oklch(0.75_0_0)] line-clamp-2 mb-3">{excerpt}</p>
             )}
-            <div className="flex items-center gap-3 text-xs text-[oklch(0.55_0_0)]">
+            <div className="flex items-center gap-2 sm:gap-3 text-xs text-[oklch(0.55_0_0)]">
               {authorName && (
-                <span className="font-semibold text-[oklch(0.70_0_0)]">By {authorName}</span>
+                <span className="hidden sm:inline font-semibold text-[oklch(0.70_0_0)]">By {authorName}</span>
               )}
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />

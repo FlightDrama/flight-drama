@@ -37,6 +37,14 @@ function ArticleCard({ article, onApprove, onReject, isApproving, isRejecting }:
     onError: (e) => toast.error(e.message),
   });
 
+  const regenerateImage = trpc.autopilot.regenerateImage.useMutation({
+    onSuccess: (data) => {
+      setEditImage(data.imageUrl);
+      toast.success('New image found!');
+    },
+    onError: (e) => toast.error('Could not find image: ' + e.message),
+  });
+
   const handleSave = () => {
     updateDraft.mutate({
       id: article.id,
@@ -195,7 +203,7 @@ function ArticleCard({ article, onApprove, onReject, isApproving, isRejecting }:
             <div className="p-5 space-y-4">
               <p className="text-xs font-bold text-[oklch(0.85_0.18_95)] uppercase tracking-widest">Editing Draft</p>
 
-              {/* Image URL swap */}
+              {/* Image URL swap + Regenerate */}
               <div>
                 <label className="text-xs font-bold text-[oklch(0.55_0_0)] uppercase tracking-widest mb-1 block">Featured Image URL</label>
                 <div className="flex gap-2">
@@ -205,6 +213,16 @@ function ArticleCard({ article, onApprove, onReject, isApproving, isRejecting }:
                     placeholder="https://images.pexels.com/..."
                     className="flex-1 bg-[oklch(0.18_0_0)] border border-[oklch(0.28_0_0)] text-white text-xs px-3 py-2 rounded focus:outline-none focus:border-[oklch(0.85_0.18_95)]"
                   />
+                  <button
+                    onClick={() => regenerateImage.mutate({ id: article.id, title: editTitle || article.title, category: article.categoryName })}
+                    disabled={regenerateImage.isPending}
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded text-xs font-black transition-colors disabled:opacity-40 hover:bg-[oklch(0.25_0_0)]"
+                    style={{ background: 'oklch(0.20 0 0)', color: 'oklch(0.85 0.18 95)', border: '1px solid oklch(0.85 0.18 95 / 0.3)' }}
+                    title="Find a new image using Pexels/Wikimedia"
+                  >
+                    {regenerateImage.isPending ? <RefreshCw className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                    {regenerateImage.isPending ? 'Finding...' : 'New Image'}
+                  </button>
                   {editImage && (
                     <img src={editImage} alt="" className="w-16 h-10 object-cover rounded shrink-0" onError={e => (e.currentTarget.style.display='none')} />
                   )}
