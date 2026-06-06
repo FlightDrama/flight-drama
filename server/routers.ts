@@ -1816,7 +1816,7 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
     }),
     // Update draft article content before approving
     updateDraft: adminGuard
-      .input(z.object({ id: z.number(), title: z.string().optional(), excerpt: z.string().optional(), content: z.string().optional(), isBreaking: z.boolean().optional(), categoryId: z.number().optional() }))
+      .input(z.object({ id: z.number(), title: z.string().optional(), excerpt: z.string().optional(), content: z.string().optional(), isBreaking: z.boolean().optional(), categoryId: z.number().optional(), featuredImage: z.string().optional() }))
       .mutation(async ({ input }) => {
         const { rawQuery } = await import('./db');
         const { id, ...fields } = input;

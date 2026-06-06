@@ -3,11 +3,12 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import Navigation from "@/components/Navigation";
-import { BarChart2, FileText, Users, Mail, Crown, Megaphone, ArrowRight, Settings, MessageSquare, TrendingUp, Zap } from "lucide-react";
+import { BarChart2, FileText, Users, Mail, Crown, Megaphone, ArrowRight, Settings, MessageSquare, TrendingUp, Zap, Activity } from "lucide-react";
 
 export default function AdminDashboard() {
   const { user, isAuthenticated, loading } = useAuth();
   const { data: stats } = trpc.crm.stats.useQuery(undefined, { enabled: isAuthenticated && user?.role === "admin" });
+  const { data: draftData } = trpc.autopilot.draftCount.useQuery(undefined, { enabled: isAuthenticated && user?.role === "admin", refetchInterval: 30000 });
 
   if (loading) return <div className="min-h-screen bg-[oklch(0.10_0_0)] flex items-center justify-center"><div className="w-8 h-8 border-2 border-[oklch(0.85_0.18_95)] border-t-transparent rounded-full animate-spin" /></div>;
   if (!isAuthenticated) return (
@@ -62,6 +63,34 @@ export default function AdminDashboard() {
             </Link>
           ))}
         </div>
+
+        {/* Autopilot status banner */}
+        <Link href="/admin/autopilot" className="flex items-center justify-between bg-[oklch(0.13_0_0)] border border-[oklch(0.22_0_0)] rounded-xl p-4 mb-6 hover:border-[oklch(0.85_0.18_95)]/40 transition-colors group">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-[oklch(0.85_0.18_95)]/10 flex items-center justify-center">
+              <Activity className="w-4 h-4 text-[oklch(0.85_0.18_95)]" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-white">Autopilot</span>
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-[10px] text-green-500 font-bold">ACTIVE</span>
+                </span>
+              </div>
+              <p className="text-xs text-[oklch(0.50_0_0)]">Running every 5 minutes · Story QA + Article QA + Image QA</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {(draftData?.count ?? 0) > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: 'oklch(0.85 0.18 95)', color: '#000' }}>
+                <Zap className="w-3.5 h-3.5" />
+                <span className="text-xs font-black">{draftData?.count} article{draftData?.count !== 1 ? 's' : ''} to review</span>
+              </div>
+            )}
+            <ArrowRight className="w-4 h-4 text-[oklch(0.35_0_0)] group-hover:text-[oklch(0.85_0.18_95)] transition-colors" />
+          </div>
+        </Link>
 
         {/* Quick links */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

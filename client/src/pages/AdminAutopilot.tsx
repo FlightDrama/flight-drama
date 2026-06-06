@@ -20,6 +20,32 @@ function ArticleCard({ article, onApprove, onReject, isApproving, isRejecting }:
   const [expanded, setExpanded] = useState(false);
   const [isBreaking, setIsBreaking] = useState(article.isBreaking === 1);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editTitle, setEditTitle] = useState(article.title || '');
+  const [editExcerpt, setEditExcerpt] = useState(article.excerpt || '');
+  const [editContent, setEditContent] = useState(article.content || '');
+  const [editImage, setEditImage] = useState(article.featuredImage || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const utils = trpc.useUtils();
+
+  const updateDraft = trpc.autopilot.updateDraft.useMutation({
+    onSuccess: () => {
+      toast.success('Article saved');
+      setEditMode(false);
+      utils.autopilot.drafts.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleSave = () => {
+    updateDraft.mutate({
+      id: article.id,
+      title: editTitle,
+      excerpt: editExcerpt,
+      content: editContent,
+      featuredImage: editImage,
+    });
+  };
 
   return (
     <div
@@ -110,12 +136,22 @@ function ArticleCard({ article, onApprove, onReject, isApproving, isRejecting }:
 
           {/* Expand/collapse */}
           <button
-            onClick={() => setExpanded(e => !e)}
+            onClick={() => { setExpanded(e => !e); setEditMode(false); }}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-bold transition-colors hover:bg-[oklch(0.20_0_0)] text-[oklch(0.50_0_0)]"
           >
             <Eye className="w-3 h-3" />
             {expanded ? "Hide" : "Preview"}
             {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
+
+          {/* Edit button */}
+          <button
+            onClick={() => { setExpanded(true); setEditMode(e => !e); }}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-bold transition-colors hover:bg-[oklch(0.20_0_0)]"
+            style={{ color: editMode ? 'oklch(0.85 0.18 95)' : 'oklch(0.50 0 0)' }}
+          >
+            <Edit2 className="w-3 h-3" />
+            {editMode ? "Editing" : "Edit"}
           </button>
 
           <div className="flex-1" />
@@ -148,50 +184,126 @@ function ArticleCard({ article, onApprove, onReject, isApproving, isRejecting }:
         </div>
       </div>
 
-      {/* Article preview — full site layout */}
+      {/* Article preview / edit — full site layout */}
       {expanded && (
         <div
           className="border-t"
           style={{ borderColor: "oklch(0.20 0 0)", backgroundColor: "oklch(0.10 0 0)" }}
         >
-          {/* Featured image — full width, as it appears on the main site */}
-          {article.featuredImage && (
-            <div className="relative w-full" style={{ aspectRatio: '16/9', maxHeight: '480px', overflow: 'hidden' }}>
-              <img
-                src={article.featuredImage}
-                alt={article.title}
-                className="w-full h-full object-cover"
-              />
-              {/* Category badge overlay */}
-              {article.categoryName && (
-                <div className="absolute bottom-4 left-4">
-                  <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded" style={{ background: 'oklch(0.85 0.18 95)', color: '#000' }}>
-                    {article.categoryName}
-                  </span>
+          {editMode ? (
+            /* ── EDIT MODE ── */
+            <div className="p-5 space-y-4">
+              <p className="text-xs font-bold text-[oklch(0.85_0.18_95)] uppercase tracking-widest">Editing Draft</p>
+
+              {/* Image URL swap */}
+              <div>
+                <label className="text-xs font-bold text-[oklch(0.55_0_0)] uppercase tracking-widest mb-1 block">Featured Image URL</label>
+                <div className="flex gap-2">
+                  <input
+                    value={editImage}
+                    onChange={e => setEditImage(e.target.value)}
+                    placeholder="https://images.pexels.com/..."
+                    className="flex-1 bg-[oklch(0.18_0_0)] border border-[oklch(0.28_0_0)] text-white text-xs px-3 py-2 rounded focus:outline-none focus:border-[oklch(0.85_0.18_95)]"
+                  />
+                  {editImage && (
+                    <img src={editImage} alt="" className="w-16 h-10 object-cover rounded shrink-0" onError={e => (e.currentTarget.style.display='none')} />
+                  )}
+                </div>
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="text-xs font-bold text-[oklch(0.55_0_0)] uppercase tracking-widest mb-1 block">Headline</label>
+                <input
+                  value={editTitle}
+                  onChange={e => setEditTitle(e.target.value)}
+                  className="w-full bg-[oklch(0.18_0_0)] border border-[oklch(0.28_0_0)] text-white text-sm font-bold px-3 py-2 rounded focus:outline-none focus:border-[oklch(0.85_0.18_95)]"
+                />
+              </div>
+
+              {/* Excerpt */}
+              <div>
+                <label className="text-xs font-bold text-[oklch(0.55_0_0)] uppercase tracking-widest mb-1 block">Excerpt</label>
+                <textarea
+                  value={editExcerpt}
+                  onChange={e => setEditExcerpt(e.target.value)}
+                  rows={2}
+                  className="w-full bg-[oklch(0.18_0_0)] border border-[oklch(0.28_0_0)] text-white text-xs px-3 py-2 rounded focus:outline-none focus:border-[oklch(0.85_0.18_95)] resize-none"
+                />
+              </div>
+
+              {/* Content */}
+              <div>
+                <label className="text-xs font-bold text-[oklch(0.55_0_0)] uppercase tracking-widest mb-1 block">Article Body (HTML)</label>
+                <textarea
+                  value={editContent}
+                  onChange={e => setEditContent(e.target.value)}
+                  rows={12}
+                  className="w-full bg-[oklch(0.18_0_0)] border border-[oklch(0.28_0_0)] text-white text-xs px-3 py-2 rounded focus:outline-none focus:border-[oklch(0.85_0.18_95)] resize-y font-mono"
+                />
+              </div>
+
+              {/* Save / Cancel */}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSave}
+                  disabled={updateDraft.isPending}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded text-xs font-black transition-colors disabled:opacity-40"
+                  style={{ background: 'oklch(0.85 0.18 95)', color: '#000' }}
+                >
+                  {updateDraft.isPending ? <RefreshCw className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+                  Save Changes
+                </button>
+                <button
+                  onClick={() => setEditMode(false)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded text-xs font-bold transition-colors hover:bg-[oklch(0.20_0_0)] text-[oklch(0.50_0_0)]"
+                >
+                  <X className="w-3 h-3" /> Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ── PREVIEW MODE ── */
+            <>
+              {/* Featured image — full width */}
+              {(editImage || article.featuredImage) && (
+                <div className="relative w-full" style={{ aspectRatio: '16/9', maxHeight: '480px', overflow: 'hidden' }}>
+                  <img
+                    src={editImage || article.featuredImage}
+                    alt={editTitle || article.title}
+                    className="w-full h-full object-cover"
+                  />
+                  {article.categoryName && (
+                    <div className="absolute bottom-4 left-4">
+                      <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded" style={{ background: 'oklch(0.85 0.18 95)', color: '#000' }}>
+                        {article.categoryName}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
+              {/* Headline */}
+              <div className="px-6 pt-5 pb-2">
+                <h1 className="text-2xl font-black text-white leading-tight mb-2">{editTitle || article.title}</h1>
+                {(editExcerpt || article.excerpt) && (
+                  <p className="text-[oklch(0.60_0_0)] text-sm mb-3 leading-relaxed">{editExcerpt || article.excerpt}</p>
+                )}
+                <div className="flex items-center gap-3 text-xs text-[oklch(0.45_0_0)] pb-4 border-b" style={{ borderColor: 'oklch(0.18 0 0)' }}>
+                  <span>By {article.authorName || 'Flight Drama Autopilot'}</span>
+                  <span>·</span>
+                  <span>Draft</span>
+                  {isBreaking && <span className="text-red-400 font-bold">🚨 Breaking</span>}
+                </div>
+              </div>
+              {/* Body */}
+              <div className="px-6 pb-6">
+                <div
+                  className="article-prose text-sm max-w-none prose-invert"
+                  dangerouslySetInnerHTML={{ __html: editContent || article.content }}
+                />
+              </div>
+            </>
           )}
-          {/* Article headline */}
-          <div className="px-6 pt-5 pb-2">
-            <h1 className="text-2xl font-black text-white leading-tight mb-2">{article.title}</h1>
-            {article.excerpt && (
-              <p className="text-[oklch(0.60_0_0)] text-sm mb-3 leading-relaxed">{article.excerpt}</p>
-            )}
-            <div className="flex items-center gap-3 text-xs text-[oklch(0.45_0_0)] pb-4 border-b" style={{ borderColor: 'oklch(0.18 0 0)' }}>
-              <span>By {article.authorName || 'Flight Drama Autopilot'}</span>
-              <span>·</span>
-              <span>{article.publishedAt ? new Date(article.publishedAt).toLocaleDateString('en-GB') : 'Draft'}</span>
-              {article.isBreaking === 1 && <span className="text-red-400 font-bold">🚨 Breaking</span>}
-            </div>
-          </div>
-          {/* Article body */}
-          <div className="px-6 pb-6">
-            <div
-              className="article-prose text-sm max-w-none prose-invert"
-              dangerouslySetInnerHTML={{ __html: article.content }}
-            />
-          </div>
         </div>
       )}
     </div>
