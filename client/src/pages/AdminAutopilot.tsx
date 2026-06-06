@@ -148,16 +148,50 @@ function ArticleCard({ article, onApprove, onReject, isApproving, isRejecting }:
         </div>
       </div>
 
-      {/* Article preview */}
+      {/* Article preview — full site layout */}
       {expanded && (
         <div
-          className="border-t p-4"
+          className="border-t"
           style={{ borderColor: "oklch(0.20 0 0)", backgroundColor: "oklch(0.10 0 0)" }}
         >
-          <div
-            className="article-prose text-sm max-w-none prose-invert"
-            dangerouslySetInnerHTML={{ __html: article.content }}
-          />
+          {/* Featured image — full width, as it appears on the main site */}
+          {article.featuredImage && (
+            <div className="relative w-full" style={{ aspectRatio: '16/9', maxHeight: '480px', overflow: 'hidden' }}>
+              <img
+                src={article.featuredImage}
+                alt={article.title}
+                className="w-full h-full object-cover"
+              />
+              {/* Category badge overlay */}
+              {article.categoryName && (
+                <div className="absolute bottom-4 left-4">
+                  <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded" style={{ background: 'oklch(0.85 0.18 95)', color: '#000' }}>
+                    {article.categoryName}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+          {/* Article headline */}
+          <div className="px-6 pt-5 pb-2">
+            <h1 className="text-2xl font-black text-white leading-tight mb-2">{article.title}</h1>
+            {article.excerpt && (
+              <p className="text-[oklch(0.60_0_0)] text-sm mb-3 leading-relaxed">{article.excerpt}</p>
+            )}
+            <div className="flex items-center gap-3 text-xs text-[oklch(0.45_0_0)] pb-4 border-b" style={{ borderColor: 'oklch(0.18 0 0)' }}>
+              <span>By {article.authorName || 'Flight Drama Autopilot'}</span>
+              <span>·</span>
+              <span>{article.publishedAt ? new Date(article.publishedAt).toLocaleDateString('en-GB') : 'Draft'}</span>
+              {article.isBreaking === 1 && <span className="text-red-400 font-bold">🚨 Breaking</span>}
+            </div>
+          </div>
+          {/* Article body */}
+          <div className="px-6 pb-6">
+            <div
+              className="article-prose text-sm max-w-none prose-invert"
+              dangerouslySetInnerHTML={{ __html: article.content }}
+            />
+          </div>
         </div>
       )}
     </div>
