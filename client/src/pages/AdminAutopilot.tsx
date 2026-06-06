@@ -45,6 +45,15 @@ function ArticleCard({ article, onApprove, onReject, isApproving, isRejecting }:
     onError: (e) => toast.error('Could not find image: ' + e.message),
   });
 
+  const regenerateArticle = trpc.autopilot.regenerateArticle.useMutation({
+    onSuccess: (data) => {
+      setEditContent(data.content);
+      setEditExcerpt(data.excerpt);
+      toast.success('Article rewritten by Claude Opus!');
+    },
+    onError: (e) => toast.error('Rewrite failed: ' + e.message),
+  });
+
   const handleSave = () => {
     updateDraft.mutate({
       id: article.id,
@@ -261,8 +270,8 @@ function ArticleCard({ article, onApprove, onReject, isApproving, isRejecting }:
                 />
               </div>
 
-              {/* Save / Cancel */}
-              <div className="flex gap-2">
+              {/* Save / Regenerate / Cancel */}
+              <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={handleSave}
                   disabled={updateDraft.isPending}
@@ -271,6 +280,16 @@ function ArticleCard({ article, onApprove, onReject, isApproving, isRejecting }:
                 >
                   {updateDraft.isPending ? <RefreshCw className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
                   Save Changes
+                </button>
+                <button
+                  onClick={() => regenerateArticle.mutate({ id: article.id, title: editTitle || article.title, category: article.categoryName })}
+                  disabled={regenerateArticle.isPending}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded text-xs font-black transition-colors disabled:opacity-40"
+                  style={{ background: 'oklch(0.18 0 0)', color: 'oklch(0.85 0.18 95)', border: '1px solid oklch(0.85 0.18 95 / 0.3)' }}
+                  title="Rewrite article with Claude Opus (Soyunci voice)"
+                >
+                  {regenerateArticle.isPending ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                  {regenerateArticle.isPending ? 'Rewriting...' : 'Rewrite Article'}
                 </button>
                 <button
                   onClick={() => setEditMode(false)}

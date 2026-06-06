@@ -1832,6 +1832,62 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
         }
         return { success: true };
       }),
+    // Regenerate article content using Claude Opus with Soyunci prompt
+    regenerateArticle: adminGuard
+      .input(z.object({ id: z.number(), title: z.string(), category: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        const { rawQuery } = await import('./db');
+        const { ENV } = await import('./_core/env');
+        
+        // Get the original article to use as context
+        const [article] = await rawQuery<any>('SELECT content, excerpt FROM articles WHERE id = ? LIMIT 1', [input.id]);
+        
+        const SOYUNCI_PROMPT = `You are Soyunci, the lead writer and editor of Flightdrama.com.
+
+Flight Drama is a viral aviation media brand. Think: The Sun meets The Aviationist. LADbible meets CNN Aviation.
+
+MODE 1 — DRAMA (passenger chaos, airline complaints, money stories): Be relatable, funny, find the outrage.
+MODE 2 — STRAIGHT (emergencies, fatalities, accidents): Report clearly and accurately.
+
+NEVER use em dashes. NEVER use AI clichés like "In a significant development", "It remains to be seen", "Going forward", "Additionally", "Furthermore".
+
+Write 600-900 words. Use specific facts, exact numbers, dates, aircraft types.
+
+Output ONLY valid JSON:
+{"excerpt":"1-2 sentence summary","content":"full article in HTML with <p>, <h2>, <h3> tags","tags":["tag1","tag2","tag3","tag4","tag5"],"metaTitle":"SEO title 50-60 chars","metaDescription":"SEO description 150-160 chars"}`;
+        
+        const res = await fetch(`${ENV.forgeApiUrl}/chat/completions`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${ENV.forgeApiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-opus-4-8',
+            max_tokens: 4096,
+            messages: [{
+              role: 'user',
+              content: `HEADLINE: ${input.title}\nCATEGORY: ${input.category || 'Commercial Aviation'}\n\nPlease rewrite this article with improved voice, no em dashes, no AI clichés, and stronger viral angle.\n\nCURRENT ARTICLE:\n${(article?.content || '').replace(/<[^>]+>/g, ' ').slice(0, 2000)}`,
+            }],
+          }),
+          signal: AbortSignal.timeout(60000),
+        });
+        
+        if (!res.ok) throw new Error(`Claude API error ${res.status}`);
+        const data = await res.json() as any;
+        const content = data.choices?.[0]?.message?.content || '';
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error('No JSON in response');
+        const articleData = JSON.parse(jsonMatch[0]);
+        
+        // Auto-fix em dashes
+        const fixedContent = (articleData.content || '').replace(/ — /g, ', ').replace(/—/g, '-').replace(/\u2014/g, '-');
+        const fixedExcerpt = (articleData.excerpt || '').replace(/ — /g, ', ').replace(/—/g, '-');
+        
+        await rawQuery(
+          'UPDATE articles SET content = ?, excerpt = ?, updatedAt = NOW() WHERE id = ? AND status = \'draft\'',
+          [fixedContent, fixedExcerpt, input.id]
+        );
+        
+        return { success: true, content: fixedContent, excerpt: fixedExcerpt };
+      }),
     // Regenerate image for a draft article using the 10-pass QA system
     regenerateImage: adminGuard
       .input(z.object({ id: z.number(), title: z.string(), category: z.string().optional() }))
