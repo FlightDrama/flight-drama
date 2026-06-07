@@ -1,5 +1,6 @@
 import {
   boolean,
+  float,
   int,
   mysqlEnum,
   mysqlTable,
@@ -75,6 +76,10 @@ export const articles = mysqlTable("articles", {
   isBreaking: boolean("isBreaking").default(false).notNull(),
   isPro: boolean("isPro").default(false).notNull(),
   wpSlug: varchar("wpSlug", { length: 500 }),
+  articleQaScore: float("articleQaScore"),
+  imageQaScore: float("imageQaScore"),
+  articleQaPasses: int("articleQaPasses"),
+  imageQaPasses: int("imageQaPasses"),
   status: mysqlEnum("status", ["draft", "published", "rejected"]).default("published").notNull(),
   publishedAt: timestamp("publishedAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

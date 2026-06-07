@@ -127,6 +127,33 @@ function ArticleCard({ article, onApprove, onReject, isApproving, isRejecting }:
                 <Clock className="w-3 h-3" />
                 {formatDistanceToNow(new Date(article.createdAt), { addSuffix: true })}
               </span>
+              {/* QA Score badges */}
+              {article.articleQaScore != null && (
+                <span
+                  className="text-[9px] font-black px-1.5 py-0.5 rounded flex items-center gap-1"
+                  style={{
+                    background: article.articleQaScore >= 7 ? '#16a34a20' : article.articleQaScore >= 5 ? '#d9770620' : '#dc262620',
+                    color: article.articleQaScore >= 7 ? '#4ade80' : article.articleQaScore >= 5 ? '#fb923c' : '#f87171',
+                    border: `1px solid ${article.articleQaScore >= 7 ? '#4ade8040' : article.articleQaScore >= 5 ? '#fb923c40' : '#f8717140'}`,
+                  }}
+                  title={`Article QA: ${article.articleQaScore}/10 (${article.articleQaPasses ?? 0} passes)`}
+                >
+                  ✍ {Number(article.articleQaScore).toFixed(1)}
+                </span>
+              )}
+              {article.imageQaScore != null && (
+                <span
+                  className="text-[9px] font-black px-1.5 py-0.5 rounded flex items-center gap-1"
+                  style={{
+                    background: article.imageQaScore >= 7 ? '#1d4ed820' : article.imageQaScore >= 5 ? '#d9770620' : '#dc262620',
+                    color: article.imageQaScore >= 7 ? '#60a5fa' : article.imageQaScore >= 5 ? '#fb923c' : '#f87171',
+                    border: `1px solid ${article.imageQaScore >= 7 ? '#60a5fa40' : article.imageQaScore >= 5 ? '#fb923c40' : '#f8717140'}`,
+                  }}
+                  title={`Image QA: ${article.imageQaScore}/10 (${article.imageQaPasses ?? 0} passes)`}
+                >
+                  🖼 {Number(article.imageQaScore).toFixed(1)}
+                </span>
+              )}
             </div>
             <h3 className="text-sm font-black text-white leading-snug mb-1">{article.title}</h3>
             {article.excerpt && (

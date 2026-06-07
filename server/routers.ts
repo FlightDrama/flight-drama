@@ -1709,6 +1709,7 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
       return rawQuery<any>(`
         SELECT a.id, a.title, a.slug, a.excerpt, a.content, a.featuredImage,
           a.isBreaking, a.isPro, a.status, a.createdAt, a.publishedAt,
+          a.articleQaScore, a.imageQaScore, a.articleQaPasses, a.imageQaPasses,
           c.name AS categoryName, c.colour AS categoryColour, c.slug AS categorySlug,
           au.name AS authorName
         FROM articles a
