@@ -290,10 +290,24 @@ export default function ArticlePage() {
                 <ShareButtons title={article.title} compact />
               </div>
             </div>
-            {/* Featured image */}
+            {/* Featured image with optional attribution */}
             {article.featuredImage && (
               <div className="rounded-lg overflow-hidden mb-6">
-                <img src={article.featuredImage} alt={article.title} className="w-full object-cover max-h-[500px]" />
+                <div className="relative">
+                  <img src={article.featuredImage} alt={article.title} className="w-full object-cover max-h-[500px]" />
+                  {/* Image attribution — shown when required or available */}
+                  {article.imageAttribution && (
+                    <div className="absolute bottom-0 right-0 px-2 py-1 text-[10px] text-white/70" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+                      {article.imageAttributionUrl ? (
+                        <a href={article.imageAttributionUrl} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+                          {article.imageAttribution}
+                        </a>
+                      ) : (
+                        <span>{article.imageAttribution}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             {/* Video embed — YouTube/generic */}
