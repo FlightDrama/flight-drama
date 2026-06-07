@@ -61,7 +61,7 @@ export async function getArticles(opts: { limit?: number; offset?: number; categ
 }
 export async function getArticleBySlug(slug: string) {
   const db = await getDb(); if (!db) return undefined;
-  const r = await db.select().from(articles).leftJoin(authors, eq(articles.authorId, authors.id)).leftJoin(categories, eq(articles.categoryId, categories.id)).where(eq(articles.slug, slug)).limit(1);
+  const r = await db.select().from(articles).leftJoin(authors, eq(articles.authorId, authors.id)).leftJoin(categories, eq(articles.categoryId, categories.id)).where(and(eq(articles.slug, slug), eq(articles.status, 'published'))).limit(1);
   return r[0];
 }
 export async function incrementArticleViews(id: number) {
