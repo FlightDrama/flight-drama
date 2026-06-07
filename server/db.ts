@@ -48,7 +48,7 @@ export async function getUserCount() {
 
 export async function getArticles(opts: { limit?: number; offset?: number; categoryId?: number; postType?: string; featured?: boolean; breaking?: boolean; isPro?: boolean; search?: string; sortBy?: 'recent' | 'popular'; }) {
   const db = await getDb(); if (!db) return [];
-  const conds: any[] = [];
+  const conds: any[] = [eq(articles.status, 'published')]; // Always filter to published only
   if (opts.categoryId) conds.push(eq(articles.categoryId, opts.categoryId));
   if (opts.postType) conds.push(eq(articles.postType, opts.postType as any));
   if (opts.featured) conds.push(eq(articles.isFeatured, true));
