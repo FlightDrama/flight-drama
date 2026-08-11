@@ -1,0 +1,15 @@
+{
+  "current": 92,
+  "total": 92,
+  "updated": 91,
+  "skipped": 0,
+  "failed": 0,
+  "lastId": 90011,
+  "cost": {
+    "calls": 515,
+    "inputTokens": 863657,
+    "outputTokens": 51158,
+    "totalUSD": "16.7917",
+    "totalGBP": "13.2654"
+  }
+}

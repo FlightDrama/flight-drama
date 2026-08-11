@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flight Drama CMS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+  <style>
+    :root { --yellow: #F5C518; }
+    body { background: #0a0a0a; color: #fff; font-family: Inter, sans-serif; }
+    .btn-yellow { background: var(--yellow); color: #000; font-weight: 700; padding: 8px 16px; border-radius: 4px; cursor: pointer; border: none; }
+    .btn-yellow:hover { background: #e0b015; }
+    .btn-gray { background: #1a1a1a; color: #ccc; font-weight: 600; padding: 8px 16px; border-radius: 4px; cursor: pointer; border: 1px solid #333; }
+    .btn-gray:hover { background: #222; }
+    .btn-red { background: #7f1d1d; color: #fca5a5; font-weight: 600; padding: 6px 12px; border-radius: 4px; cursor: pointer; border: none; font-size: 12px; }
+    .input { background: #111; border: 1px solid #333; color: #fff; padding: 8px 12px; border-radius: 4px; width: 100%; outline: none; }
+    .input:focus { border-color: var(--yellow); }
+    .card { background: #111; border: 1px solid #222; border-radius: 8px; padding: 16px; }
+    .badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; }
+    .badge-yellow { background: rgba(245,197,24,0.15); color: var(--yellow); }
+    .badge-green { background: rgba(34,197,94,0.15); color: #4ade80; }
+    .badge-red { background: rgba(239,68,68,0.15); color: #f87171; }
+    .ql-toolbar { background: #1a1a1a !important; border-color: #333 !important; }
+    .ql-container { background: #111 !important; border-color: #333 !important; color: #fff !important; min-height: 300px; }
+    .ql-editor { color: #fff !important; font-size: 15px; line-height: 1.7; }
+    .sidebar-link { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 6px; color: #888; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.15s; }
+    .sidebar-link:hover, .sidebar-link.active { background: rgba(245,197,24,0.1); color: var(--yellow); }
+    .stat-card { background: #111; border: 1px solid #222; border-radius: 8px; padding: 20px; }
+    .table-row { border-bottom: 1px solid #1a1a1a; }
+    .table-row:hover { background: #111; }
+    #toast { position: fixed; bottom: 24px; right: 24px; z-index: 9999; }
+    .toast-item { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px 16px; margin-top: 8px; font-size: 14px; display: flex; align-items: center; gap-8px; animation: slideIn 0.2s ease; }
+    .toast-success { border-left: 3px solid #4ade80; }
+    .toast-error { border-left: 3px solid #f87171; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  </style>
+</head>
+<body>
+
+<div id="app"></div>
+<div id="toast"></div>
+
+<script>
+// API calls go through the /cms-api proxy on flightdrama.com (avoids mixed content HTTPS/HTTP)
+const API = '/cms-api';
+let token = localStorage.getItem('fd_cms_token');
+let currentUser = null;
+let categories = [];
+let authors = [];
+let quill = null;
+let editingArticleId = null;
+let currentView = 'dashboard';
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast-item toast-${type}`;
+  el.textContent = (type === 'success' ? '✅ ' : '❌ ') + msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ── API Helper ─────────────────────────────────────────────────────────────
+async function api(path, opts = {}) {
+  const res = await fetch(API + '/api' + path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...(opts.headers || {}) },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+function renderLogin() {
+  document.getElementById('app').innerHTML = `
+    <div class="min-h-screen flex items-center justify-center p-4">
+      <div class="w-full max-w-sm">
+        <div class="text-center mb-8">
+          <div class="text-3xl font-black mb-1"><span style="color:var(--yellow)">FLIGHT</span>DRAMA</div>
+          <div class="text-sm text-gray-500">Content Management System</div>
+        </div>
+        <div class="card">
+          <h2 class="text-lg font-bold mb-4">Sign In</h2>
+          <div class="space-y-3">
+            <div>
+              <label class="text-xs text-gray-500 font-bold uppercase tracking-wide block mb-1">Email</label>
+              <input id="login-email" type="email" class="input" placeholder="josh@flightdrama.com" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 font-bold uppercase tracking-wide block mb-1">Password</label>
+              <input id="login-password" type="password" class="input" placeholder="••••••••" />
+            </div>
+            <div id="login-error" class="text-red-400 text-sm hidden"></div>
+            <button onclick="doLogin()" class="btn-yellow w-full mt-2">Sign In ✈</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  try {
+    const data = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    }).then(r => r.json());
+    if (data.error) throw new Error(data.error);
+    token = data.token;
+    currentUser = data.user;
+    localStorage.setItem('fd_cms_token', token);
+    await loadMeta();
+    renderApp();
+  } catch (e) {
+    document.getElementById('login-error').textContent = e.message;
+    document.getElementById('login-error').classList.remove('hidden');
+  }
+}
+
+function doLogout() {
+  token = null;
+  currentUser = null;
+  localStorage.removeItem('fd_cms_token');
+  renderLogin();
+}
+
+// ── Load Meta ──────────────────────────────────────────────────────────────
+async function loadMeta() {
+  try {
+    [categories, authors] = await Promise.all([api('/categories'), api('/authors')]);
+  } catch (e) { console.error('Failed to load meta:', e); }
+}
+
+// ── Main App Shell ─────────────────────────────────────────────────────────
+function renderApp() {
+  document.getElementById('app').innerHTML = `
+    <div class="flex min-h-screen">
+      <!-- Sidebar -->
+      <aside class="w-56 bg-[#0d0d0d] border-r border-[#1a1a1a] flex flex-col shrink-0">
+        <div class="p-4 border-b border-[#1a1a1a]">
+          <div class="text-lg font-black"><span style="color:var(--yellow)">FLIGHT</span>DRAMA</div>
+          <div class="text-xs text-gray-600">CMS v1.0</div>
+        </div>
+        <nav class="flex-1 p-3 space-y-1">
+          <div class="sidebar-link" onclick="showView('dashboard')" id="nav-dashboard">📊 Dashboard</div>
+          <div class="sidebar-link" onclick="showView('articles')" id="nav-articles">📰 Articles</div>
+          <div class="sidebar-link" onclick="showView('new-article')" id="nav-new-article">✏️ New Article</div>
+          <div class="sidebar-link" onclick="showView('categories')" id="nav-categories">🏷️ Categories</div>
+          ${currentUser?.role === 'admin' ? '<div class="sidebar-link" onclick="showView(\'users\')" id="nav-users">👥 CMS Users</div>' : ''}
+          <div class="sidebar-link" onclick="showView('settings')" id="nav-settings">⚙️ Settings</div>
+        </nav>
+        <div class="p-3 border-t border-[#1a1a1a]">
+          <div class="text-xs text-gray-600 mb-2">${currentUser?.name} (${currentUser?.role})</div>
+          <button onclick="doLogout()" class="btn-gray w-full text-xs">Sign Out</button>
+        </div>
+      </aside>
+      <!-- Main -->
+      <main class="flex-1 overflow-auto" id="main-content"></main>
+    </div>
+  `;
+  showView('dashboard');
+}
+
+function showView(view) {
+  currentView = view;
+  document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+  const navEl = document.getElementById(`nav-${view}`);
+  if (navEl) navEl.classList.add('active');
+  
+  const main = document.getElementById('main-content');
+  if (view === 'dashboard') renderDashboard(main);
+  else if (view === 'articles') renderArticlesList(main);
+  else if (view === 'new-article') renderArticleEditor(main, null);
+  else if (view === 'categories') renderCategories(main);
+  else if (view === 'users') renderUsers(main);
+  else if (view === 'settings') renderSettings(main);
+}
+
+// ── Dashboard ──────────────────────────────────────────────────────────────
+async function renderDashboard(el) {
+  el.innerHTML = `<div class="p-6"><div class="text-2xl font-black mb-6">Dashboard</div><div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" id="stats-grid"><div class="stat-card animate-pulse h-20"></div><div class="stat-card animate-pulse h-20"></div><div class="stat-card animate-pulse h-20"></div><div class="stat-card animate-pulse h-20"></div></div><div class="card" id="recent-articles"><div class="text-sm text-gray-500">Loading recent articles...</div></div></div>`;
+  
+  try {
+    const stats = await api('/stats');
+    document.getElementById('stats-grid').innerHTML = [
+      { label: 'Total Articles', value: stats.total, colour: 'text-yellow-400' },
+      { label: 'Total Views', value: Number(stats.totalViews).toLocaleString(), colour: 'text-white' },
+      { label: 'Subscribers', value: stats.subscribers, colour: 'text-green-400' },
+      { label: 'Comments', value: stats.comments, colour: 'text-blue-400' },
+    ].map(s => `<div class="stat-card"><div class="text-2xl font-black ${s.colour}">${s.value}</div><div class="text-xs text-gray-500 font-bold uppercase tracking-wide mt-1">${s.label}</div></div>`).join('');
+    
+    document.getElementById('recent-articles').innerHTML = `
+      <div class="text-sm font-bold text-gray-400 uppercase tracking-wide mb-3">Recent Articles</div>
+      ${stats.recent.map(a => `
+        <div class="table-row flex items-center justify-between py-3">
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-sm text-white truncate">${a.title}</div>
+            <div class="text-xs text-gray-600">${new Date(a.publishedAt).toLocaleDateString()}</div>
+          </div>
+          <div class="text-xs text-gray-500 ml-4">${a.views} views</div>
+          <button onclick="editArticle(${a.id})" class="ml-4 text-xs text-yellow-400 hover:underline">Edit</button>
+        </div>
+      `).join('')}
+      <div class="mt-4"><button onclick="showView('articles')" class="btn-yellow text-sm">View All Articles →</button></div>
+    `;
+  } catch (e) { toast('Failed to load stats: ' + e.message, 'error'); }
+}
+
+// ── Articles List ──────────────────────────────────────────────────────────
+let articleSearch = '';
+let articlePage = 0;
+const ARTICLE_LIMIT = 20;
+
+async function renderArticlesList(el, search = '', page = 0) {
+  articleSearch = search;
+  articlePage = page;
+  
+  el.innerHTML = `
+    <div class="p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-black">Articles</h1>
+        <button onclick="showView('new-article')" class="btn-yellow">+ New Article</button>
+      </div>
+      <div class="flex gap-3 mb-4">
+        <input id="article-search" type="text" class="input flex-1" placeholder="Search articles..." value="${search}" oninput="renderArticlesList(document.getElementById('main-content'), this.value, 0)" />
+        <select id="cat-filter" class="input w-40" onchange="renderArticlesList(document.getElementById('main-content'), document.getElementById('article-search').value, 0)">
+          <option value="">All Categories</option>
+          ${categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+        </select>
+      </div>
+      <div id="articles-table" class="card">
+        <div class="text-sm text-gray-500">Loading...</div>
+      </div>
+    </div>
+  `;
+  
+  try {
+    const catId = document.getElementById('cat-filter')?.value || '';
+    const data = await api(`/articles?search=${encodeURIComponent(search)}&limit=${ARTICLE_LIMIT}&offset=${page * ARTICLE_LIMIT}${catId ? '&categoryId=' + catId : ''}`);
+    
+    document.getElementById('articles-table').innerHTML = `
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-sm text-gray-500">${data.total} articles</div>
+        <div class="flex gap-2">
+          <button onclick="renderArticlesList(document.getElementById('main-content'), articleSearch, Math.max(0, articlePage-1))" ${page === 0 ? 'disabled' : ''} class="btn-gray text-xs" style="${page === 0 ? 'opacity:0.4' : ''}">← Prev</button>
+          <span class="text-xs text-gray-500 self-center">Page ${page + 1}</span>
+          <button onclick="renderArticlesList(document.getElementById('main-content'), articleSearch, articlePage+1)" ${data.articles.length < ARTICLE_LIMIT ? 'disabled' : ''} class="btn-gray text-xs" style="${data.articles.length < ARTICLE_LIMIT ? 'opacity:0.4' : ''}">Next →</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[#222] text-xs text-gray-500 uppercase tracking-wide">
+              <th class="text-left py-2 pr-4">Title</th>
+              <th class="text-left py-2 pr-4">Category</th>
+              <th class="text-left py-2 pr-4">Published</th>
+              <th class="text-left py-2 pr-4">Views</th>
+              <th class="text-left py-2">Flags</th>
+              <th class="text-right py-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.articles.map(a => `
+              <tr class="table-row">
+                <td class="py-3 pr-4 max-w-xs">
+                  <div class="font-bold text-white truncate" style="max-width:280px">${a.title}</div>
+                  <div class="text-xs text-gray-600">${a.slug}</div>
+                </td>
+                <td class="py-3 pr-4"><span class="badge badge-yellow">${a.categoryName || '—'}</span></td>
+                <td class="py-3 pr-4 text-gray-500 text-xs">${new Date(a.publishedAt).toLocaleDateString()}</td>
+                <td class="py-3 pr-4 text-gray-400">${a.views}</td>
+                <td class="py-3 pr-4">
+                  ${a.isBreaking ? '<span class="badge badge-red mr-1">Breaking</span>' : ''}
+                  ${a.isFeatured ? '<span class="badge badge-green mr-1">Featured</span>' : ''}
+                  ${a.isPro ? '<span class="badge badge-yellow">Pro</span>' : ''}
+                </td>
+                <td class="py-3 text-right">
+                  <button onclick="editArticle(${a.id})" class="text-yellow-400 text-xs hover:underline mr-3">Edit</button>
+                  <button onclick="deleteArticle(${a.id}, '${a.title.replace(/'/g, "\\'")}')" class="text-red-400 text-xs hover:underline">Delete</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (e) { toast('Failed to load articles: ' + e.message, 'error'); }
+}
+
+// ── Article Editor ─────────────────────────────────────────────────────────
+async function editArticle(id) {
+  const main = document.getElementById('main-content');
+  try {
+    const article = await api(`/articles/${id}`);
+    renderArticleEditor(main, article);
+  } catch (e) { toast('Failed to load article: ' + e.message, 'error'); }
+}
+
+function renderArticleEditor(el, article) {
+  editingArticleId = article?.id || null;
+  const isNew = !article;
+  
+  el.innerHTML = `
+    <div class="p-6 max-w-5xl">
+      <div class="flex items-center gap-3 mb-6">
+        <button onclick="showView('articles')" class="text-gray-500 hover:text-white text-sm">← Back to Articles</button>
+        <h1 class="text-2xl font-black">${isNew ? 'New Article' : 'Edit Article'}</h1>
+      </div>
+      
+      <div class="grid grid-cols-3 gap-6">
+        <!-- Main content -->
+        <div class="col-span-2 space-y-4">
+          <div>
+            <label class="text-xs text-gray-500 font-bold uppercase tracking-wide block mb-1">Title *</label>
+            <input id="art-title" type="text" class="input text-lg font-bold" placeholder="Article title..." value="${article?.title || ''}" oninput="autoSlug()" />
+          </div>
+          <div>
+            <label class="text-xs text-gray-500 font-bold uppercase tracking-wide block mb-1">Slug *</label>
+            <div class="flex gap-2">
+              <input id="art-slug" type="text" class="input flex-1" placeholder="article-slug" value="${article?.slug || ''}" />
+              <button onclick="generateSlug()" class="btn-gray text-xs whitespace-nowrap">Auto-generate</button>
+            </div>
+          </div>
+          <div>
+            <label class="text-xs text-gray-500 font-bold uppercase tracking-wide block mb-1">Excerpt</label>
+            <textarea id="art-excerpt" class="input h-20 resize-none" placeholder="Brief summary shown in article cards...">${article?.excerpt || ''}</textarea>
+          </div>
+          <div>
+            <label class="text-xs text-gray-500 font-bold uppercase tracking-wide block mb-1">Content *</label>
+            <div id="quill-editor"></div>
+          </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="space-y-4">
+          <div class="card">
+            <div class="text-xs text-gray-500 font-bold uppercase tracking-wide mb-3">Publish</div>
+            <div class="space-y-2">
+              <div>
+                <label class="text-xs text-gray-600 block mb-1">Published Date</label>
+                <input id="art-published" type="datetime-local" class="input text-sm" value="${article?.publishedAt ? new Date(article.publishedAt).toISOString().slice(0,16) : new Date().toISOString().slice(0,16)}" />
+              </div>
+              <div class="flex gap-2 pt-2">
+                <button onclick="saveArticle()" class="btn-yellow flex-1">${isNew ? 'Publish ✈' : 'Save Changes'}</button>
+              </div>
+              ${!isNew ? `<button onclick="deleteArticle(${article.id}, '${(article.title || '').replace(/'/g, "\\'")}', true)" class="btn-red w-full text-center">Delete Article</button>` : ''}
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="text-xs text-gray-500 font-bold uppercase tracking-wide mb-3">Category & Author</div>
+            <div class="space-y-2">
+              <div>
+                <label class="text-xs text-gray-600 block mb-1">Category</label>
+                <select id="art-category" class="input text-sm">
+                  <option value="">— Select —</option>
+                  ${categories.map(c => `<option value="${c.id}" ${article?.categoryId == c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-gray-600 block mb-1">Author</label>
+                <select id="art-author" class="input text-sm">
+                  <option value="">— Select —</option>
+                  ${authors.map(a => `<option value="${a.id}" ${article?.authorId == a.id ? 'selected' : ''}>${a.name}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="text-xs text-gray-500 font-bold uppercase tracking-wide mb-3">Featured Image</div>
+            <div class="space-y-2">
+              <input id="art-image" type="text" class="input text-sm" placeholder="/manus-storage/..." value="${article?.featuredImage || ''}" />
+              <div class="text-xs text-gray-600">or upload:</div>
+              <input type="file" id="image-upload" accept="image/*" onchange="uploadImage()" class="text-xs text-gray-400" />
+              ${article?.featuredImage ? `<img src="${article.featuredImage}" class="w-full rounded mt-2 object-cover" style="max-height:120px" />` : ''}
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="text-xs text-gray-500 font-bold uppercase tracking-wide mb-3">Options</div>
+            <div class="space-y-2">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="art-breaking" ${article?.isBreaking ? 'checked' : ''} class="w-4 h-4 accent-yellow-400" />
+                <span class="text-sm">Breaking News</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="art-featured" ${article?.isFeatured ? 'checked' : ''} class="w-4 h-4 accent-yellow-400" />
+                <span class="text-sm">Featured Article</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="art-pro" ${article?.isPro ? 'checked' : ''} class="w-4 h-4 accent-yellow-400" />
+                <span class="text-sm">Pro Only</span>
+              </label>
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="text-xs text-gray-500 font-bold uppercase tracking-wide mb-2">Tags</div>
+            <input id="art-tags" type="text" class="input text-sm" placeholder="Boeing, Safety, MCAS (comma separated)" value="${article?.tags ? (typeof article.tags === 'string' ? JSON.parse(article.tags) : article.tags).join(', ') : ''}" />
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Init Quill
+  quill = new Quill('#quill-editor', {
+    theme: 'snow',
+    modules: {
+      toolbar: [
+        [{ header: [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        ['blockquote', 'code-block'],
+        [{ list: 'ordered' }, { list: 'bullet' }],
+        ['link', 'image'],
+        ['clean']
+      ]
+    },
+    placeholder: 'Write your article here...'
+  });
+  
+  if (article?.content) {
+    quill.clipboard.dangerouslyPasteHTML(article.content);
+  }
+}
+
+async function autoSlug() {
+  const title = document.getElementById('art-title')?.value || '';
+  if (!editingArticleId) {
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+    const slugEl = document.getElementById('art-slug');
+    if (slugEl) slugEl.value = slug;
+  }
+}
+
+async function generateSlug() {
+  const title = document.getElementById('art-title')?.value || '';
+  if (!title) return;
+  try {
+    const data = await api('/generate-slug', { method: 'POST', body: { title } });
+    document.getElementById('art-slug').value = data.slug;
+  } catch (e) { toast('Failed to generate slug', 'error'); }
+}
+
+async function uploadImage() {
+  const file = document.getElementById('image-upload').files[0];
+  if (!file) return;
+  
+  const formData = new FormData();
+  formData.append('image', file);
+  
+  try {
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    document.getElementById('art-image').value = data.url;
+    toast('Image uploaded successfully');
+  } catch (e) { toast('Upload failed: ' + e.message, 'error'); }
+}
+
+async function saveArticle() {
+  const title = document.getElementById('art-title').value.trim();
+  const slug = document.getElementById('art-slug').value.trim();
+  const content = quill.root.innerHTML;
+  
+  if (!title || !slug) { toast('Title and slug are required', 'error'); return; }
+  if (quill.getText().trim().length < 10) { toast('Content is too short', 'error'); return; }
+  
+  const tagsRaw = document.getElementById('art-tags').value;
+  const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+  
+  const payload = {
+    title, slug, content,
+    excerpt: document.getElementById('art-excerpt').value.trim() || null,
+    categoryId: document.getElementById('art-category').value || null,
+    authorId: document.getElementById('art-author').value || null,
+    featuredImage: document.getElementById('art-image').value.trim() || null,
+    isBreaking: document.getElementById('art-breaking').checked,
+    isFeatured: document.getElementById('art-featured').checked,
+    isPro: document.getElementById('art-pro').checked,
+    tags,
+    publishedAt: document.getElementById('art-published').value.replace('T', ' '),
+  };
+  
+  try {
+    if (editingArticleId) {
+      await api(`/articles/${editingArticleId}`, { method: 'PUT', body: payload });
+      toast('Article updated successfully ✈');
+    } else {
+      const result = await api('/articles', { method: 'POST', body: payload });
+      editingArticleId = result.id;
+      toast('Article published successfully ✈');
+    }
+  } catch (e) { toast('Save failed: ' + e.message, 'error'); }
+}
+
+async function deleteArticle(id, title, redirect = false) {
+  if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+  try {
+    await api(`/articles/${id}`, { method: 'DELETE' });
+    toast('Article deleted');
+    if (redirect) showView('articles');
+    else renderArticlesList(document.getElementById('main-content'), articleSearch, articlePage);
+  } catch (e) { toast('Delete failed: ' + e.message, 'error'); }
+}
+
+// ── Categories ─────────────────────────────────────────────────────────────
+async function renderCategories(el) {
+  el.innerHTML = `<div class="p-6"><h1 class="text-2xl font-black mb-6">Categories</h1><div class="card"><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b border-[#222] text-xs text-gray-500 uppercase tracking-wide"><th class="text-left py-2 pr-4">Name</th><th class="text-left py-2 pr-4">Slug</th><th class="text-left py-2">Colour</th></tr></thead><tbody>${categories.map(c => `<tr class="table-row"><td class="py-3 pr-4 font-bold">${c.name}</td><td class="py-3 pr-4 text-gray-500">${c.slug}</td><td class="py-3"><span style="background:${c.colour || '#F5C518'};color:#000;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:700">${c.colour || '#F5C518'}</span></td></tr>`).join('')}</tbody></table></div></div></div>`;
+}
+
+// ── CMS Users ──────────────────────────────────────────────────────────────
+async function renderUsers(el) {
+  el.innerHTML = `<div class="p-6"><div class="flex items-center justify-between mb-6"><h1 class="text-2xl font-black">CMS Users</h1><button onclick="showAddUser()" class="btn-yellow">+ Add User</button></div><div id="users-list" class="card"><div class="text-sm text-gray-500">Loading...</div></div></div>`;
+  
+  try {
+    const users = await api('/cms-users');
+    document.getElementById('users-list').innerHTML = `
+      <table class="w-full text-sm">
+        <thead><tr class="border-b border-[#222] text-xs text-gray-500 uppercase tracking-wide">
+          <th class="text-left py-2 pr-4">Name</th>
+          <th class="text-left py-2 pr-4">Email</th>
+          <th class="text-left py-2 pr-4">Role</th>
+          <th class="text-left py-2 pr-4">Last Login</th>
+          <th class="text-right py-2">Actions</th>
+        </tr></thead>
+        <tbody>
+          ${users.map(u => `
+            <tr class="table-row">
+              <td class="py-3 pr-4 font-bold">${u.name}</td>
+              <td class="py-3 pr-4 text-gray-400">${u.email}</td>
+              <td class="py-3 pr-4"><span class="badge ${u.role === 'admin' ? 'badge-yellow' : 'badge-green'}">${u.role}</span></td>
+              <td class="py-3 pr-4 text-gray-500 text-xs">${u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'Never'}</td>
+              <td class="py-3 text-right">
+                ${u.id !== currentUser?.id ? `<button onclick="deleteUser(${u.id}, '${u.name}')" class="text-red-400 text-xs hover:underline">Remove</button>` : '<span class="text-xs text-gray-600">You</span>'}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <div id="add-user-form" class="hidden mt-4 pt-4 border-t border-[#222]">
+        <div class="text-sm font-bold mb-3">Add New User</div>
+        <div class="grid grid-cols-2 gap-3">
+          <input id="new-name" type="text" class="input text-sm" placeholder="Full name" />
+          <input id="new-email" type="email" class="input text-sm" placeholder="email@example.com" />
+          <input id="new-password" type="password" class="input text-sm" placeholder="Password (min 8 chars)" />
+          <select id="new-role" class="input text-sm"><option value="editor">Editor</option><option value="admin">Admin</option></select>
+        </div>
+        <div class="flex gap-2 mt-3">
+          <button onclick="addUser()" class="btn-yellow text-sm">Create User</button>
+          <button onclick="document.getElementById('add-user-form').classList.add('hidden')" class="btn-gray text-sm">Cancel</button>
+        </div>
+      </div>
+    `;
+  } catch (e) { toast('Failed to load users: ' + e.message, 'error'); }
+}
+
+function showAddUser() {
+  document.getElementById('add-user-form')?.classList.remove('hidden');
+}
+
+async function addUser() {
+  const name = document.getElementById('new-name').value.trim();
+  const email = document.getElementById('new-email').value.trim();
+  const password = document.getElementById('new-password').value;
+  const role = document.getElementById('new-role').value;
+  if (!name || !email || !password) { toast('All fields required', 'error'); return; }
+  try {
+    await api('/cms-users', { method: 'POST', body: { name, email, password, role } });
+    toast('User created successfully');
+    renderUsers(document.getElementById('main-content'));
+  } catch (e) { toast('Failed to create user: ' + e.message, 'error'); }
+}
+
+async function deleteUser(id, name) {
+  if (!confirm(`Remove ${name} from CMS?`)) return;
+  try {
+    await api(`/cms-users/${id}`, { method: 'DELETE' });
+    toast('User removed');
+    renderUsers(document.getElementById('main-content'));
+  } catch (e) { toast('Failed: ' + e.message, 'error'); }
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────
+function renderSettings(el) {
+  el.innerHTML = `
+    <div class="p-6 max-w-lg">
+      <h1 class="text-2xl font-black mb-6">Settings</h1>
+      <div class="card mb-4">
+        <div class="text-sm font-bold mb-3">Change Password</div>
+        <div class="space-y-2">
+          <input id="cur-pass" type="password" class="input text-sm" placeholder="Current password" />
+          <input id="new-pass" type="password" class="input text-sm" placeholder="New password (min 8 chars)" />
+          <input id="new-pass2" type="password" class="input text-sm" placeholder="Confirm new password" />
+          <button onclick="changePassword()" class="btn-yellow text-sm">Update Password</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="text-sm font-bold mb-2">Account</div>
+        <div class="text-sm text-gray-400">Logged in as: <span class="text-white font-bold">${currentUser?.name}</span> (${currentUser?.email})</div>
+        <div class="text-sm text-gray-400 mt-1">Role: <span class="badge badge-yellow">${currentUser?.role}</span></div>
+      </div>
+    </div>
+  `;
+}
+
+async function changePassword() {
+  const cur = document.getElementById('cur-pass').value;
+  const newP = document.getElementById('new-pass').value;
+  const newP2 = document.getElementById('new-pass2').value;
+  if (newP !== newP2) { toast('Passwords do not match', 'error'); return; }
+  if (newP.length < 8) { toast('Password must be at least 8 characters', 'error'); return; }
+  try {
+    await api('/auth/change-password', { method: 'POST', body: { currentPassword: cur, newPassword: newP } });
+    toast('Password updated successfully');
+    document.getElementById('cur-pass').value = '';
+    document.getElementById('new-pass').value = '';
+    document.getElementById('new-pass2').value = '';
+  } catch (e) { toast('Failed: ' + e.message, 'error'); }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+(async () => {
+  if (token) {
+    try {
+      const res = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) {
+        currentUser = await res.json();
+        await loadMeta();
+        renderApp();
+        return;
+      }
+    } catch {}
+  }
+  renderLogin();
+})();
+</script>
+</body>
+</html>
