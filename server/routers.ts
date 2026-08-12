@@ -5,6 +5,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { customAuthRouter } from './customAuth';
+import { getTopic } from "../shared/topics";
 import {
   createArticle, createForumReply, createForumThread, deleteArticle,
   getAllAdSlots, getAllUsers, getArticleBySlug, getArticleCount, getArticles,
@@ -23,6 +24,27 @@ const adminGuard = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") throw new Error("FORBIDDEN");
   return next({ ctx });
 });
+
+export function articleMatchesSavedTopic(article: { title?: string | null; excerpt?: string | null; tags?: string | null }, topicSearch: string) {
+  const searchable = `${article.title ?? ""} ${article.excerpt ?? ""} ${article.tags ?? ""}`.toLocaleLowerCase();
+  return searchable.includes(topicSearch.toLocaleLowerCase());
+}
+
+async function createSavedTopicAlerts(rawQuery: any, article: { id: number; title: string; slug: string; excerpt?: string | null; tags?: string | null }) {
+  const savedTopics = await rawQuery('SELECT userId, topicSlug FROM saved_topics WHERE alertEnabled = 1', []);
+  let created = 0;
+  for (const savedTopic of savedTopics) {
+    const topic = getTopic(savedTopic.topicSlug);
+    if (!topic || !articleMatchesSavedTopic(article, topic.search)) continue;
+    await rawQuery(
+      `INSERT INTO notifications (userId, type, title, message, icon, linkUrl)
+       VALUES (?, 'saved_topic', ?, ?, '✈', ?)`,
+      [savedTopic.userId, `New ${topic.label} story`, article.title, `/article/${article.slug}`],
+    );
+    created += 1;
+  }
+  return created;
+}
 
 export const appRouter = router({
   system: systemRouter,
@@ -440,7 +462,16 @@ export const appRouter = router({
       }),
     create: adminGuard
       .input(z.object({ title: z.string(), slug: z.string(), excerpt: z.string().optional(), content: z.string(), featuredImage: z.string().optional(), videoUrl: z.string().optional(), postType: z.enum(["article","video","social","breaking"]).default("article"), categoryId: z.number().optional(), authorId: z.number().optional(), tags: z.string().optional(), isFeatured: z.boolean().default(false), isBreaking: z.boolean().default(false), isPro: z.boolean().default(false) }))
-      .mutation(({ input }) => createArticle({ ...input, publishedAt: new Date() })),
+      .mutation(async ({ input }) => {
+        await createArticle({ ...input, publishedAt: new Date() });
+        const { rawQuery } = await import('./db');
+        const [article] = await rawQuery<any>(
+          'SELECT id, title, slug, excerpt, tags FROM articles WHERE slug = ? AND status = \'published\' LIMIT 1',
+          [input.slug],
+        );
+        const savedTopicAlerts = article ? await createSavedTopicAlerts(rawQuery, article) : 0;
+        return { success: true, savedTopicAlerts };
+      }),
     update: adminGuard
       .input(z.object({ id: z.number(), title: z.string().optional(), excerpt: z.string().optional(), content: z.string().optional(), featuredImage: z.string().optional(), isFeatured: z.boolean().optional(), isBreaking: z.boolean().optional(), isPro: z.boolean().optional(), categoryId: z.number().optional() }))
       .mutation(async ({ input, ctx }) => {
@@ -1282,7 +1313,7 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
     list: protectedProcedure.query(async ({ ctx }) => {
       const { rawQuery } = await import('./db');
       return rawQuery<any>(
-        'SELECT id, type, title, message, icon, isRead, createdAt FROM notifications WHERE userId = ? ORDER BY createdAt DESC LIMIT 30',
+          'SELECT id, type, title, message, icon, linkUrl, isRead, createdAt FROM notifications WHERE userId = ? ORDER BY createdAt DESC LIMIT 30',
         [ctx.user.id]
       );
     }),
@@ -1402,6 +1433,47 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
       }));
       return { success: true };
     }),
+  }),
+
+  savedTopics: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const { rawQuery } = await import('./db');
+      return rawQuery<any>(
+        'SELECT id, topicSlug, topicLabel, alertEnabled, createdAt, updatedAt FROM saved_topics WHERE userId = ? ORDER BY createdAt DESC',
+        [ctx.user.id],
+      );
+    }),
+    save: protectedProcedure
+      .input(z.object({ topicSlug: z.string().min(2).max(120) }))
+      .mutation(async ({ ctx, input }) => {
+        const topic = getTopic(input.topicSlug);
+        if (!topic) throw new Error('UNKNOWN_TOPIC');
+        const { rawQuery } = await import('./db');
+        await rawQuery(
+          `INSERT INTO saved_topics (userId, topicSlug, topicLabel, alertEnabled, createdAt, updatedAt)
+           VALUES (?, ?, ?, 1, NOW(), NOW())
+           ON DUPLICATE KEY UPDATE topicLabel = VALUES(topicLabel), alertEnabled = 1, updatedAt = NOW()`,
+          [ctx.user.id, topic.slug, topic.label],
+        );
+        return { success: true, topicSlug: topic.slug, alertEnabled: true };
+      }),
+    setAlert: protectedProcedure
+      .input(z.object({ topicSlug: z.string().min(2).max(120), alertEnabled: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        const { rawQuery } = await import('./db');
+        await rawQuery(
+          'UPDATE saved_topics SET alertEnabled = ?, updatedAt = NOW() WHERE userId = ? AND topicSlug = ?',
+          [input.alertEnabled ? 1 : 0, ctx.user.id, input.topicSlug],
+        );
+        return { success: true, alertEnabled: input.alertEnabled };
+      }),
+    remove: protectedProcedure
+      .input(z.object({ topicSlug: z.string().min(2).max(120) }))
+      .mutation(async ({ ctx, input }) => {
+        const { rawQuery } = await import('./db');
+        await rawQuery('DELETE FROM saved_topics WHERE userId = ? AND topicSlug = ?', [ctx.user.id, input.topicSlug]);
+        return { success: true };
+      }),
   }),
 
   // ── Reputation System ──────────────────────────────────────────────────
@@ -1725,10 +1797,17 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
       .input(z.object({ id: z.number(), isBreaking: z.boolean().optional() }))
       .mutation(async ({ input }) => {
         const { rawQuery } = await import('./db');
-        await rawQuery(
+        const [approvalResult] = await rawQuery<any>(
           `UPDATE articles SET status = 'published', isBreaking = ?, publishedAt = NOW(), updatedAt = NOW() WHERE id = ? AND status = 'draft'`,
           [input.isBreaking ? 1 : 0, input.id]
         );
+        if (!approvalResult?.affectedRows) return { success: true, published: false, savedTopicAlerts: 0 };
+
+        const [article] = await rawQuery<any>(
+          'SELECT id, title, slug, excerpt, featuredImage, isBreaking, tags FROM articles WHERE id = ? LIMIT 1',
+          [input.id]
+        );
+        const savedTopicAlerts = article ? await createSavedTopicAlerts(rawQuery, article) : 0;
 
         // Send push notifications to Pro subscribers who have browser push enabled
         try {
@@ -1736,12 +1815,6 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
           if (ENV.vapidPublicKey && ENV.vapidPrivateKey) {
             const webpush = await import('web-push');
             webpush.default.setVapidDetails('mailto:hello@flightdrama.com', ENV.vapidPublicKey, ENV.vapidPrivateKey);
-
-            // Get the article details
-            const [article] = await rawQuery<any>(
-              'SELECT title, slug, excerpt, featuredImage, isBreaking FROM articles WHERE id = ? LIMIT 1',
-              [input.id]
-            );
 
             if (article) {
               // Get all Pro subscribers with push enabled
@@ -1786,7 +1859,7 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
           console.error('[Push] Failed to send notifications:', e);
         }
 
-        return { success: true };
+        return { success: true, published: true, savedTopicAlerts };
       }),
     // Reject a draft article
     reject: adminGuard
@@ -1802,10 +1875,12 @@ Return JSON with: title, excerpt, content, metaTitle, metaDescription, suggested
     // Bulk approve all drafts
     approveAll: adminGuard.mutation(async () => {
       const { rawQuery } = await import('./db');
+      const drafts = await rawQuery<any>('SELECT id, title, slug, excerpt, tags FROM articles WHERE status = \'draft\'', []);
       const [result] = await rawQuery<any>(
         `UPDATE articles SET status = 'published', publishedAt = NOW(), updatedAt = NOW() WHERE status = 'draft'`
       );
-      return { count: result.affectedRows ?? 0 };
+      const alertCounts = await Promise.all(drafts.map((draft) => createSavedTopicAlerts(rawQuery, draft)));
+      return { count: result.affectedRows ?? 0, savedTopicAlerts: alertCounts.reduce((total, count) => total + count, 0) };
     }),
     // Bulk reject all drafts
     rejectAll: adminGuard.mutation(async () => {

@@ -3,10 +3,12 @@ import { trpc } from "@/lib/trpc";
 import { Bell } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useLocation } from "wouter";
 
 export default function NotificationBell() {
   const { isAuthenticated } = useAuth();
   const [open, setOpen] = useState(false);
+  const [, navigate] = useLocation();
   const ref = useRef<HTMLDivElement>(null);
 
   const { data: unread, refetch: refetchCount } = trpc.notifications.unreadCount.useQuery(
@@ -78,9 +80,14 @@ export default function NotificationBell() {
               </div>
             ) : (
               notifications.map((n: any) => (
-                <div
+                <button
                   key={n.id}
-                  className={`flex gap-3 px-4 py-3 border-b border-[oklch(0.16_0_0)] last:border-0 ${!n.isRead ? "bg-[oklch(0.85_0.18_95)]/5" : ""}`}
+                  type="button"
+                  onClick={() => {
+                    if (n.linkUrl) navigate(n.linkUrl);
+                    setOpen(false);
+                  }}
+                  className={`flex w-full gap-3 border-b border-[oklch(0.16_0_0)] px-4 py-3 text-left last:border-0 ${!n.isRead ? "bg-[oklch(0.85_0.18_95)]/5" : ""} ${n.linkUrl ? "cursor-pointer hover:bg-[oklch(0.18_0_0)]" : ""}`}
                 >
                   <span className="text-xl leading-none mt-0.5 shrink-0">{n.icon ?? "🔔"}</span>
                   <div className="flex-1 min-w-0">
@@ -94,7 +101,7 @@ export default function NotificationBell() {
                       {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
                     </p>
                   </div>
-                </div>
+                </button>
               ))
             )}
           </div>

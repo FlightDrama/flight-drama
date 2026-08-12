@@ -6,6 +6,7 @@ import {
   mysqlTable,
   text,
   timestamp,
+  uniqueIndex,
   varchar,
 } from "drizzle-orm/mysql-core";
 
@@ -31,6 +32,22 @@ export const users = mysqlTable("users", {
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+
+// ─── Saved Topics ─────────────────────────────────────────────────────────────
+export const savedTopics = mysqlTable("saved_topics", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  topicSlug: varchar("topicSlug", { length: 120 }).notNull(),
+  topicLabel: varchar("topicLabel", { length: 255 }).notNull(),
+  alertEnabled: boolean("alertEnabled").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userTopicUnique: uniqueIndex("saved_topics_user_topic_unique").on(table.userId, table.topicSlug),
+}));
+
+export type SavedTopic = typeof savedTopics.$inferSelect;
+export type InsertSavedTopic = typeof savedTopics.$inferInsert;
 
 // ─── Authors ──────────────────────────────────────────────────────────────────
 export const authors = mysqlTable("authors", {

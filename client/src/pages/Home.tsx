@@ -8,6 +8,7 @@ import NewsletterSignup from "@/components/NewsletterSignup";
 import { TrendingUp, Flame, Users, Crown, ExternalLink, Eye, Clock, MessageCircle, X, Zap, Radio } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { getHomepageFreshnessNotice } from "@/lib/contentExperience";
 
 type StoryTab = 'latest' | 'top' | 'commented';
 
@@ -191,6 +192,7 @@ export default function Home() {
   const { data: breakingStories } = trpc.articles.list.useQuery({ limit: 3, breaking: true, sortBy: 'recent' });
   const { data: subscriberCount } = trpc.newsletter.count.useQuery();
   const hero = latestHeroArticles?.[0];
+  const freshnessNotice = getHomepageFreshnessNotice(hero?.publishedAt);
 
   return (
     <div className="min-h-screen bg-[oklch(0.10_0_0)]">
@@ -249,6 +251,17 @@ export default function Home() {
                     <span className="shrink-0 text-[10px] text-[oklch(0.45_0_0)]">{formatDistanceToNow(new Date(story.publishedAt), { addSuffix: true })}</span>
                   </Link>
                 ))}
+              </div>
+            </div>
+          </section>
+        )}
+        {!urlSearch && !activeFilter && freshnessNotice && (
+          <section className="mb-6 border border-amber-400/30 bg-amber-400/5 px-4 py-3" role="status" aria-live="polite">
+            <div className="flex items-start gap-3">
+              <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-300">Freshness update</p>
+                <p className="mt-1 text-sm leading-relaxed text-[oklch(0.70_0_0)]">The newest published story is {freshnessNotice.ageLabel} old. Flight Drama shows only the latest verified coverage available; this notice appears after {freshnessNotice.thresholdHours} hours without a new publication.</p>
               </div>
             </div>
           </section>

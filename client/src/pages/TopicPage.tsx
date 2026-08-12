@@ -1,10 +1,11 @@
 import { Link, useParams } from "wouter";
-import { ArrowLeft, Clock, Compass, TrendingUp } from "lucide-react";
+import { ArrowLeft, Bell, BellOff, BookmarkCheck, Clock, Compass, TrendingUp } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ArticleCard from "@/components/ArticleCard";
 import { trpc } from "@/lib/trpc";
 import { getTopic, TOPICS } from "@/lib/topics";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 function fallbackLabel(slug: string) {
   return slug.split("-").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
@@ -13,8 +14,16 @@ function fallbackLabel(slug: string) {
 export default function TopicPage() {
   const { slug } = useParams<{ slug: string }>();
   const topic = getTopic(slug);
+  const { isAuthenticated } = useAuth();
+  const utils = trpc.useUtils();
   const label = topic?.label ?? fallbackLabel(slug ?? "topic");
   const search = topic?.search ?? label;
+  const { data: savedTopics } = trpc.savedTopics.list.useQuery(undefined, { enabled: isAuthenticated });
+  const savedTopic = savedTopics?.find((item) => item.topicSlug === topic?.slug);
+  const refreshSavedTopics = () => utils.savedTopics.list.invalidate();
+  const saveTopic = trpc.savedTopics.save.useMutation({ onSuccess: refreshSavedTopics });
+  const setAlert = trpc.savedTopics.setAlert.useMutation({ onSuccess: refreshSavedTopics });
+  const removeTopic = trpc.savedTopics.remove.useMutation({ onSuccess: refreshSavedTopics });
   const { data: latest, isLoading } = trpc.articles.list.useQuery({ limit: 24, search, sortBy: "recent" });
   const { data: popular } = trpc.articles.list.useQuery({ limit: 4, search, sortBy: "popular" });
   const suggestions = TOPICS.filter((item) => item.slug !== slug).slice(0, 5);
@@ -31,7 +40,30 @@ export default function TopicPage() {
           <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-[oklch(0.85_0.18_95)]"><Compass className="h-3.5 w-3.5" /> Topic hub</div>
           <h1 className="text-3xl font-black text-white sm:text-4xl">{label} news</h1>
           <p className="mt-3 max-w-2xl text-base leading-relaxed text-[oklch(0.60_0_0)]">{topic?.description ?? `The latest Flight Drama coverage relating to ${label}.`}</p>
-          <div className="mt-5 flex items-center gap-2 text-xs text-[oklch(0.55_0_0)]"><Clock className="h-3.5 w-3.5 text-[oklch(0.85_0.18_95)]" /> Latest stories first</div>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 text-xs text-[oklch(0.55_0_0)]"><Clock className="h-3.5 w-3.5 text-[oklch(0.85_0.18_95)]" /> Latest stories first</div>
+            {topic && (isAuthenticated ? (
+              savedTopic ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAlert.mutate({ topicSlug: topic.slug, alertEnabled: !savedTopic.alertEnabled })}
+                    disabled={setAlert.isPending}
+                    className="inline-flex items-center gap-1.5 border border-[oklch(0.85_0.18_95)]/50 bg-[oklch(0.85_0.18_95)]/10 px-3 py-1.5 text-xs font-bold text-[oklch(0.85_0.18_95)] transition-colors hover:bg-[oklch(0.85_0.18_95)]/20 disabled:opacity-60"
+                    aria-pressed={savedTopic.alertEnabled}
+                  >
+                    {savedTopic.alertEnabled ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+                    {savedTopic.alertEnabled ? "Alerts on" : "Alerts off"}
+                  </button>
+                  <button type="button" onClick={() => removeTopic.mutate({ topicSlug: topic.slug })} disabled={removeTopic.isPending} className="text-xs font-bold text-[oklch(0.50_0_0)] hover:text-white disabled:opacity-60">Unsave</button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => saveTopic.mutate({ topicSlug: topic.slug })} disabled={saveTopic.isPending} className="inline-flex items-center gap-1.5 bg-[oklch(0.85_0.18_95)] px-3 py-1.5 text-xs font-black text-black transition-colors hover:bg-[oklch(0.78_0.18_95)] disabled:opacity-60"><BookmarkCheck className="h-3.5 w-3.5" /> Follow topic</button>
+              )
+            ) : (
+              <Link href="/login" className="text-xs font-bold text-[oklch(0.85_0.18_95)] hover:underline">Sign in to follow this topic</Link>
+            ))}
+          </div>
         </header>
 
         {popular && popular.length > 0 && (

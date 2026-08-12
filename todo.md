@@ -79,3 +79,13 @@
 - [x] Expand category pages into topic hubs and add reusable airline, airport, and aircraft topic views.
 - [x] Improve article readability with estimated reading time, clear publication details, optional table of contents, image attribution, sticky sharing, and contextual related coverage.
 - [x] Add automated tests for latest-first ordering, discovery results, and article reading utilities.
+
+## Reader Freshness and Saved Topics Release
+- [x] Add a homepage freshness notice when the newest published story exceeds a documented age threshold.
+- [x] Expand the curated topic hub catalogue with additional airlines and regional airports.
+- [x] Add persistent saved-topic preferences for authenticated readers.
+- [x] Add an in-product alert inbox and alert preference controls for new saved-topic stories.
+- [x] Integrate new-story alert creation into the article publishing flow without affecting draft or rejected articles.
+- [x] Add automated tests for freshness thresholds, saved-topic preferences, and new-story alerts.
+- [x] Add an integration-style test for notification creation and article destination when a matching story is published.
+- [x] Add a test confirming draft and rejected flows do not create saved-topic notifications.
