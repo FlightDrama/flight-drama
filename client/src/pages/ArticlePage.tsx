@@ -4,14 +4,14 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ArticleCard from "@/components/ArticleCard";
 import NewsletterSignup from "@/components/NewsletterSignup";
-import { Eye, Clock, ArrowLeft, Crown } from "lucide-react";
+import { Eye, Clock, ArrowLeft, Crown, CalendarDays } from "lucide-react";
 import ShareButtons from "@/components/ShareButtons";
 import RunwayDivider from "@/components/RunwayDivider";
 import AdSlot from "@/components/AdSlot";
 import ReadingProgressBar from "@/components/ReadingProgressBar";
 import MostReadWidget from "@/components/MostReadWidget";
 import FlightDramaRecommends from "@/components/FlightDramaRecommends";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import ArticleReactions from "@/components/ArticleReactions";
 import ArticleComments from "@/components/ArticleComments";
@@ -23,6 +23,7 @@ import { useEffect, useState, useMemo } from "react";
 import { AVIATION_EVENTS, CATEGORY_COLOURS, CATEGORY_LABELS } from "@/components/OnThisDayWidget";
 import TikTokWidget from "@/components/TikTokWidget";
 import ArticleAudioPlayer from "@/components/ArticleAudioPlayer";
+import { estimateReadingTime } from "@/lib/contentExperience";
 
 // Bookmark button for saving to Departure Lounge
 function BookmarkButton({ slug, title, image }: { slug: string; title: string; image: string | null }) {
@@ -97,14 +98,6 @@ function RelatedOnThisDay() {
   );
 }
 
-// Calculate estimated reading time from HTML content
-function getReadingTime(html: string): string {
-  const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-  const words = text.split(" ").filter(Boolean).length;
-  const minutes = Math.max(1, Math.round(words / 200)); // 200 wpm average
-  return `${minutes} min read`;
-}
-
 export default function ArticlePage() {
   const { slug } = useParams<{ slug: string }>();
   const { isAuthenticated } = useAuth();
@@ -121,6 +114,9 @@ export default function ArticlePage() {
   const category = data?.categories;
   const isPro = membership?.membership?.status === 'active';
   const isProGated = article?.isPro && !isPro;
+  const publicationDate = article ? new Date(article.publishedAt) : null;
+  const updatedDate = article && (article as any).updatedAt ? new Date((article as any).updatedAt) : null;
+  const wasUpdated = Boolean(publicationDate && updatedDate && updatedDate.getTime() - publicationDate.getTime() > 60_000);
 
   // ── SEO Meta Tags — inject into document head ──────────────────────────────
   useEffect(() => {
@@ -244,8 +240,8 @@ export default function ArticlePage() {
               {article.isBreaking && <span className="breaking-badge">Breaking</span>}
               {category && <Link href={`/category/${category.slug}`} className="category-badge">{category.name}</Link>}
             </div>
-            <h1 className="text-3xl md:text-4xl font-black text-white leading-tight mb-4">{article.title}</h1>
-            {article.excerpt && <p className="text-lg text-[oklch(0.65_0_0)] mb-5 leading-relaxed border-l-4 border-[oklch(0.85_0.18_95)] pl-4">{article.excerpt}</p>}
+            <h1 className="max-w-4xl text-3xl font-black leading-tight text-white md:text-4xl">{article.title}</h1>
+            {article.excerpt && <p className="mt-4 max-w-3xl border-l-4 border-[oklch(0.85_0.18_95)] pl-4 text-lg leading-relaxed text-[oklch(0.65_0_0)]">{article.excerpt}</p>}
             {/* Language selector — show if translations exist */}
             {availableLocales && availableLocales.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 mb-5 p-3 rounded-lg border" style={{ backgroundColor: 'oklch(0.13 0 0)', borderColor: 'oklch(0.20 0 0)' }}>
@@ -277,10 +273,13 @@ export default function ArticlePage() {
                   <div><p className="text-sm font-bold text-white">{author.name}</p><p className="text-xs text-[oklch(0.45_0_0)]">Aviation Journalist</p></div>
                 </div>
               )}
-              <div className="flex items-center gap-1 text-xs text-[oklch(0.45_0_0)]"><Clock className="w-3 h-3" />{formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true })}</div>
+              <div className="flex items-center gap-1 text-xs text-[oklch(0.45_0_0)]" title={publicationDate ? format(publicationDate, "d MMMM yyyy, HH:mm") : undefined}><CalendarDays className="w-3 h-3" />Published {publicationDate ? formatDistanceToNow(publicationDate, { addSuffix: true }) : ''}</div>
+              {wasUpdated && updatedDate && (
+                <div className="flex items-center gap-1 text-xs text-[oklch(0.45_0_0)]" title={format(updatedDate, "d MMMM yyyy, HH:mm")}><Clock className="w-3 h-3" />Updated {formatDistanceToNow(updatedDate, { addSuffix: true })}</div>
+              )}
               <div className="flex items-center gap-1 text-xs text-[oklch(0.85_0.18_95)] font-bold bg-[oklch(0.85_0.18_95)]/10 px-2 py-0.5">
                 <Clock className="w-3 h-3" />
-                {getReadingTime(article.content)}
+                {estimateReadingTime(article.content)}
               </div>
               <div className="flex items-center gap-1 text-xs text-[oklch(0.45_0_0)]"><Eye className="w-3 h-3" />{article.views.toLocaleString()} views</div>
               {/* Bookmark + Share */}
@@ -292,7 +291,7 @@ export default function ArticlePage() {
             </div>
             {/* Featured image with optional attribution */}
             {article.featuredImage && (
-              <div className="rounded-lg overflow-hidden mb-6">
+              <div className="mb-6 max-w-4xl overflow-hidden rounded-lg">
                 <div className="relative">
                   <img src={article.featuredImage} alt={article.title} className="w-full object-cover max-h-[500px]" />
                   {/* Image attribution — shown when required or available */}
@@ -348,18 +347,22 @@ export default function ArticlePage() {
               articleTitle={article.title}
               cachedAudioUrl={(article as any).audioUrl ?? null}
             />
+            <div className="sticky top-20 z-20 mb-5 hidden items-center justify-between gap-3 border border-[oklch(0.22_0_0)] bg-[oklch(0.10_0_0)/0.95] px-3 py-2 backdrop-blur md:flex">
+              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-[oklch(0.45_0_0)]">Keep reading or share</span>
+              <ShareButtons title={article.title} compact />
+            </div>
             {/* Table of Contents */}
-            {!isProGated && <TableOfContents content={article.content} />}
+            {!isProGated && <div className="max-w-3xl"><TableOfContents content={article.content} /></div>}
             {/* Content — show gate for Pro articles */}
             {isProGated ? (
               <ProContentGate articleTitle={article.title} previewContent={article.content} />
             ) : (
-              <div className="article-prose max-w-none"
+              <div className="article-prose mx-auto max-w-3xl"
                 dangerouslySetInnerHTML={{ __html: article.content }} />
             )}
             {/* Tags */}
             {article.tags && (
-              <div className="mt-8 pt-6 border-t border-[oklch(0.22_0_0)]">
+              <div className="mx-auto mt-8 max-w-3xl border-t border-[oklch(0.22_0_0)] pt-6">
                 <p className="text-xs font-bold uppercase tracking-widest text-[oklch(0.45_0_0)] mb-2">Tags</p>
                 <div className="flex flex-wrap gap-2">
                   {JSON.parse(article.tags).map((tag: string) => {
@@ -380,7 +383,7 @@ export default function ArticlePage() {
             {/* Reactions */}
             <ArticleReactions articleId={article.id} />
             {/* Bottom share section */}
-            <div className="mt-6 pt-6 border-t border-[oklch(0.22_0_0)]">
+            <div className="mx-auto mt-6 max-w-3xl border-t border-[oklch(0.22_0_0)] pt-6">
               <p className="text-xs font-bold uppercase tracking-widest text-[oklch(0.45_0_0)] mb-3">Enjoyed this story? Share it</p>
               <ShareButtons title={article.title} />
             </div>
@@ -502,7 +505,7 @@ export default function ArticlePage() {
               {filtered[0]?.categoryName && (
                 <div className="text-center">
                   <a
-                    href={`/?tab=${filtered[0].categoryName?.toLowerCase().replace(/\s+/g, '-') ?? 'news'}`}
+                    href={`/category/${filtered[0].categorySlug ?? 'aviation-news'}`}
                     className="inline-flex items-center gap-2 text-xs font-bold text-[oklch(0.85_0.18_95)] hover:underline"
                   >
                     More {filtered[0].categoryName} stories →

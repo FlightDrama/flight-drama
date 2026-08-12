@@ -1,4 +1,4 @@
-import { and, desc, eq, like, sql } from "drizzle-orm";
+import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   adSlots, articles, authors, categories, forumBoards, forumReplies,
@@ -54,7 +54,14 @@ export async function getArticles(opts: { limit?: number; offset?: number; categ
   if (opts.featured) conds.push(eq(articles.isFeatured, true));
   if (opts.breaking) conds.push(eq(articles.isBreaking, true));
   if (opts.isPro) conds.push(eq(articles.isPro, true));
-  if (opts.search) conds.push(like(articles.title, `%${opts.search}%`));
+  if (opts.search?.trim()) {
+    const searchTerm = `%${opts.search.trim()}%`;
+    conds.push(or(
+      like(articles.title, searchTerm),
+      like(articles.excerpt, searchTerm),
+      like(articles.tags, searchTerm),
+    ));
+  }
   const orderCol = opts.sortBy === 'popular' ? desc(articles.views) : desc(articles.publishedAt);
   const base = db.select({ id: articles.id, title: articles.title, slug: articles.slug, excerpt: articles.excerpt, featuredImage: articles.featuredImage, videoUrl: articles.videoUrl, postType: articles.postType, categoryId: articles.categoryId, authorId: articles.authorId, tags: articles.tags, views: articles.views, isFeatured: articles.isFeatured, isBreaking: articles.isBreaking, isPro: articles.isPro, publishedAt: articles.publishedAt, authorName: authors.name, authorSlug: authors.slug, authorAvatar: authors.avatar, categoryName: categories.name, categorySlug: categories.slug, categoryColour: categories.colour }).from(articles).leftJoin(authors, eq(articles.authorId, authors.id)).leftJoin(categories, eq(articles.categoryId, categories.id)).orderBy(orderCol).limit(opts.limit ?? 20).offset(opts.offset ?? 0);
   return conds.length ? base.where(and(...conds)) : base;
@@ -213,6 +220,7 @@ export async function getMostReadArticles(limit = 5) {
     categorySlug: categories.slug,
   }).from(articles)
     .leftJoin(categories, eq(articles.categoryId, categories.id))
+    .where(eq(articles.status, 'published'))
     .orderBy(desc(articles.views))
     .limit(limit);
 }

@@ -7,6 +7,7 @@
 import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { buildNewsSearchPath } from "@/lib/contentExperience";
 
 export default function FlightSearchBar() {
   const [query, setQuery] = useState("");
@@ -33,7 +34,7 @@ export default function FlightSearchBar() {
     if (query.trim()) {
       setIsSearching(true);
       setTimeout(() => {
-        navigate(`/?search=${encodeURIComponent(query.trim())}`);
+        navigate(buildNewsSearchPath(query));
         setFocused(false);
         setIsSearching(false);
         inputRef.current?.blur();

@@ -46,6 +46,8 @@ import NewsArchivePage from "./pages/NewsArchivePage";
 import OnThisDayPage from "./pages/OnThisDayPage";
 import TagPage from "./pages/TagPage";
 import TagsIndexPage from "./pages/TagsIndexPage";
+import TopicsIndexPage from "./pages/TopicsIndexPage";
+import TopicPage from "./pages/TopicPage";
 import TranslatedArticlePage from "./pages/TranslatedArticlePage";
 import TranslatedNewsPage from "./pages/TranslatedNewsPage";
 import AdminAnalytics from "./pages/AdminAnalytics";
@@ -71,6 +73,8 @@ function Router() {
         <Route path="/news" component={NewsArchivePage} />
         <Route path="/article/:slug" component={ArticlePage} />
         <Route path="/category/:slug" component={CategoryPage} />
+        <Route path="/topics" component={TopicsIndexPage} />
+        <Route path="/topic/:slug" component={TopicPage} />
         <Route path="/videos" component={VideoPage} />
         <Route path="/forum" component={ForumPage} />
         <Route path="/forum/:boardSlug" component={ForumBoardPage} />

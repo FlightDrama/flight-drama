@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import ArticleCard from "@/components/ArticleCard";
 import RunwayDivider from "@/components/RunwayDivider";
 import { ArrowLeft, Filter, Search, X, ChevronDown } from "lucide-react";
+import { TOPICS } from "@/lib/topics";
 
 const LIMIT = 100; // Fetch all, filter/sort client-side for instant UX
 
@@ -185,6 +186,21 @@ export default function CategoryPage() {
             ))}
           </div>
         </div>
+
+        <section className="mb-6 border-y border-[oklch(0.20_0_0)] py-4" aria-labelledby="topic-hubs-heading">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p id="topic-hubs-heading" className="text-[10px] font-black uppercase tracking-[0.16em] text-[oklch(0.85_0.18_95)]">Go deeper</p>
+              <p className="mt-0.5 text-xs text-[oklch(0.55_0_0)]">Follow an airline, airport or aircraft in its own latest-first hub.</p>
+            </div>
+            <Link href="/topics" className="shrink-0 text-xs font-bold text-[oklch(0.85_0.18_95)] hover:underline">All topics →</Link>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {TOPICS.slice(0, 6).map((topic) => (
+              <Link key={topic.slug} href={`/topic/${topic.slug}`} className="shrink-0 rounded-full border border-[oklch(0.25_0_0)] bg-[oklch(0.13_0_0)] px-3 py-1.5 text-xs font-bold text-[oklch(0.65_0_0)] transition-colors hover:border-[oklch(0.85_0.18_95)] hover:text-[oklch(0.85_0.18_95)]">{topic.label}</Link>
+            ))}
+          </div>
+        </section>
 
         <RunwayDivider label={
           searchQuery

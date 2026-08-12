@@ -1,10 +1,12 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useSearch } from "wouter";
+import { Link } from "wouter";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ArticleCard from "@/components/ArticleCard";
 import { trpc } from "@/lib/trpc";
 import { ChevronLeft, ChevronRight, Flame, Clock, TrendingUp, Search, X } from "lucide-react";
+import { getNewsSort } from "@/lib/contentExperience";
 
 const CATEGORY_FILTERS = [
   { label: "All", value: undefined },
@@ -24,6 +26,15 @@ const SORT_OPTIONS = [
 
 const LIMIT = 24;
 
+const DISCOVERY_LINKS = [
+  { label: "Ryanair", href: "/topic/ryanair" },
+  { label: "British Airways", href: "/topic/british-airways" },
+  { label: "Heathrow", href: "/topic/heathrow" },
+  { label: "Boeing 737", href: "/topic/boeing-737" },
+  { label: "Airbus A320", href: "/topic/airbus-a320" },
+  { label: "Emergency landings", href: "/topic/emergency-landing" },
+];
+
 function ArticleSkeleton() {
   return (
     <div className="bg-[oklch(0.15_0_0)] rounded-lg overflow-hidden animate-pulse">
@@ -41,18 +52,25 @@ function ArticleSkeleton() {
 export default function NewsArchivePage() {
   const searchStr = useSearch();
   const searchParams = new URLSearchParams(searchStr);
-  const initialSort = (searchParams.get("sort") === "popular" ? "popular" : "recent") as "recent" | "popular";
+  const initialSort = getNewsSort(searchParams.get("sort"));
+  const urlSearch = searchParams.get("search")?.trim() || undefined;
 
   const [activeFilter, setActiveFilter] = useState<string | undefined>(undefined);
   const [showProOnly, setShowProOnly] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "popular">(initialSort);
   const [page, setPage] = useState(0);
-  const [searchInput, setSearchInput] = useState("");
-  const [searchQuery, setSearchQuery] = useState<string | undefined>(undefined);
+  const [searchInput, setSearchInput] = useState(urlSearch ?? "");
+  const [searchQuery, setSearchQuery] = useState<string | undefined>(urlSearch);
   // Track when user changes filter/sort to show immediate skeleton
   const [transitioning, setTransitioning] = useState(false);
   const transitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setSearchInput(urlSearch ?? "");
+    setSearchQuery(urlSearch);
+    setPage(0);
+  }, [urlSearch]);
 
   const { data: categories } = trpc.categories.list.useQuery();
   const categoryId = useMemo(() => {
@@ -182,6 +200,27 @@ export default function NewsArchivePage() {
             </div>
           )}
         </form>
+
+        <section className="mb-6" aria-labelledby="discovery-heading">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div>
+              <p id="discovery-heading" className="text-[10px] font-black uppercase tracking-[0.18em] text-[oklch(0.45_0_0)]">Popular routes</p>
+              <p className="text-xs text-[oklch(0.55_0_0)] mt-0.5">Browse the airlines, airports, aircraft and stories readers follow most.</p>
+            </div>
+            <Link href="/topics" className="shrink-0 text-xs font-bold text-[oklch(0.85_0.18_95)] hover:underline">All topics →</Link>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Popular topic hubs">
+            {DISCOVERY_LINKS.map((topic) => (
+              <Link
+                key={topic.href}
+                href={topic.href}
+                className="shrink-0 rounded-full border border-[oklch(0.25_0_0)] bg-[oklch(0.13_0_0)] px-3 py-1.5 text-xs font-bold text-[oklch(0.70_0_0)] transition-colors hover:border-[oklch(0.85_0.18_95)] hover:text-[oklch(0.85_0.18_95)]"
+              >
+                {topic.label}
+              </Link>
+            ))}
+          </div>
+        </section>
 
         {/* Filters + sort bar */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">

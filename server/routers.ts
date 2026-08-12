@@ -247,7 +247,7 @@ export const appRouter = router({
   articles: router({
     list: publicProcedure
       .input(z.object({ limit: z.number().min(1).max(100).default(20), offset: z.number().min(0).default(0), categoryId: z.number().optional(), postType: z.string().optional(), featured: z.boolean().optional(), breaking: z.boolean().optional(), isPro: z.boolean().optional(), search: z.string().optional(), sortBy: z.enum(['recent', 'popular']).optional() }))
-      .query(({ input }) => getArticles(input)),
+      .query(({ input }) => getArticles({ ...input, sortBy: input.sortBy ?? 'recent' })),
     mostRead: publicProcedure
       .input(z.object({ limit: z.number().min(1).max(10).default(5) }))
       .query(({ input }) => getMostReadArticles(input.limit)),

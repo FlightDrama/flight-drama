@@ -71,3 +71,11 @@
 - [x] Forum boards and demo threads seeded
 - [x] Newsletter subscribers seeded
 - [x] Ad slots seeded
+
+## Usability Release: Latest, Discovery, and Reading Experience
+- [x] Make latest stories the default across homepage modules and present Top Stories as a separate user-selectable view.
+- [x] Redesign the home feed for rapid mobile scanning with a clear lead story, compact breaking row, and consistent story-card metadata.
+- [x] Add mobile-friendly predictive search with popular airline, airport, and aircraft discovery routes.
+- [x] Expand category pages into topic hubs and add reusable airline, airport, and aircraft topic views.
+- [x] Improve article readability with estimated reading time, clear publication details, optional table of contents, image attribution, sticky sharing, and contextual related coverage.
+- [x] Add automated tests for latest-first ordering, discovery results, and article reading utilities.

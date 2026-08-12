@@ -5,7 +5,7 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ArticleCard from "@/components/ArticleCard";
 import NewsletterSignup from "@/components/NewsletterSignup";
-import { TrendingUp, Flame, Users, Crown, ExternalLink, Eye, Clock, MessageCircle, X, Zap } from "lucide-react";
+import { TrendingUp, Flame, Users, Crown, ExternalLink, Eye, Clock, MessageCircle, X, Zap, Radio } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/_core/hooks/useAuth";
 
@@ -26,7 +26,7 @@ function HeroStoriesPanel({ latestArticles, topArticles }: { latestArticles: any
 
   const tabs: { key: StoryTab; label: string }[] = [
     { key: 'latest', label: 'Latest' },
-    { key: 'top', label: 'Top' },
+    { key: 'top', label: 'Top Stories' },
     { key: 'commented', label: 'Hot' },
   ];
 
@@ -185,9 +185,10 @@ export default function Home() {
   const effectiveSearch = filterMode !== 'category' ? activeSearch : urlSearch;
   // Hero: always the most recently published article
   const { data: latestHeroArticles } = trpc.articles.list.useQuery({ limit: 1, sortBy: 'recent' });
+  const { data: latestStories } = trpc.articles.list.useQuery({ limit: 5, sortBy: 'recent' });
   const { data: featuredArticles } = trpc.articles.list.useQuery({ limit: 4, featured: true });
   const { data: articles, isLoading } = trpc.articles.list.useQuery({ limit: LIMIT, offset: page * LIMIT, categoryId, search: effectiveSearch, sortBy });
-  const { data: trendingArticles } = trpc.articles.list.useQuery({ limit: 6, offset: 0 });
+  const { data: breakingStories } = trpc.articles.list.useQuery({ limit: 3, breaking: true, sortBy: 'recent' });
   const { data: subscriberCount } = trpc.newsletter.count.useQuery();
   const hero = latestHeroArticles?.[0];
 
@@ -230,7 +231,25 @@ export default function Home() {
               <div className="lg:col-span-2">
                 {hero && <ArticleCard {...hero} publishedAt={hero.publishedAt} size="hero" />}
               </div>
-              <HeroStoriesPanel latestArticles={articles ?? []} topArticles={featuredArticles ?? []} />
+              <HeroStoriesPanel latestArticles={latestStories ?? []} topArticles={featuredArticles ?? []} />
+            </div>
+          </section>
+        )}
+        {!urlSearch && !activeFilter && (breakingStories?.length ?? 0) > 0 && (
+          <section className="mb-7 border-y border-[oklch(0.22_0_0)] py-3" aria-label="Breaking stories">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex shrink-0 items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-[oklch(0.85_0.18_95)]">
+                <Radio className="h-3.5 w-3.5" /> Live now
+              </div>
+              <div className="flex min-w-0 flex-1 gap-4 overflow-x-auto pb-1 sm:pb-0">
+                {breakingStories?.map((story) => (
+                  <Link key={story.id} href={`/article/${story.slug}`} className="group flex min-w-[230px] items-center gap-2 text-sm text-[oklch(0.70_0_0)] transition-colors hover:text-white sm:min-w-0">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[oklch(0.85_0.18_95)]" />
+                    <span className="truncate font-bold group-hover:text-[oklch(0.85_0.18_95)]">{story.title}</span>
+                    <span className="shrink-0 text-[10px] text-[oklch(0.45_0_0)]">{formatDistanceToNow(new Date(story.publishedAt), { addSuffix: true })}</span>
+                  </Link>
+                ))}
+              </div>
             </div>
           </section>
         )}
@@ -372,17 +391,6 @@ export default function Home() {
               <h3 className="font-black text-lg leading-tight mb-1">Flight Drama Pro</h3>
               <p className="text-xs font-medium opacity-80 mb-3">Ad-free reading, exclusive articles, VIP forum access and more.</p>
               <Link href="/pro" className="block bg-black text-[oklch(0.85_0.18_95)] text-center py-2 rounded font-black text-sm hover:bg-[oklch(0.15_0_0)] transition-colors">Join Pro →</Link>
-            </div>
-            <div className="bg-[oklch(0.15_0_0)] border border-[oklch(0.22_0_0)] rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-3"><TrendingUp className="w-4 h-4 text-[oklch(0.85_0.18_95)]" /><h3 className="text-xs font-black uppercase tracking-widest text-[oklch(0.85_0.18_95)]">Trending</h3></div>
-              <div className="space-y-1">
-                {trendingArticles?.slice(0, 6).map((a, i) => (
-                  <Link key={a.id} href={`/article/${a.slug}`} className="flex gap-3 items-start py-2 border-b border-[oklch(0.18_0_0)] last:border-0 hover:bg-[oklch(0.18_0_0)] px-1 rounded transition-colors group">
-                    <span className="text-2xl font-black text-[oklch(0.28_0_0)] leading-none mt-0.5 w-6 shrink-0">{i + 1}</span>
-                    <div><p className="text-xs font-bold text-white leading-snug line-clamp-2 group-hover:text-[oklch(0.85_0.18_95)] transition-colors">{a.title}</p><p className="text-[10px] text-[oklch(0.45_0_0)] mt-0.5">{a.views?.toLocaleString()} views</p></div>
-                  </Link>
-                ))}
-              </div>
             </div>
             <div className="bg-[oklch(0.15_0_0)] border border-[oklch(0.22_0_0)] rounded-lg p-4">
               <h3 className="text-xs font-black uppercase tracking-widest text-[oklch(0.85_0.18_95)] mb-3">Follow Us</h3>
